@@ -33,6 +33,9 @@ jobs:
       - run: npx vitest run
       - run: npm run build -w @project-atlas/webview
       - run: npm run build -w projectatlas
+      - name: E2E in VS Code (AC-DX1, CodeLens, panel)
+        if: matrix.os == 'ubuntu-latest'
+        run: xvfb-run -a npm run e2e -w projectatlas
       - name: Package VSIX (smoke)
         if: matrix.os == 'ubuntu-latest'
         working-directory: packages/vscode

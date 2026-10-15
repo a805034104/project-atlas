@@ -286,11 +286,13 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "package": "node build.mjs --production && vsce package --no-dependencies"
+    "package": "node build.mjs --production && vsce package --no-dependencies",
+    "e2e": "node e2e/run.mjs"
   },
   "devDependencies": {
     "@project-atlas/core": "*",
     "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.0.0",
     "esbuild": "0.28.2"
   },

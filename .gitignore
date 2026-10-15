@@ -8,3 +8,5 @@ node_modules/
 out/
 .claude/
 fixtures/repos/
+
+.vscode-test/
