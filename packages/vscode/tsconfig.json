@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node", "vscode"]
+  },
+  "include": ["src", "test"],
+  "references": [{ "path": "../core" }]
+}
