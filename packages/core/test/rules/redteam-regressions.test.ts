@@ -105,4 +105,27 @@ describe("red-team regressions", () => {
       await rm(cache, { recursive: true, force: true });
     }
   });
+
+  it("data objects and plain accessors are not flow steps (S0: 199 entity getters/setters as service steps)", async () => {
+    const graph = await analyzeTree({
+      "pom.xml": "<project><groupId>d</groupId><artifactId>app</artifactId></project>",
+      "src/main/java/app/App.java": `package app;
+@SpringBootApplication public class App {}`,
+      "src/main/java/app/domain/User.java": `package app.domain;
+public class User { private String name; public String getName() { return name; } public void setName(String n) { this.name = n; } public User copy() { return audit(this); } }`,
+      "src/main/java/app/util/Page.java": `package app.util;
+public class Page { private int total; public void setTotal(int t) { this.total = t; } public int compute() { return Math.max(total, 1); } }`,
+      "src/main/java/app/UserService.java": `package app;
+import app.domain.User;
+@Service public class UserService { public User find() { return new User(); } }`,
+      "src/main/java/app/UserController.java": `package app;
+import app.domain.User;
+import app.util.Page;
+@RestController public class UserController {
+  @Autowired private UserService userService;
+  @GetMapping("/u") public Object get() { User u = userService.find(); u.setName("x"); u.copy(); Page p = new Page(); p.setTotal(1); return p.compute(); }
+}`,
+    });
+    expect(calleesOf(graph, "GET", "/u").map((c) => c.name)).toEqual(["UserService.find", "Page.compute"]);
+  });
 });

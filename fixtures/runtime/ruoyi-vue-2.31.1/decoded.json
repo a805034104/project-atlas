@@ -1,0 +1,3449 @@
+{
+  "files": 11,
+  "spanCount": 124,
+  "resource": {
+    "service.name": "ruoyi-admin",
+    "telemetry.sdk.language": "java",
+    "telemetry.sdk.name": "opentelemetry",
+    "telemetry.sdk.version": "1.65.0"
+  },
+  "spans": [
+    {
+      "file": "001.pb",
+      "traceId": "7e762012cf8c2360ec76f3c61f6e557b",
+      "spanId": "5d887e49a41252bb",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083927531302800",
+      "endTimeUnixNano": "1792083927538080200",
+      "durationMs": 6.777,
+      "attributes": {
+        "db.statement": "/* ping */ SELECT ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "001.pb",
+      "traceId": "303603cc256d5003c0b348c9be203fed",
+      "spanId": "86b8168a787acc98",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083927557659300",
+      "endTimeUnixNano": "1792083927558144900",
+      "durationMs": 0.485,
+      "attributes": {
+        "db.statement": "/* ping */ SELECT ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "001.pb",
+      "traceId": "4108398b092ea6590d835c7ecb9e37f0",
+      "spanId": "7f5fc874ed8b3521",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083927571789700",
+      "endTimeUnixNano": "1792083927572301000",
+      "durationMs": 0.511,
+      "attributes": {
+        "db.statement": "/* ping */ SELECT ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "001.pb",
+      "traceId": "d1f314a869881b220eda2acb09cf587a",
+      "spanId": "e727ab6909a26df9",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083927585228000",
+      "endTimeUnixNano": "1792083927585977100",
+      "durationMs": 0.749,
+      "attributes": {
+        "db.statement": "/* ping */ SELECT ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "001.pb",
+      "traceId": "d816e1560dcb2e65d4e3704aa0bab021",
+      "spanId": "4d824d4e556e7f32",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083927601023400",
+      "endTimeUnixNano": "1792083927601504000",
+      "durationMs": 0.48,
+      "attributes": {
+        "db.statement": "/* ping */ SELECT ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "002.pb",
+      "traceId": "d06d21d261d049ca72ee368253adbb12",
+      "spanId": "862a40d0be08760c",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue.sys_config",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083928672388100",
+      "endTimeUnixNano": "1792083928673750700",
+      "durationMs": 1.362,
+      "attributes": {
+        "db.statement": "select config_id, config_name, config_key, config_value, config_type, create_by, create_time, update_by, update_time, remark from sys_config",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "db.sql.table": "sys_config",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "8d6c2c3aade567c4d58d799894fb0229",
+      "spanId": "775ef3dd0e10dded",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue.sys_dict_data",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929420742900",
+      "endTimeUnixNano": "1792083929423274000",
+      "durationMs": 2.531,
+      "attributes": {
+        "db.statement": "select dict_code, dict_sort, dict_label, dict_value, dict_type, css_class, list_class, is_default, status, create_by, create_time, remark from sys_dict_data WHERE status = ? order by dict_sort asc",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "db.sql.table": "sys_dict_data",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "e283085fbc060faf5e8b466d52c88f3f",
+      "spanId": "a415d64df6292ca9",
+      "parentSpanId": "",
+      "name": "HELLO",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929196638600",
+      "endTimeUnixNano": "1792083929217995800",
+      "durationMs": 21.357,
+      "attributes": {
+        "db.statement": "HELLO 3",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "HELLO",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_ERROR"
+      },
+      "events": [
+        {
+          "name": "exception",
+          "attributes": {
+            "exception.type": "io.lettuce.core.RedisCommandExecutionException",
+            "exception.message": "ERR unknown command `HELLO`, with args beginning with: `3`, ",
+            "exception.stacktrace": "io.lettuce.core.RedisCommandExecutionException: ERR unknown command `HELLO`, with args beginning with: `3`, \r\n\tat io.lettuce.core.internal.ExceptionFactory.createExecutionException(ExceptionFactory.java:147)\r\n\tat io.lettuce.core.internal.ExceptionFactory.createExecutionException(ExceptionFactory.java:116)\r\n\tat io.lettuce.core.protocol.AsyncCommand.completeResult(AsyncCommand.java:120)\r\n\tat io.lettuce.core.protocol.AsyncCommand.complete(AsyncCommand.java:111)\r\n\tat io.lettuce.core.protocol.CommandHandler.complete(CommandHandler.java:747)\r\n\tat io.lettuce.core.protocol.CommandHandler.decode(CommandHandler.java:682)\r\n\tat io.lettuce.core.protocol.CommandHandler.channelRead(CommandHandler.java:599)\r\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442)\r\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\r\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\r\n\tat io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1410)\r\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)\r\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\r\n\tat io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:919)\r\n\tat io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)\r\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788)\r\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724)\r\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650)\r\n\tat io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)\r\n\tat io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997)\r\n\tat io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)\r\n\tat io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)\r\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\r\n"
+          }
+        }
+      ],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "3b5bb4390c707017593a6cc56d287ffd",
+      "spanId": "aa9c35a0ffe824d6",
+      "parentSpanId": "",
+      "name": "PING",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929211846000",
+      "endTimeUnixNano": "1792083929221859700",
+      "durationMs": 10.013,
+      "attributes": {
+        "db.statement": "PING",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "PING",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "ca4fbd9ec449e6eff48930b2a916c75a",
+      "spanId": "236f8b25a8a34a4d",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929236155700",
+      "endTimeUnixNano": "1792083929237047900",
+      "durationMs": 0.892,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.index.skinName ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "4a3de1af1f5c7bb9c25280cf957c85b6",
+      "spanId": "9ba17c37988114dd",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929238150100",
+      "endTimeUnixNano": "1792083929238622800",
+      "durationMs": 0.472,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.user.initPassword ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "34405cf09f495fe7967ff9a0a7471132",
+      "spanId": "4d3d0595685d15d2",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929239151900",
+      "endTimeUnixNano": "1792083929239437500",
+      "durationMs": 0.285,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.index.sideTheme ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "ba589e241e566d7271ce51f10867cd02",
+      "spanId": "eda3f977a5de701e",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929240149800",
+      "endTimeUnixNano": "1792083929240642800",
+      "durationMs": 0.493,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.account.captchaEnabled ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "9c7012a99668086751cf1909ba0ee7c5",
+      "spanId": "ece87741b087a920",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929240149800",
+      "endTimeUnixNano": "1792083929240493600",
+      "durationMs": 0.343,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.account.registerUser ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "cec9d564a2ca3678d5157ddea2d772ae",
+      "spanId": "5930caa5f408a135",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929241654800",
+      "endTimeUnixNano": "1792083929241979700",
+      "durationMs": 0.324,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.login.blackIPList ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "0cf976eca84aad40691ffb419de9c073",
+      "spanId": "a8965ff47262648f",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929241654800",
+      "endTimeUnixNano": "1792083929241970300",
+      "durationMs": 0.315,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.account.initPasswordModify ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "c523bf349bc4699e6d2eb473c16b08f0",
+      "spanId": "45e8f9d880ba3d86",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929243270300",
+      "endTimeUnixNano": "1792083929243555400",
+      "durationMs": 0.285,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.account.passwordValidateDays ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "634fb4b348a4c99225ea06d76e51cb40",
+      "spanId": "944ce14d2a1faf31",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929243270300",
+      "endTimeUnixNano": "1792083929243548800",
+      "durationMs": 0.278,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.account.chrtype ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "61472a0e48068b4b2b01a4d0a7864d2c",
+      "spanId": "84f01d022d0cd428",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929487908800",
+      "endTimeUnixNano": "1792083929488537400",
+      "durationMs": 0.628,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_job_group ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "e3c984205c95cecdd3ebe80023483d3e",
+      "spanId": "57ce887d70680c57",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929488914500",
+      "endTimeUnixNano": "1792083929489450800",
+      "durationMs": 0.536,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_notice_type ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "6ec74e431b82b311b53ba074952a4195",
+      "spanId": "34d182971f9d2436",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929490245100",
+      "endTimeUnixNano": "1792083929490661600",
+      "durationMs": 0.416,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_common_status ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "071160ff61cb043e4fca51047b8654c2",
+      "spanId": "46601d11ab03e53a",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929491996200",
+      "endTimeUnixNano": "1792083929492467000",
+      "durationMs": 0.47,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_oper_type ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "aeefeffbc57ce10f9b4c56e41129966d",
+      "spanId": "d0077e1fc6aa9026",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929493002000",
+      "endTimeUnixNano": "1792083929493548800",
+      "durationMs": 0.546,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_yes_no ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "41ee6f9486193c734a36f978de4a07d2",
+      "spanId": "8a54bd607b90f393",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929494001000",
+      "endTimeUnixNano": "1792083929494455500",
+      "durationMs": 0.454,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_job_status ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "64a8f135187bf72fbb63acb8bf17fc04",
+      "spanId": "22ec720215764ebc",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929495002000",
+      "endTimeUnixNano": "1792083929495305100",
+      "durationMs": 0.303,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_notice_status ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "372ca1a68a730864ffc4090512f5a240",
+      "spanId": "8dbfe71f804af946",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929496001300",
+      "endTimeUnixNano": "1792083929496252400",
+      "durationMs": 0.251,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_show_hide ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "91946158bc1cee1e47cbd9b741059ebe",
+      "spanId": "5dee8a9847f51645",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929497000900",
+      "endTimeUnixNano": "1792083929497272500",
+      "durationMs": 0.271,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_normal_disable ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "003.pb",
+      "traceId": "35ca05f63827cbbf2188f2c84c29bb1a",
+      "spanId": "755f0d6f31926de9",
+      "parentSpanId": "",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083929497000900",
+      "endTimeUnixNano": "1792083929497315400",
+      "durationMs": 0.314,
+      "attributes": {
+        "db.statement": "SET sys_dict:sys_user_sex ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "004.pb",
+      "traceId": "74439907469a388c4a215b921691dd01",
+      "spanId": "9540885159a4b216",
+      "parentSpanId": "",
+      "name": "SELECT ry-vue.sys_job",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083930125740000",
+      "endTimeUnixNano": "1792083930126897300",
+      "durationMs": 1.157,
+      "attributes": {
+        "db.statement": "select job_id, job_name, job_group, invoke_target, cron_expression, misfire_policy, concurrent, status, create_by, create_time, update_by, update_time, remark from sys_job",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "db.sql.table": "sys_job",
+        "thread.name": "main"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "0c17c59aa8477f50",
+      "parentSpanId": "de3b9ad1d849f699",
+      "name": "SELECT ry-vue.sys_config",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932512171500",
+      "endTimeUnixNano": "1792083932513236000",
+      "durationMs": 1.064,
+      "attributes": {
+        "db.statement": "select config_id, config_name, config_key, config_value, config_type, create_by, create_time, update_by, update_time, remark from sys_config WHERE config_key = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "db.sql.table": "sys_config",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "aa17fc8d1026d735",
+      "parentSpanId": "55a514665bc61f90",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932310839400",
+      "endTimeUnixNano": "1792083932311332200",
+      "durationMs": 0.492,
+      "attributes": {
+        "db.statement": "GET sys_config:sys.account.captchaEnabled",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "6e1fd4d39802c3b9",
+      "parentSpanId": "b993a6ba3aba2eda",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932503823000",
+      "endTimeUnixNano": "1792083932504235500",
+      "durationMs": 0.412,
+      "attributes": {
+        "db.statement": "GET sys_config:sys.account.captchaEnabled",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "ec55f633fd756d27",
+      "parentSpanId": "de3b9ad1d849f699",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932504737900",
+      "endTimeUnixNano": "1792083932504984800",
+      "durationMs": 0.246,
+      "attributes": {
+        "db.statement": "GET sys_config:sys.login.blackIPList",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "252823e4710a3add",
+      "parentSpanId": "de3b9ad1d849f699",
+      "name": "SET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932514818500",
+      "endTimeUnixNano": "1792083932515183200",
+      "durationMs": 0.364,
+      "attributes": {
+        "db.statement": "SET sys_config:sys.login.blackIPList ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "ed0fa0a673066d7e2671213f6bb76eab",
+      "spanId": "ee7654c3c007bedd",
+      "parentSpanId": "6270bf56532bf778",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932161719100",
+      "endTimeUnixNano": "1792083932162275700",
+      "durationMs": 0.556,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "ed0fa0a673066d7e2671213f6bb76eab",
+      "spanId": "a32dafae90099fff",
+      "parentSpanId": "6270bf56532bf778",
+      "name": "SysIndexController.index",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932187376100",
+      "endTimeUnixNano": "1792083932190136800",
+      "durationMs": 2.76,
+      "attributes": {
+        "code.function": "index",
+        "code.namespace": "com.ruoyi.web.controller.system.SysIndexController",
+        "thread.name": "http-nio-8080-exec-1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "ed0fa0a673066d7e2671213f6bb76eab",
+      "spanId": "6270bf56532bf778",
+      "parentSpanId": "381044a3188f0ec2",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932145034800",
+      "endTimeUnixNano": "1792083932210623700",
+      "durationMs": 65.588,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "ed0fa0a673066d7e2671213f6bb76eab",
+      "spanId": "381044a3188f0ec2",
+      "parentSpanId": "26e3e49a42bacec7",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932135540500",
+      "endTimeUnixNano": "1792083932210742800",
+      "durationMs": 75.202,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "61d465625d32c647",
+      "parentSpanId": "a2f15c25e432cc48",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932305990000",
+      "endTimeUnixNano": "1792083932306023800",
+      "durationMs": 0.033,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-5"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "55a514665bc61f90",
+      "parentSpanId": "1bf907427f5d2902",
+      "name": "SysConfigServiceImpl.selectConfigByKey",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932308451700",
+      "endTimeUnixNano": "1792083932317282600",
+      "durationMs": 8.83,
+      "attributes": {
+        "code.function": "selectConfigByKey",
+        "code.namespace": "com.ruoyi.system.service.impl.SysConfigServiceImpl",
+        "thread.name": "http-nio-8080-exec-5"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "1bf907427f5d2902",
+      "parentSpanId": "a2f15c25e432cc48",
+      "name": "SysConfigServiceImpl.selectCaptchaEnabled",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932308406500",
+      "endTimeUnixNano": "1792083932317337300",
+      "durationMs": 8.93,
+      "attributes": {
+        "code.function": "selectCaptchaEnabled",
+        "code.namespace": "com.ruoyi.system.service.impl.SysConfigServiceImpl",
+        "thread.name": "http-nio-8080-exec-5"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "a2f15c25e432cc48",
+      "parentSpanId": "454484e6091a167f",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932301145300",
+      "endTimeUnixNano": "1792083932338349500",
+      "durationMs": 37.204,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-5"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "454484e6091a167f",
+      "parentSpanId": "a320ae40e93075a3",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932300979200",
+      "endTimeUnixNano": "1792083932338385200",
+      "durationMs": 37.406,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-5"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "867b2b266bb97852",
+      "parentSpanId": "2808ee3629113b07",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932470747400",
+      "endTimeUnixNano": "1792083932470767900",
+      "durationMs": 0.02,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "b993a6ba3aba2eda",
+      "parentSpanId": "e36ea0f5ebc7b9f5",
+      "name": "SysConfigServiceImpl.selectConfigByKey",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932503347900",
+      "endTimeUnixNano": "1792083932504397600",
+      "durationMs": 1.049,
+      "attributes": {
+        "code.function": "selectConfigByKey",
+        "code.namespace": "com.ruoyi.system.service.impl.SysConfigServiceImpl",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "e36ea0f5ebc7b9f5",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "SysConfigServiceImpl.selectCaptchaEnabled",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932503331900",
+      "endTimeUnixNano": "1792083932504428100",
+      "durationMs": 1.096,
+      "attributes": {
+        "code.function": "selectCaptchaEnabled",
+        "code.namespace": "com.ruoyi.system.service.impl.SysConfigServiceImpl",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "de3b9ad1d849f699",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "SysConfigServiceImpl.selectConfigByKey",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932504497000",
+      "endTimeUnixNano": "1792083932515241600",
+      "durationMs": 10.744,
+      "attributes": {
+        "code.function": "selectConfigByKey",
+        "code.namespace": "com.ruoyi.system.service.impl.SysConfigServiceImpl",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "ed0fa0a673066d7e2671213f6bb76eab",
+      "spanId": "26e3e49a42bacec7",
+      "parentSpanId": "",
+      "name": "GET /",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083932016088500",
+      "endTimeUnixNano": "1792083932212426600",
+      "durationMs": 196.338,
+      "attributes": {
+        "http.request.method": "GET",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-1",
+        "http.response.status_code": "200",
+        "http.route": "/",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "005.pb",
+      "traceId": "49678a74ec603d78b1cdfbf7ad8ebd91",
+      "spanId": "a320ae40e93075a3",
+      "parentSpanId": "",
+      "name": "GET /captchaImage",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083932300276700",
+      "endTimeUnixNano": "1792083932338643900",
+      "durationMs": 38.367,
+      "attributes": {
+        "http.request.method": "GET",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/captchaImage",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-5",
+        "http.response.status_code": "200",
+        "http.route": "/captchaImage",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "25a664418819f768",
+      "parentSpanId": "7e60e14993e95f7b",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932599460200",
+      "endTimeUnixNano": "1792083932601009300",
+      "durationMs": 1.549,
+      "attributes": {
+        "db.statement": "select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status, r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status from sys_user u left join sys_dept d on u.dept_id = d.dept_id left join sys_user_role ur on u.user_id = ur.user_id left join sys_role r on r.role_id = ur.role_id where u.user_name = ? and u.del_flag = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "79c86eecbf2a03e8",
+      "parentSpanId": "c6979a9fc3f496ec",
+      "name": "UPDATE ry-vue.sys_user",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932739990500",
+      "endTimeUnixNano": "1792083932745090200",
+      "durationMs": 5.099,
+      "attributes": {
+        "db.statement": "update sys_user set login_ip = ?, login_date = ? where user_id = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "UPDATE",
+        "db.sql.table": "sys_user",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "c102d02aecad56b1",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932605158500",
+      "endTimeUnixNano": "1792083932605673600",
+      "durationMs": 0.515,
+      "attributes": {
+        "db.statement": "GET pwd_err_cnt:admin",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "122f374611d0151e",
+      "parentSpanId": "d71139b0a1e5c0f6",
+      "name": "EXISTS",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083932666563600",
+      "endTimeUnixNano": "1792083932666984200",
+      "durationMs": 0.42,
+      "attributes": {
+        "db.statement": "EXISTS pwd_err_cnt:admin",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "EXISTS",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "7e60e14993e95f7b",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "SysUserServiceImpl.selectUserByUserName",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932589757600",
+      "endTimeUnixNano": "1792083932604181800",
+      "durationMs": 14.424,
+      "attributes": {
+        "code.function": "selectUserByUserName",
+        "code.namespace": "com.ruoyi.system.service.impl.SysUserServiceImpl",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "d71139b0a1e5c0f6",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "SysPasswordService.clearLoginRecordCache",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932663878300",
+      "endTimeUnixNano": "1792083932667099700",
+      "durationMs": 3.221,
+      "attributes": {
+        "code.function": "clearLoginRecordCache",
+        "code.namespace": "com.ruoyi.framework.web.service.SysPasswordService",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "006.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "c6979a9fc3f496ec",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "SysUserServiceImpl.updateLoginInfo",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932734763200",
+      "endTimeUnixNano": "1792083932745603800",
+      "durationMs": 10.84,
+      "attributes": {
+        "code.function": "updateLoginInfo",
+        "code.namespace": "com.ruoyi.system.service.impl.SysUserServiceImpl",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "8bdceee5ddbf7cd2",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "INSERT ry-vue.sys_logininfor",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083934982280000",
+      "endTimeUnixNano": "1792083934984985800",
+      "durationMs": 2.705,
+      "attributes": {
+        "db.statement": "insert into sys_logininfor (user_name, status, ipaddr, login_location, browser, os, msg, login_time) values (?, ?, ?, ?, ?, ?, ?, sysdate())",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "INSERT",
+        "db.sql.table": "sys_logininfor",
+        "thread.name": "schedule-pool-1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "be211219335dfd04",
+      "parentSpanId": "50d8b9530c9d0fa1",
+      "name": "SETEX",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083934862793600",
+      "endTimeUnixNano": "1792083934863478200",
+      "durationMs": 0.684,
+      "attributes": {
+        "db.statement": "SETEX login_tokens:00000000-0000-0000-0000-000000000000 1800 ?",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "SETEX",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "50d8b9530c9d0fa1",
+      "parentSpanId": "eb0f113ba274b661",
+      "name": "TokenService.refreshToken",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083934772194500",
+      "endTimeUnixNano": "1792083934863602000",
+      "durationMs": 91.407,
+      "attributes": {
+        "code.function": "refreshToken",
+        "code.namespace": "com.ruoyi.framework.web.service.TokenService",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "cdc70039a982cbf7",
+      "parentSpanId": "eb0f113ba274b661",
+      "name": "TokenService.createToken",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083934863768100",
+      "endTimeUnixNano": "1792083934908012300",
+      "durationMs": 44.244,
+      "attributes": {
+        "code.function": "createToken",
+        "code.namespace": "com.ruoyi.framework.web.service.TokenService",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "eb0f113ba274b661",
+      "parentSpanId": "fcc58a754042dddf",
+      "name": "TokenService.createToken",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932745695000",
+      "endTimeUnixNano": "1792083934908045000",
+      "durationMs": 2162.35,
+      "attributes": {
+        "code.function": "createToken",
+        "code.namespace": "com.ruoyi.framework.web.service.TokenService",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "fcc58a754042dddf",
+      "parentSpanId": "b211b81f5fd0797d",
+      "name": "SysLoginService.login",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932503310200",
+      "endTimeUnixNano": "1792083934908053400",
+      "durationMs": 2404.743,
+      "attributes": {
+        "code.function": "login",
+        "code.namespace": "com.ruoyi.framework.web.service.SysLoginService",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "b211b81f5fd0797d",
+      "parentSpanId": "2808ee3629113b07",
+      "name": "SysLoginController.login",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932503258600",
+      "endTimeUnixNano": "1792083934908065100",
+      "durationMs": 2404.806,
+      "attributes": {
+        "code.function": "login",
+        "code.namespace": "com.ruoyi.web.controller.system.SysLoginController",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "2808ee3629113b07",
+      "parentSpanId": "ba396b630dd85f7c",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932470332000",
+      "endTimeUnixNano": "1792083934909309000",
+      "durationMs": 2438.977,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "ba396b630dd85f7c",
+      "parentSpanId": "2dd41d56828d48f2",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083932470181300",
+      "endTimeUnixNano": "1792083934909363100",
+      "durationMs": 2439.181,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-3"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "007.pb",
+      "traceId": "9e7363913f1f4b8a6516fff0957531cd",
+      "spanId": "2dd41d56828d48f2",
+      "parentSpanId": "",
+      "name": "POST /login",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083932469234500",
+      "endTimeUnixNano": "1792083934909626000",
+      "durationMs": 2440.391,
+      "attributes": {
+        "http.request.method": "POST",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/login",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-3",
+        "http.response.status_code": "200",
+        "http.route": "/login",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "1c8f00eecff0d8bf",
+      "parentSpanId": "4b38df590f6da643",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936266196300",
+      "endTimeUnixNano": "1792083936267246500",
+      "durationMs": 1.05,
+      "attributes": {
+        "db.statement": "SELECT count(?) FROM sys_user u LEFT JOIN sys_dept d ON u.dept_id = d.dept_id WHERE u.del_flag = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "10f4c5e342ba8516",
+      "parentSpanId": "4b38df590f6da643",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936277428300",
+      "endTimeUnixNano": "1792083936278704500",
+      "durationMs": 1.276,
+      "attributes": {
+        "db.statement": "select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader from sys_user u left join sys_dept d on u.dept_id = d.dept_id where u.del_flag = ? LIMIT ? ",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "c705ea75e5b9e40a",
+      "parentSpanId": "636e7cec7ee29ddc",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936456493000",
+      "endTimeUnixNano": "1792083936458672100",
+      "durationMs": 2.179,
+      "attributes": {
+        "db.statement": "SELECT count(?) FROM (SELECT DISTINCT r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.menu_check_strictly, r.dept_check_strictly, r.status, r.del_flag, r.create_time, r.remark FROM sys_role r LEFT JOIN sys_user_role ur ON ur.role_id = r.role_id LEFT JOIN sys_user u ON u.user_id = ur.user_id LEFT JOIN sys_dept d ON u.dept_id = d.dept_id WHERE r.del_flag = ?) table_count",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "0b59e20353626ef8",
+      "parentSpanId": "636e7cec7ee29ddc",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936463614100",
+      "endTimeUnixNano": "1792083936465602800",
+      "durationMs": 1.988,
+      "attributes": {
+        "db.statement": "select distinct r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.menu_check_strictly, r.dept_check_strictly, r.status, r.del_flag, r.create_time, r.remark from sys_role r left join sys_user_role ur on ur.role_id = r.role_id left join sys_user u on u.user_id = ur.user_id left join sys_dept d on u.dept_id = d.dept_id where r.del_flag = ? order by r.role_sort LIMIT ? ",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "ec1185abb90c875c",
+      "parentSpanId": "9654e751edfb5f84",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936103894800",
+      "endTimeUnixNano": "1792083936104788100",
+      "durationMs": 0.893,
+      "attributes": {
+        "db.statement": "GET login_tokens:00000000-0000-0000-0000-000000000000",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "8611e889175fc2a8",
+      "parentSpanId": "e2645f8df02ec869",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936434992100",
+      "endTimeUnixNano": "1792083936435871000",
+      "durationMs": 0.878,
+      "attributes": {
+        "db.statement": "GET login_tokens:00000000-0000-0000-0000-000000000000",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "aa4c93313376199f",
+      "parentSpanId": "4642ad95e9ea5b65",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936151880000",
+      "endTimeUnixNano": "1792083936151919000",
+      "durationMs": 0.039,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "537ee84de48edc56",
+      "parentSpanId": "6d1aff8fdd5507e6",
+      "name": "DataScopeAspect.doBefore",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936195500600",
+      "endTimeUnixNano": "1792083936195624000",
+      "durationMs": 0.123,
+      "attributes": {
+        "code.function": "doBefore",
+        "code.namespace": "com.ruoyi.framework.aspectj.DataScopeAspect",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "4b38df590f6da643",
+      "parentSpanId": "6d1aff8fdd5507e6",
+      "name": "SysUserServiceImpl.selectUserList",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936195749500",
+      "endTimeUnixNano": "1792083936281479500",
+      "durationMs": 85.73,
+      "attributes": {
+        "code.function": "selectUserList",
+        "code.namespace": "com.ruoyi.system.service.impl.SysUserServiceImpl",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "6d1aff8fdd5507e6",
+      "parentSpanId": "4642ad95e9ea5b65",
+      "name": "SysUserController.list",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936187281100",
+      "endTimeUnixNano": "1792083936282692300",
+      "durationMs": 95.411,
+      "attributes": {
+        "code.function": "list",
+        "code.namespace": "com.ruoyi.web.controller.system.SysUserController",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "4642ad95e9ea5b65",
+      "parentSpanId": "9654e751edfb5f84",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936151329900",
+      "endTimeUnixNano": "1792083936307960800",
+      "durationMs": 156.63,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "9654e751edfb5f84",
+      "parentSpanId": "221c00610b850b14",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936086348700",
+      "endTimeUnixNano": "1792083936308001200",
+      "durationMs": 221.652,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "221c00610b850b14",
+      "parentSpanId": "b117991f7a9167eb",
+      "name": "XssFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936084956400",
+      "endTimeUnixNano": "1792083936308053000",
+      "durationMs": 223.096,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.XssFilter",
+        "thread.name": "http-nio-8080-exec-13"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "0d77940a88b3169c",
+      "parentSpanId": "134cccbbdf173399",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936437450400",
+      "endTimeUnixNano": "1792083936437479300",
+      "durationMs": 0.028,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "a3c96f975c942715",
+      "parentSpanId": "84dfd5fbff4d16b0",
+      "name": "DataScopeAspect.doBefore",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936442554200",
+      "endTimeUnixNano": "1792083936442607100",
+      "durationMs": 0.052,
+      "attributes": {
+        "code.function": "doBefore",
+        "code.namespace": "com.ruoyi.framework.aspectj.DataScopeAspect",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "636e7cec7ee29ddc",
+      "parentSpanId": "84dfd5fbff4d16b0",
+      "name": "SysRoleServiceImpl.selectRoleList",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936446059300",
+      "endTimeUnixNano": "1792083936467552800",
+      "durationMs": 21.493,
+      "attributes": {
+        "code.function": "selectRoleList",
+        "code.namespace": "com.ruoyi.system.service.impl.SysRoleServiceImpl",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "84dfd5fbff4d16b0",
+      "parentSpanId": "134cccbbdf173399",
+      "name": "SysRoleController.list",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936442147000",
+      "endTimeUnixNano": "1792083936467623100",
+      "durationMs": 25.476,
+      "attributes": {
+        "code.function": "list",
+        "code.namespace": "com.ruoyi.web.controller.system.SysRoleController",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "134cccbbdf173399",
+      "parentSpanId": "e2645f8df02ec869",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936436757600",
+      "endTimeUnixNano": "1792083936470712100",
+      "durationMs": 33.954,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "e2645f8df02ec869",
+      "parentSpanId": "c21558cd2d8ba04a",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936433797200",
+      "endTimeUnixNano": "1792083936470757600",
+      "durationMs": 36.96,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "c21558cd2d8ba04a",
+      "parentSpanId": "8f8f274a16677055",
+      "name": "XssFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936433123400",
+      "endTimeUnixNano": "1792083936470812600",
+      "durationMs": 37.689,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.XssFilter",
+        "thread.name": "http-nio-8080-exec-2"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "d799920baad8130e7f74da0a95fb52fa",
+      "spanId": "b117991f7a9167eb",
+      "parentSpanId": "",
+      "name": "GET /system/user/list",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083936084741200",
+      "endTimeUnixNano": "1792083936308311300",
+      "durationMs": 223.57,
+      "attributes": {
+        "http.request.method": "GET",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/system/user/list",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-13",
+        "http.response.status_code": "200",
+        "http.route": "/system/user/list",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "008.pb",
+      "traceId": "7d27f68e86ab6adedd81418ac43d525e",
+      "spanId": "8f8f274a16677055",
+      "parentSpanId": "",
+      "name": "GET /system/role/list",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083936432771100",
+      "endTimeUnixNano": "1792083936471076800",
+      "durationMs": 38.305,
+      "attributes": {
+        "http.request.method": "GET",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/system/role/list",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-2",
+        "http.response.status_code": "200",
+        "http.route": "/system/role/list",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "009.pb",
+      "traceId": "16dedebf7316decbbaadaf2320bc4fb4",
+      "spanId": "07957914eaa076ee",
+      "parentSpanId": "9b1e52b0b51e1ab9",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083936611108700",
+      "endTimeUnixNano": "1792083936611512300",
+      "durationMs": 0.403,
+      "attributes": {
+        "db.statement": "GET login_tokens:00000000-0000-0000-0000-000000000000",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "009.pb",
+      "traceId": "16dedebf7316decbbaadaf2320bc4fb4",
+      "spanId": "fa90cd2fd57c988a",
+      "parentSpanId": "1ed6dfd279a4e166",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936612425800",
+      "endTimeUnixNano": "1792083936612447300",
+      "durationMs": 0.021,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-6"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "571875f69f6bf9f0",
+      "parentSpanId": "ef96eb103c99a2d2",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938261171000",
+      "endTimeUnixNano": "1792083938262504000",
+      "durationMs": 1.333,
+      "attributes": {
+        "db.statement": "select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status, r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status from sys_user u left join sys_dept d on u.dept_id = d.dept_id left join sys_user_role ur on u.user_id = ur.user_id left join sys_role r on r.role_id = ur.role_id where u.user_id = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "ef04978ce4d9b164",
+      "parentSpanId": "65e587fe3eb346e7",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938265497100",
+      "endTimeUnixNano": "1792083938266757500",
+      "durationMs": 1.26,
+      "attributes": {
+        "db.statement": "select p.post_id from sys_post p left join sys_user_post up on up.post_id = p.post_id left join sys_user u on u.user_id = up.user_id where u.user_id = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "eb00024f94b8f4e1",
+      "parentSpanId": "589a632364bbd06e",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938270692400",
+      "endTimeUnixNano": "1792083938271953400",
+      "durationMs": 1.261,
+      "attributes": {
+        "db.statement": "select distinct r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.menu_check_strictly, r.dept_check_strictly, r.status, r.del_flag, r.create_time, r.remark from sys_role r left join sys_user_role ur on ur.role_id = r.role_id left join sys_user u on u.user_id = ur.user_id left join sys_dept d on u.dept_id = d.dept_id where r.del_flag = ? order by r.role_sort",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "862adbaabdcce112",
+      "parentSpanId": "02373bb7957e10ee",
+      "name": "SELECT ry-vue.sys_post",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938275220500",
+      "endTimeUnixNano": "1792083938276296600",
+      "durationMs": 1.076,
+      "attributes": {
+        "db.statement": "select post_id, post_code, post_name, post_sort, status, create_by, create_time, remark from sys_post",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "db.sql.table": "sys_post",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "82f2a7c929f239b6",
+      "parentSpanId": "6220226408f77e0d",
+      "name": "SELECT ry-vue",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938395410600",
+      "endTimeUnixNano": "1792083938396239200",
+      "durationMs": 0.828,
+      "attributes": {
+        "db.statement": "select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader from sys_user u left join sys_dept d on u.dept_id = d.dept_id where u.del_flag = ?",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "SELECT",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "90f8cece4befbda4",
+      "parentSpanId": "2de4d4cd6b58261b",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938255919800",
+      "endTimeUnixNano": "1792083938256324600",
+      "durationMs": 0.404,
+      "attributes": {
+        "db.statement": "GET login_tokens:00000000-0000-0000-0000-000000000000",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "56f53644c6b65fb8",
+      "parentSpanId": "3c9c3a25f3f321af",
+      "name": "GET",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083938383462400",
+      "endTimeUnixNano": "1792083938383835100",
+      "durationMs": 0.372,
+      "attributes": {
+        "db.statement": "GET login_tokens:00000000-0000-0000-0000-000000000000",
+        "db.system": "redis",
+        "server.port": "6379",
+        "server.address": "localhost",
+        "db.operation": "GET",
+        "thread.name": "lettuce-nioEventLoop-4-1",
+        "network.type": "ipv4"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.lettuce-5.1",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "16dedebf7316decbbaadaf2320bc4fb4",
+      "spanId": "1ed6dfd279a4e166",
+      "parentSpanId": "9b1e52b0b51e1ab9",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936612071100",
+      "endTimeUnixNano": "1792083938149648300",
+      "durationMs": 1537.577,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-6"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "16dedebf7316decbbaadaf2320bc4fb4",
+      "spanId": "9b1e52b0b51e1ab9",
+      "parentSpanId": "e7dfe34f0e2c6dc4",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936610122300",
+      "endTimeUnixNano": "1792083938149683900",
+      "durationMs": 1539.561,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-6"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "16dedebf7316decbbaadaf2320bc4fb4",
+      "spanId": "e7dfe34f0e2c6dc4",
+      "parentSpanId": "27bf6be837f7abf9",
+      "name": "XssFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083936609594100",
+      "endTimeUnixNano": "1792083938149726100",
+      "durationMs": 1540.132,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.XssFilter",
+        "thread.name": "http-nio-8080-exec-6"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "c33f3237c90a3ed0",
+      "parentSpanId": "384ec7326cab8cf3",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938257816800",
+      "endTimeUnixNano": "1792083938257835200",
+      "durationMs": 0.018,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "9ccc82ac77c3cb69",
+      "parentSpanId": "384ec7326cab8cf3",
+      "name": "SysUserServiceImpl.checkUserDataScope",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938259074100",
+      "endTimeUnixNano": "1792083938259101100",
+      "durationMs": 0.027,
+      "attributes": {
+        "code.function": "checkUserDataScope",
+        "code.namespace": "com.ruoyi.system.service.impl.SysUserServiceImpl",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "ef96eb103c99a2d2",
+      "parentSpanId": "384ec7326cab8cf3",
+      "name": "SysUserServiceImpl.selectUserById",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938259164100",
+      "endTimeUnixNano": "1792083938264007800",
+      "durationMs": 4.843,
+      "attributes": {
+        "code.function": "selectUserById",
+        "code.namespace": "com.ruoyi.system.service.impl.SysUserServiceImpl",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "65e587fe3eb346e7",
+      "parentSpanId": "384ec7326cab8cf3",
+      "name": "SysPostServiceImpl.selectPostListByUserId",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938264114500",
+      "endTimeUnixNano": "1792083938267514300",
+      "durationMs": 3.399,
+      "attributes": {
+        "code.function": "selectPostListByUserId",
+        "code.namespace": "com.ruoyi.system.service.impl.SysPostServiceImpl",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "24d47284494cb211",
+      "parentSpanId": "1e40134b8a26fdf7",
+      "name": "DataScopeAspect.doBefore",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938268129900",
+      "endTimeUnixNano": "1792083938268152200",
+      "durationMs": 0.022,
+      "attributes": {
+        "code.function": "doBefore",
+        "code.namespace": "com.ruoyi.framework.aspectj.DataScopeAspect",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "589a632364bbd06e",
+      "parentSpanId": "1e40134b8a26fdf7",
+      "name": "SysRoleServiceImpl.selectRoleList",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938268182700",
+      "endTimeUnixNano": "1792083938273074200",
+      "durationMs": 4.891,
+      "attributes": {
+        "code.function": "selectRoleList",
+        "code.namespace": "com.ruoyi.system.service.impl.SysRoleServiceImpl",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "1e40134b8a26fdf7",
+      "parentSpanId": "384ec7326cab8cf3",
+      "name": "SysRoleServiceImpl.selectRoleAll",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938268000900",
+      "endTimeUnixNano": "1792083938273109000",
+      "durationMs": 5.108,
+      "attributes": {
+        "code.function": "selectRoleAll",
+        "code.namespace": "com.ruoyi.system.service.impl.SysRoleServiceImpl",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "02373bb7957e10ee",
+      "parentSpanId": "384ec7326cab8cf3",
+      "name": "SysPostServiceImpl.selectPostAll",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938273190800",
+      "endTimeUnixNano": "1792083938277796100",
+      "durationMs": 4.605,
+      "attributes": {
+        "code.function": "selectPostAll",
+        "code.namespace": "com.ruoyi.system.service.impl.SysPostServiceImpl",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "384ec7326cab8cf3",
+      "parentSpanId": "2de4d4cd6b58261b",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938256815000",
+      "endTimeUnixNano": "1792083938281022200",
+      "durationMs": 24.207,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "2de4d4cd6b58261b",
+      "parentSpanId": "18d85ad15573c39f",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938254677400",
+      "endTimeUnixNano": "1792083938281056600",
+      "durationMs": 26.379,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "18d85ad15573c39f",
+      "parentSpanId": "1a402e2dd24e2522",
+      "name": "XssFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938254146100",
+      "endTimeUnixNano": "1792083938281103200",
+      "durationMs": 26.957,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.XssFilter",
+        "thread.name": "http-nio-8080-exec-7"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "b9c7984bb9c34ee4",
+      "parentSpanId": "2df73fa8ce23c14d",
+      "name": "RepeatSubmitInterceptor.preHandle",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938391674800",
+      "endTimeUnixNano": "1792083938391696300",
+      "durationMs": 0.021,
+      "attributes": {
+        "code.function": "preHandle",
+        "code.namespace": "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "58987e2e4f025b17",
+      "parentSpanId": "2df73fa8ce23c14d",
+      "name": "LogAspect.doBefore",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938392740100",
+      "endTimeUnixNano": "1792083938392768100",
+      "durationMs": 0.028,
+      "attributes": {
+        "code.function": "doBefore",
+        "code.namespace": "com.ruoyi.framework.aspectj.LogAspect",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "175d7e8e38ce2b49",
+      "parentSpanId": "9f9c7d427e4bc465",
+      "name": "DataScopeAspect.doBefore",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938392937100",
+      "endTimeUnixNano": "1792083938392952800",
+      "durationMs": 0.015,
+      "attributes": {
+        "code.function": "doBefore",
+        "code.namespace": "com.ruoyi.framework.aspectj.DataScopeAspect",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "6220226408f77e0d",
+      "parentSpanId": "9f9c7d427e4bc465",
+      "name": "SysUserServiceImpl.selectUserList",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938392976300",
+      "endTimeUnixNano": "1792083938397576100",
+      "durationMs": 4.599,
+      "attributes": {
+        "code.function": "selectUserList",
+        "code.namespace": "com.ruoyi.system.service.impl.SysUserServiceImpl",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "16dedebf7316decbbaadaf2320bc4fb4",
+      "spanId": "27bf6be837f7abf9",
+      "parentSpanId": "",
+      "name": "GET /monitor/server",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083936609381600",
+      "endTimeUnixNano": "1792083938149875400",
+      "durationMs": 1540.493,
+      "attributes": {
+        "http.request.method": "GET",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/monitor/server",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-6",
+        "http.response.status_code": "200",
+        "http.route": "/monitor/server",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "010.pb",
+      "traceId": "6cbb6ba39226d9c3d94c080daf44a4c2",
+      "spanId": "1a402e2dd24e2522",
+      "parentSpanId": "",
+      "name": "GET /system/user/{userId}",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083938253943600",
+      "endTimeUnixNano": "1792083938281443700",
+      "durationMs": 27.5,
+      "attributes": {
+        "http.request.method": "GET",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/system/user/1",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-7",
+        "http.response.status_code": "200",
+        "http.route": "/system/user/{userId}",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "217810113a523bc4",
+      "parentSpanId": "bdda765beeaf1c71",
+      "name": "INSERT ry-vue.sys_oper_log",
+      "kind": "SPAN_KIND_CLIENT",
+      "startTimeUnixNano": "1792083939083043500",
+      "endTimeUnixNano": "1792083939087740100",
+      "durationMs": 4.696,
+      "attributes": {
+        "db.statement": "insert into sys_oper_log(title, business_type, method, request_method, operator_type, oper_name, dept_name, oper_url, oper_ip, oper_location, oper_param, json_result, status, error_msg, cost_time, oper_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate())",
+        "db.system": "mysql",
+        "db.connection_string": "mysql://localhost:3306",
+        "server.port": "3306",
+        "server.address": "localhost",
+        "db.user": "root",
+        "db.name": "ry-vue",
+        "db.operation": "INSERT",
+        "db.sql.table": "sys_oper_log",
+        "thread.name": "schedule-pool-1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.jdbc",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "9f9c7d427e4bc465",
+      "parentSpanId": "2df73fa8ce23c14d",
+      "name": "SysUserController.export",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938392882600",
+      "endTimeUnixNano": "1792083939064720400",
+      "durationMs": 671.837,
+      "attributes": {
+        "code.function": "export",
+        "code.namespace": "com.ruoyi.web.controller.system.SysUserController",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "bdda765beeaf1c71",
+      "parentSpanId": "2df73fa8ce23c14d",
+      "name": "LogAspect.doAfterReturning",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083939065352200",
+      "endTimeUnixNano": "1792083939068215400",
+      "durationMs": 2.863,
+      "attributes": {
+        "code.function": "doAfterReturning",
+        "code.namespace": "com.ruoyi.framework.aspectj.LogAspect",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "2df73fa8ce23c14d",
+      "parentSpanId": "3c9c3a25f3f321af",
+      "name": "RepeatableFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938384262100",
+      "endTimeUnixNano": "1792083939068405600",
+      "durationMs": 684.143,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.RepeatableFilter",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "3c9c3a25f3f321af",
+      "parentSpanId": "bbb8a955fe1860d7",
+      "name": "JwtAuthenticationTokenFilter.doFilterInternal",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938382486100",
+      "endTimeUnixNano": "1792083939068430500",
+      "durationMs": 685.944,
+      "attributes": {
+        "code.function": "doFilterInternal",
+        "code.namespace": "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "bbb8a955fe1860d7",
+      "parentSpanId": "1a6aa42b5ea8d1f1",
+      "name": "XssFilter.doFilter",
+      "kind": "SPAN_KIND_INTERNAL",
+      "startTimeUnixNano": "1792083938379892700",
+      "endTimeUnixNano": "1792083939068479900",
+      "durationMs": 688.587,
+      "attributes": {
+        "code.function": "doFilter",
+        "code.namespace": "com.ruoyi.common.filter.XssFilter",
+        "thread.name": "http-nio-8080-exec-19"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.methods",
+        "version": "2.31.1-alpha"
+      },
+      "serviceName": "ruoyi-admin"
+    },
+    {
+      "file": "011.pb",
+      "traceId": "fdd676d27f22b20d4c3ae9ba0206280d",
+      "spanId": "1a6aa42b5ea8d1f1",
+      "parentSpanId": "",
+      "name": "POST /system/user/export",
+      "kind": "SPAN_KIND_SERVER",
+      "startTimeUnixNano": "1792083938379569200",
+      "endTimeUnixNano": "1792083939068701500",
+      "durationMs": 689.132,
+      "attributes": {
+        "http.request.method": "POST",
+        "server.port": "8080",
+        "server.address": "127.0.0.1",
+        "url.path": "/system/user/export",
+        "url.scheme": "http",
+        "thread.name": "http-nio-8080-exec-19",
+        "http.response.status_code": "200",
+        "http.route": "/system/user/export",
+        "network.protocol.version": "1.1"
+      },
+      "status": {
+        "code": "STATUS_CODE_UNSET"
+      },
+      "events": [],
+      "scope": {
+        "name": "io.opentelemetry.tomcat-7.0",
+        "version": "2.31.1-alpha"
+      },
+      "scopeSchemaUrl": "https://opentelemetry.io/schemas/1.41.0",
+      "serviceName": "ruoyi-admin"
+    }
+  ]
+}

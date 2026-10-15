@@ -11,3 +11,8 @@ fixtures/repos/
 
 .vscode-test/
 .atlas-acceptance/
+scripts/spike/runs/
+fixtures/runtime/**/*.log
+fixtures/runtime/**/agent-lines.txt
+fixtures/runtime/**/requests*.txt
+fixtures/runtime/**/requests.jsonl

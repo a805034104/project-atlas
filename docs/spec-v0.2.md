@@ -67,6 +67,30 @@ v0.2 的价值不是「又一个 trace 查看器」（SkyWalking、Jaeger、IDEA
 - **V9 突发与吞吐**：配置 `otel.bsp.schedule.delay=500`、`otel.bsp.max.queue.size=8192`；接收端立即应答、异步追加；聚合在 worker 中增量、防抖更新，不重写分片图；内存索引只存偏移和键。按 (traceId, spanId) 用有界 LRU 去重（exporter 重试）。`service.name=unknown_service:java` 时按包前缀归属服务。
 - **V10 MCP 与隐私**：MCP 只返回聚合值、ID、route 和状态码，不返回任何 span 属性值，与 AC#24 一致。`list_traces(entrypoint?, since?, limit=20, errorsOnly?)`。
 
+## 2.1 S0 实测修订（2026-10-15，证据见 `docs/s0-spike.md`）
+
+S0 在本机实测：便携 Maven 3.9.16 + MySQL 8.0.46，JDK 21，RuoYi-Vue（Boot 2.5.15），agent 2.31.1。7 项检查里 5 项直接成立，2 项按下面修订后成立。**以下内容覆盖第 2 节中对应的条目。**
+
+- **V4 修订**
+  - **Mapper 层**：配置文件固定写 `otel.instrumentation.mybatis.enabled=true`。2.31.1 默认关闭这项插桩，从配置文件打开有效，Mapper span 带 `code.namespace`/`code.function`。Mapper 接口**不进**方法清单：它们是 JDK 代理，写进去也不出 span。JDBC span 按「mybatis span → 父 service 方法」的顺序归属；只有用户关掉 mybatis 插桩时，才退回第 2 节「按操作和表名比对」的做法。
+  - **方法清单**：只列 filter、interceptor、aspect、controller、service 五层的方法。RuoYi-Vue 共 69 个类、431 个方法，约 9.7 K 字符，agent 接受。
+  - **controller-telemetry 保持关闭**：方法清单已经覆盖 controller，打开会出现父子同名的重复 span。对账时，父子 span 的 `code.*` 相同则合并为一个步骤（也能处理 `TokenService.createToken` 这类重载嵌套）。
+  - **CGLIB 不会产生重复 span**，`code.namespace` 里就是原类名。
+- **静态图修正（已在 core 修复，见提交记录）**：实体类、DTO 和普通 getter/setter 不再算流转步骤。原来 RuoYi-Vue 有 199 个这样的伪 `service` 步骤，不修复的话 span 数会放大 10 倍。S0 报告里说「漏掉了 3 个 handler」，是它自己的 `get*` 过滤造成的误报；core 实际都识别到了（`GET /system/user/{}`、`GET /monitor/server`、`GET /captchaImage`）。`@PreAuthorize` 步骤和 controller 共用同一个方法符号：对账时，controller 方法的 span 只匹配 controller 层的步骤。
+- **V3 修订**：只要路径含非 ASCII 字符，**不论 Java 版本**都复制到纯 ASCII 路径。原因：JDK 21 遇到系统代码页覆盖不到的字符会直接启动失败；覆盖得到时也会丢失 agent 版本元数据。空格不是问题，但写进 `JAVA_TOOL_OPTIONS` 时必须加引号。不要靠 `telemetry.distro.version` 判断 agent 版本。
+- **V1 修订**：
+  - `mvn spring-boot:run` 用 `-Dspring-boot.run.agents` 和 `-Dspring-boot.run.jvmArguments` 注入，已实测 Maven 自身不会被插桩。前提是先在根目录执行一次 `mvn install`，文档里要写明。
+  - `JAVA_TOOL_OPTIONS` 方式下，构建工具 JVM 的 `service.name` 和应用相同，**改为在接收时**按 resource 的 `process.command_line` 识别：含 `org.codehaus.plexus.classworlds`、`GradleDaemon` 或 `GradleWorkerMain` 的整批丢弃。判断完就扔掉 `process.command_line`，不落盘。
+- **V5 修订**：
+  - **resource 只保留 `service.name`**。`process.command_line` 里可能带 `-Dspring.datasource.password=…`，`host.name` 和本机路径也都在 resource 里。
+  - JDBC 表名从 `db.sql.table` 取，取不到再从 `db.query.summary` 取，最后才在内存里解析语句。JDBC span 上不会出现 `db.collection.name`。
+  - Redis 语句里有会话 key（`login_tokens:<uuid>`），和 SQL 文本一样一律不存。
+  - `client.address`、`network.peer.*`、`user_agent.original` 都不落盘。
+- **semconv**：默认不开启新代属性。`otel.semconv-stability.opt-in` 只能用 `-D` 或环境变量传，写在配置文件里无效。解析器同时认新旧两代属性（已实现）。
+- **V7 补充**：切面 advice span 的父节点是「最近的被插桩帧」（controller 或 filter），和静态图里「切面 → 目标方法」的关系不同。所以切面 span 只按步骤直接匹配，**不用它的父子关系生成边**。判定为异步需要两个条件同时成立：子 span 的线程与父 span 不同，并且子 span 开始时间晚于父 span 结束。实测例子：操作日志 INSERT 跑在 `schedule-pool-1`，比父 span 晚 15 ms。
+- **context-path**：`http.route` 带 context-path（`/ctx/system/user/{userId}`）。v0.1 的静态入口路径本来就带 context-path，把路径变量统一成 `{}` 之后直接比对即可，不需要剥离。
+- **时延**：`otel.bsp.schedule.delay=500` 时，从发出请求到 span 送达接收器为 89–577 ms，AC#19 的 10 秒预算余量充足。exporter 默认不压缩，接收端两种情况都支持。
+
 ## 3. 里程碑
 
 | # | 内容 | 依赖 | 门 |
