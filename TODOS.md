@@ -2,7 +2,7 @@
 
 ## P2
 
-### MCP server exposing AtlasGraph (E4) — pending gate decision T2
+### ~~MCP server (E4)~~ — moved into v0.1 as child #20 (gate T2, 2026-10-15)
 - **What:** Read-only MCP server (`packages/mcp`) serving entrypoints, flows, service links from `.atlas/graph/`.
 - **Why:** AI coding agents fabricate call chains; AtlasGraph is verified ground truth they could query.
 - **Pros:** Platform leverage; reuses core + graph store. **Cons:** New public interface to version.
@@ -22,6 +22,11 @@
 ### Go toolchain enhancement (go/types)
 - **What:** When `go` is installed, resolve interface dispatch via go/packages + go/types.
 - **Effort:** M → CC S. **Depends on:** #10.
+
+## Roadmap after v0.1 (U1, 2026-10-15)
+- v0.2: local runtime tracing (Java first) + MQ links (Redis Stream, Kafka, RabbitMQ, RocketMQ)
+- v0.3: Go rules + Go tracing diff + gRPC
+- v0.4: Python rules (pyright LSP) + Python tracing + Dubbo
 
 ## P3
 

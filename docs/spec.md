@@ -1,7 +1,7 @@
 <!-- /autoplan restore point: /c/Users/admin/.gstack/projects/project-atlas/main-autoplan-restore-20261015-095157.md -->
 # [Epic] ProjectAtlas — VS Code 扩展：AI 项目地图（模块 / 功能 / 启动 / 修改记录 / 请求流转）
 
-> v1 · 2026-10-15 · 状态：已确认
+> v1.2 · 2026-10-15 · 状态：已评审并批准（/autoplan）。**范围以「范围裁决 v1.2」一节为准**
 > 名称 `ProjectAtlas`，MIT 许可。
 
 ## Context
@@ -323,6 +323,33 @@ topic、stream 或服务名在解析常量和配置后仍不确定时，不连�
 - 代码修改、重构建议、自动生成文档文件
 - VS Code LM API（Copilot）provider
 
+
+## 范围裁决 v1.2（U1 + T1–T5，2026-10-15 用户在最终闸门拍板，规范性，优先级最高）
+
+**U1 采纳评审意见：v0.1 收窄范围。** 用户原来的 D7、D9、D11（四栈精确 + 运行时 + 四类跨服务都进 v0.1）由用户本人改为下面的分期：
+
+| 版本 | 范围 | 涉及的子 issue |
+|------|------|---------------|
+| **v0.1** | Java Spring + Vue 的精确流转；跨服务覆盖 HTTP（Feign、RestTemplate/WebClient、注册中心）、网关（Spring Cloud Gateway、Nginx）、前端代理到网关再到服务；模块、功能、启动、修改记录（Spring/Vue/Maven/Gradle/npm）；LLM 层；Webview + TreeView + CodeLens；CLI + 导出；**只读 MCP（T2）**；中文 README、Gitee 镜像（T4） | #1 #2 #3(仅 Java/Vue) #4 #5 #6 #7 #8 #9 #12 #13 #14 #15 + 新增 **#20 MCP** |
+| v0.2（暂定，按需求调整） | 本地运行时追踪（先做 Java agent）+ 消息队列（Redis Stream、Kafka、RabbitMQ、RocketMQ） | #16(MQ 部分) #17 #18(Java) #19 |
+| v0.3（暂定） | Go（net/http、gin、echo、chi）+ Go 运行时 diff + gRPC | #10 #16(gRPC) #18(Go) |
+| v0.4（暂定） | Python（FastAPI、Flask、Django、非 HTTP 入口 + pyright LSP）+ Python 运行时 + Dubbo | #11 #16(Dubbo) #18(Python) |
+
+- **数据模型不缩减**：`Stack`、`ServiceLink.kind`、`Provenance` 中 v0.2 以后才用到的取值（`go`、`python`、`mq`、`grpc`、`dubbo`、`runtime-observed`）在 v0.1 的 schema 里就要保留，避免后续升级 schemaVersion。这些能力在 v0.1 不会产生对应数据，UI 也隐藏相关入口（Trace 标签页、「带追踪启动」）。
+- **v0.1 的验收标准**：保留 AC#1、#3、#6–#15、#18 以及 AC-DX1、AC-HO、AC-SEC（去掉 OTLP 那一条）、AC-PERF。AC#2、#4、#5 只覆盖 Spring/Vue 夹具。AC#16、#17、#19–#25 以及 AC-SEC 中 OTLP 和运行器的部分，**移到对应的版本**。
+- **v0.1 的夹具**：RuoYi-Vue、RuoYi-Cloud；保留集换成 Jeecg-boot、pig、mall-swarm（T4，全部是 Spring + Vue，只做人工评分）。
+- **T1**：v0.1 只用到「tree-sitter + 规则 + 宁缺勿错」；pyright LSP 留到 v0.4 和 Python 一起实现。
+- **T2**：新增 #20 `packages/mcp`，提供只读工具：`list_services`、`list_entrypoints`、`get_flow(entrypoint)`、`find_symbol`、`get_module_history`，数据读自 `.atlas/graph/`，不触发分析也不调用 LLM。约 0.5–1 个 CC 日。
+- **T3**：在仓库内定义 `RuleSet` 接口，并配 CONTRIBUTING 规则贡献指南；不做运行时插件加载器（已记入 TODOS）。
+- **T5**：TreeView、CodeLens、walkthrough 进入 v0.1（#12）。
+- **工作量**：v0.1 约人工 9 周，或 CC 6–7 天。
+
+### 工程复核（U1 修改后重跑的工程评审 delta）
+- **架构**：范围只减不增；新增的 MCP 只读 `.atlas/graph/` 分片，没有新的写入路径，与 GraphStore 共用读取代码（DRY），没有新的安全面（stdio 传输，不监听端口）。通过。
+- **依赖关系**：原关键路径 S1→S2→S4→S7 不变；S5、S6、S10 以及 S12 中的 launcher 部分移出 v0.1；新增 S14 MCP（依赖 S1 和 GraphStore），可以和 S11 并行。
+- **测试**：去掉运行时 E2E 和 MQ/RPC 合成夹具（随版本后移）；新增 MCP 工具的单元测试（每个工具 2 条）和一条集成测试（用 RuoYi 的 graph 调用 `get_flow`）。
+- **风险**：v0.2 需要在 schema 不升版本的前提下接入运行时 → 已通过「数据模型不缩减」覆盖。
+- **结论**：工程评审 CLEAR，没有新的 critical gap。
 
 ## 评审修订 v1.1（规范性，与正文冲突时以本节为准）
 
@@ -1362,3 +1389,21 @@ web-tree-sitter（需要 locateFile）、pyright-langserver（LSP 子进程）�
 | 54 | Eng | 不支持 vscode.dev，打包一个通用 vsix | 机械 | P3 | — | — |
 | 55 | Eng | Go go/types 增强、SCIP 导入 → TODOS | 机械 | P3 | — | — |
 | 56 | Eng | jq 未安装，跳过任务 JSONL 聚合，在闸门中直接列出任务 | 机械 | — | 工具缺失 | — |
+| 57 | 闸门 | U1：用户采纳缩范围，v0.1 = Spring + Vue + RuoYi-Cloud 跨服务 + MCP | 用户裁决 | — | 用户在最终闸门选择 | 原 D7/D9/D11 |
+| 58 | 闸门 | T1–T5 全部按推荐 | 用户裁决 | — | — | — |
+| 59 | 闸门 | U1 修改后重跑工程 delta → CLEAR | 机械 | — | 闸门必须评审最终方案 | — |
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | CLEAR (PLAN via /autoplan) | 8 proposals, 2 accepted + 3 taste（均已裁决）, 3 deferred；1 user challenge 被采纳 |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | Codex 未安装；4 个阶段都用 Claude 子代理替代 |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 (+U1 delta) | CLEAR (PLAN via /autoplan) | 31 issues, 0 critical gaps |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | CLEAR (PLAN via /autoplan) | score: 4/10 → 8.5/10, 10 decisions |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 1 | CLEAR (PLAN via /autoplan) | score: 3/10 → 8/10, TTHW: 未承诺 → <2 min |
+
+- **CROSS-MODEL:** 仅有同一模型家族的子代理意见。跨阶段的共同主题：范围过大（CEO+Eng → U1 已采纳）；tree-sitter 精度有限（CEO+Eng → T1 + 宁缺勿错）；缺少纠错逃生口（Design+DX → overrides/wrappers）。
+- **VERDICT:** CEO + ENG + DESIGN + DX CLEARED — ready to implement (v0.1 scope per 范围裁决 v1.2).
+
+NO UNRESOLVED DECISIONS
