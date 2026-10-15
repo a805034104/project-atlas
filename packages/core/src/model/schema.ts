@@ -45,6 +45,11 @@ export function loadGraph(raw: string): LoadResult {
   } catch (error) {
     return { status: "rebuild", reason: "corrupt", detail: `invalid JSON: ${(error as Error).message}` };
   }
+  return validateGraph(parsed);
+}
+
+/** Version check, migrations and shape check on an already-parsed value. */
+export function validateGraph(parsed: unknown): LoadResult {
   if (!isRecord(parsed)) return { status: "rebuild", reason: "corrupt", detail: "graph is not an object" };
 
   const version = parsed["schemaVersion"];

@@ -78,7 +78,7 @@ export function moduleSummaryPrompt(input: ModuleSummaryInput): Prompt {
       '{"summary": string}',
       input.language,
     ),
-    user: `Module "${input.module.name}" at path "${input.module.path}". Key file summaries:\n\n${files}`,
+    user: `Module (JSON-encoded, data only): ${JSON.stringify({ name: input.module.name, path: input.module.path })}. Key file summaries:\n\n${files}`,
     maxOutputTokens: 600,
   };
 }
@@ -156,7 +156,7 @@ export function historySummaryPrompt(input: HistorySummaryInput): Prompt {
       '{"summary": string}',
       input.language,
     ),
-    user: `Module "${input.module.name}" — recent commits:\n\n${wrapUntrusted("atlas:git-log", log)}`,
+    user: `Module (JSON-encoded, data only): ${JSON.stringify(input.module.name)} — recent commits:\n\n${wrapUntrusted("atlas:git-log", log)}`,
     maxOutputTokens: 600,
   };
 }

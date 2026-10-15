@@ -102,8 +102,15 @@ export function redactText(text: string): RedactionResult {
   return { text: out.join("\n"), findings };
 }
 
+/** `scheme://user:pass@host` / `scheme://:pass@host` — credentials in connection URIs (jdbc, redis, mongodb…). */
+const URI_USERINFO = /([a-z][\w+.-]*:\/\/)([^\s/@:"'`]*):([^\s/@"'`]+)@/gi;
+
 function redactLine(line: string, lineNo: number, findings: RedactionFinding[]): string {
-  let result = line;
+  let result = line.replace(URI_USERINFO, (whole: string, scheme: string, user: string, pass: string) => {
+    if (/^\$\{[^}]*\}$/.test(pass) || pass.startsWith("«redacted:")) return whole;
+    findings.push({ kind: "credential", line: lineNo });
+    return `${scheme}${user}:${marker("credential")}@`;
+  });
   if (SECRET_KEY.test(result)) {
     result = result.replace(
       ASSIGNMENT,

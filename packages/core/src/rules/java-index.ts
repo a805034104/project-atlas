@@ -31,6 +31,8 @@ export class JavaIndex {
   private readonly bySimple = new Map<string, TypeRef[]>();
   private readonly ancestorCache = new Map<TypeRef, TypeRef[]>();
   private implCache: Map<TypeRef, TypeRef[]> | undefined;
+  private readonly supertypeNameCache = new Map<TypeRef, string[]>();
+  private beansBySupertypeName: Map<string, TypeRef[]> | undefined;
 
   constructor(files: readonly LoadedFile[]) {
     for (const file of files) {
@@ -109,6 +111,30 @@ export class JavaIndex {
 
   /** Raw names of every supertype mention, including library types (`OncePerRequestFilter`, `BaseMapper<T>`). */
   supertypeNames(ref: TypeRef): string[] {
+    const cached = this.supertypeNameCache.get(ref);
+    if (cached) return cached;
+    const names = this.computeSupertypeNames(ref);
+    this.supertypeNameCache.set(ref, names);
+    return names;
+  }
+
+  /** Concrete bean classes that declare (directly or via ancestors) a supertype with this simple name. */
+  beansImplementing(simpleName: string): readonly TypeRef[] {
+    if (!this.beansBySupertypeName) {
+      this.beansBySupertypeName = new Map();
+      for (const t of this.types) {
+        if (t.type.kind !== "class" || !this.isBean(t)) continue;
+        for (const name of new Set(this.supertypeNames(t))) {
+          const list = this.beansBySupertypeName.get(name);
+          if (list) list.push(t);
+          else this.beansBySupertypeName.set(name, [t]);
+        }
+      }
+    }
+    return this.beansBySupertypeName.get(simpleName) ?? [];
+  }
+
+  private computeSupertypeNames(ref: TypeRef): string[] {
     const names: string[] = [];
     for (const t of [ref, ...this.ancestors(ref)]) {
       if (t.type.superclass) names.push(rawTypeName(t.type.superclass));

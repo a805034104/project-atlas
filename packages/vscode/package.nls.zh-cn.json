@@ -1,6 +1,6 @@
 {
   "description": "为 Spring / Vue / 若依项目生成项目地图：模块、功能、启动方式、修改记录和跨服务请求流转。规则优先，AI 可选。",
-  "untrusted": "受限模式下 Atlas 只读取文件：atlas.yaml 中的仓库克隆被禁用。",
+  "untrusted": "受限模式下 Atlas 只读取文件：AI 请求、git 修改记录和 atlas.yaml 中的仓库克隆都会被禁用。",
   "cmd.analyze": "分析工作区",
   "cmd.analyzeIncremental": "增量更新",
   "cmd.cancel": "取消分析",

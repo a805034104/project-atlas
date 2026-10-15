@@ -38,7 +38,9 @@ export class CloneError extends Error {
 }
 
 export function isAllowedGitUrl(url: string): boolean {
-  return ALLOWED.test(url) && !url.startsWith("-");
+  if (!ALLOWED.test(url) || url.startsWith("-")) return false;
+  // Credentials must come from the git credential helper, never from atlas.yaml (they would be logged/persisted).
+  return !/^https:\/\/[^/@]*@/.test(url);
 }
 
 export function cloneDirFor(atlasDir: string, url: string, ref?: string): string {
@@ -47,7 +49,7 @@ export function cloneDirFor(atlasDir: string, url: string, ref?: string): string
 
 export async function shallowClone(options: { atlasDir: string; url: string; ref?: string; gitPath?: string; signal?: AbortSignal; timeoutMs?: number }): Promise<string> {
   const { url, ref } = options;
-  if (!isAllowedGitUrl(url)) throw new CloneError(url, "only https:// and git@host:path URLs are allowed");
+  if (!isAllowedGitUrl(url)) throw new CloneError(url.replace(/\/\/[^/@]*@/, "//«redacted»@"), "only https:// and git@host:path URLs without embedded credentials are allowed");
   if (ref && (ref.startsWith("-") || /[\s~^:?*[\\]/.test(ref))) throw new CloneError(url, `invalid ref "${ref}"`);
   const dir = cloneDirFor(options.atlasDir, url, ref);
   if (existsSync(path.join(dir, ".git"))) return dir; // already cloned: reuse (user can clear the cache)

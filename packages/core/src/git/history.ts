@@ -63,6 +63,9 @@ const CONFIG_ARGS = [
   "-c", "i18n.logOutputEncoding=UTF-8",
   "-c", "log.follow=false",
   "-c", "log.showSignature=false",
+  // Defense in depth against repo-local config: no fsmonitor hook, no external diff driver.
+  "-c", "core.fsmonitor=false",
+  "-c", "diff.external=",
   "--literal-pathspecs",
 ];
 
@@ -81,7 +84,7 @@ export function buildLogArgs(path: string, maxCount: number, since: Date | undef
     "--numstat",
     "--find-renames",
     "--no-color",
-    "--no-ext-diff",
+    "--no-ext-diff", "--no-textconv",
     `--format=${LOG_FORMAT}`,
     `--max-count=${maxCount}`,
   ];

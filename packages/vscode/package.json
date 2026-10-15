@@ -34,7 +34,13 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "%untrusted%"
+      "description": "%untrusted%",
+      "restrictedConfigurations": [
+        "atlas.llm.provider",
+        "atlas.llm.baseUrl",
+        "atlas.llm.model",
+        "atlas.analysis.history"
+      ]
     },
     "virtualWorkspaces": false
   },
@@ -213,17 +219,20 @@
             "ollama"
           ],
           "default": "none",
-          "markdownDescription": "%cfg.provider%"
+          "markdownDescription": "%cfg.provider%",
+          "scope": "application"
         },
         "atlas.llm.model": {
           "type": "string",
           "default": "",
-          "markdownDescription": "%cfg.model%"
+          "markdownDescription": "%cfg.model%",
+          "scope": "application"
         },
         "atlas.llm.baseUrl": {
           "type": "string",
           "default": "",
-          "markdownDescription": "%cfg.baseUrl%"
+          "markdownDescription": "%cfg.baseUrl%",
+          "scope": "application"
         },
         "atlas.llm.maxInputTokens": {
           "type": "number",
