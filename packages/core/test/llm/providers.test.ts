@@ -181,6 +181,17 @@ describe("HTTP error mapping", () => {
     assertNoKey(error);
   });
 
+  it("403 forbidden from an unsupported region points at the network, not the key", async () => {
+    const fetch = fakeFetch({ status: 403, json: { error: { type: "forbidden", message: "Request not allowed" } } });
+    const error = await caught(anthropic(fetch).complete(req));
+    expect(error).toBeInstanceOf(LlmAuthError);
+    const uf = (error as LlmAuthError).toUserFacing();
+    expect(uf.code).toBe("ATLAS-E020");
+    expect(uf.problem).toContain("before checking the API key");
+    expect(uf.fix).toContain("HTTPS_PROXY");
+    expect(uf.fixCommand).toBeUndefined();
+  });
+
   it("scrubs partially masked keys echoed by OpenAI-style errors", async () => {
     const fetch = fakeFetch({ status: 401, json: { error: { message: "Incorrect API key provided: sk-SUPERSE********cdef" } } });
     const provider = createProvider({ provider: "openai-compatible", apiKey: KEY, baseUrl: "https://x", model: "m" }, fetch);

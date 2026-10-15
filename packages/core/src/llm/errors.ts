@@ -53,11 +53,22 @@ export class LlmAuthError extends LlmError {
     readonly provider: LlmProviderName,
     readonly status: number,
     readonly detail = "",
+    /** 403 issued before the key is checked (unsupported country/region or a blocked network). */
+    readonly networkBlocked = false,
   ) {
-    super(`${providerLabel(provider)} rejected the API key (HTTP ${status})${detail ? `: ${detail}` : ""}`);
+    super(`${providerLabel(provider)} rejected the ${networkBlocked ? "request" : "API key"} (HTTP ${status})${detail ? `: ${detail}` : ""}`);
   }
 
   toUserFacing(): UserFacingError {
+    if (this.networkBlocked) {
+      return {
+        code: this.code,
+        problem: `${providerLabel(this.provider)} refused the connection (HTTP ${this.status}) before checking the API key.`,
+        cause: `${this.detail || "Request not allowed"}: the request left from a country or network the provider does not serve.`,
+        fix: "Route the request through a proxy in a supported region (VS Code: `http.proxy`; CLI: set HTTPS_PROXY), or use an OpenAI-compatible or Ollama provider.",
+        docsUrl: docsUrlFor(this.code),
+      };
+    }
     return {
       code: this.code,
       problem: `${providerLabel(this.provider)} returned ${this.status} (API key invalid, revoked or lacking permission).`,

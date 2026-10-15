@@ -9,7 +9,7 @@ Every user-facing error shows **problem → cause → fix** and links here. Diag
 | <a id="atlas-e000"></a>ATLAS-E000 | error | Unexpected analysis failure / 分析意外失败 | Run `Atlas: Export Diagnostics` and attach the file to an issue / 导出诊断包并附在 issue 中 |
 | <a id="atlas-e001"></a>ATLAS-E001 | warning | `git` is not installed or not on PATH; history view degrades / 未安装 git，修改记录视图降级 | Install git / 安装 git |
 | <a id="atlas-e010"></a>ATLAS-E010 | warning | Some files could not be parsed / 部分文件解析失败 | Check the diagnostics list; add generated code to `.atlasignore` / 查看诊断列表；生成代码加入 `.atlasignore` |
-| <a id="atlas-e020"></a>ATLAS-E020 | error | AI provider rejected the key (401/403) or no key stored / Key 无效或未配置 | `Atlas: Configure AI Model` / 运行「配置模型」 |
+| <a id="atlas-e020"></a>ATLAS-E020 | error | AI provider rejected the key (401/403) or no key stored; a 403 `forbidden / Request not allowed` means the request came from an unsupported region / Key 无效或未配置；403 `Request not allowed` 表示出口地区不受支持 | `Atlas: Configure AI Model` / 运行「配置模型」；地区受限时配置代理（VS Code `http.proxy`，CLI 设 `HTTPS_PROXY`） |
 | <a id="atlas-e021"></a>ATLAS-E021 | error | AI provider unreachable (e.g. Ollama not running) / 连不上模型服务 | `ollama serve`, check `atlas.llm.baseUrl` / 启动 Ollama 并检查 baseUrl |
 | <a id="atlas-e022"></a>ATLAS-E022 | warning | Token budget exceeded / 超过 token 上限 | Raise `atlas.llm.maxInputTokens` or exclude directories / 提高上限或排除目录 |
 | <a id="atlas-e023"></a>ATLAS-E023 | info | Rate limited (429); Atlas backs off automatically / 被限流，自动退避 | Lower `atlas.llm.concurrency` / 降低并发 |

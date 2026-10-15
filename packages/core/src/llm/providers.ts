@@ -264,7 +264,12 @@ function classifyHttpError(
 ): Error {
   const detail = scrubSecrets(extractErrorMessage(raw), secrets);
   const status = response.status;
-  if (status === 401 || status === 403) return new LlmAuthError(provider, status, detail);
+  if (status === 401 || status === 403) {
+    // Anthropic answers {"error":{"type":"forbidden","message":"Request not allowed"}} for
+    // unsupported locations, distinct from a key-level "permission_error".
+    const networkBlocked = status === 403 && /"type"\s*:\s*"forbidden"/.test(raw);
+    return new LlmAuthError(provider, status, detail, networkBlocked);
+  }
   if (status === 429) return new LlmRateLimitError(provider, parseRetryAfter(response.headers.get("retry-after")), detail);
   if (status === 408 || status >= 500) return new LlmTransportError(provider, "server-error", detail, status);
   // Other 4xx (400 bad request, 404 unknown model, 413 too large): the request
