@@ -1213,3 +1213,11 @@ body.vscode-high-contrast-light .tab[aria-selected="true"] {
   .trace-table th:nth-child(3),
   .trace-table td:nth-child(3) { display: none; }
 }
+.graph-node.pill {
+  border-radius: 999px;
+  border-style: dashed;
+}
+.graph-node.pill::before {
+  content: "✉";
+  margin-right: 4px;
+}

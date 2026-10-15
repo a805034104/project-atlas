@@ -268,6 +268,9 @@ const en = {
   "startup.traceLaunch": "Launch with tracing",
   "legend.observed": "Observed at runtime: ✓ p95 on the step, count · p95 on the edge",
   "legend.dimmed": "Dimmed: not touched by the selected trace",
+  "topology.channel": "{broker} {name}: {producers} producing service(s), {consumers} consuming service(s)",
+  "topology.produce": "publish",
+  "topology.consume": "consume",
 } as const;
 
 export type StringKey = keyof typeof en;
@@ -532,6 +535,9 @@ const zh: Record<StringKey, string> = {
   "startup.traceLaunch": "带追踪启动",
   "legend.observed": "运行时已观测：步骤上标 ✓ p95，边上标 次数 · p95",
   "legend.dimmed": "变暗：所选 trace 没有经过",
+  "topology.channel": "{broker} {name}：{producers} 个服务生产，{consumers} 个服务消费",
+  "topology.produce": "发送",
+  "topology.consume": "消费",
 };
 
 export type Lang = "en" | "zh";
