@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.2.0 — 2026-10-15
+
+Runtime reconciliation (Java) and message-queue links. Plan and review record: docs/spec-v0.2.md; spike evidence: docs/s0-spike.md.
+
+- **Message queues (static)**: Kafka (`topics`, `topicPattern`, template default topic), RabbitMQ (`@RabbitListener`
+  queues / `queuesToDeclare` / `@QueueBinding`, `@Bean` Queue/Exchange/Binding via BindingBuilder / ExchangeBuilder /
+  QueueBuilder / `new Binding`, direct · topic `*` `#` · fanout · default exchange, one dead-letter hop for TTL delay
+  queues), RocketMQ (`topic:tag`, `a || b` selectors; SQL92 reported), Redis Stream (`opsForStream().add`, listener
+  containers, `read`), Spring Cloud Stream functional bindings. Destinations fold through constants, enum getters and
+  `${}` config; anything else is listed (ATLAS-W034), never guessed. Consumers are `mq-consumer` entrypoints; producer
+  flows continue into the consumer service; topology draws topics/queues/streams as channel nodes.
+- **Runtime reconciliation**: local OTLP receiver (127.0.0.1, Host allow-list, Origin rejected, per-workspace token
+  checked before the body is read, size caps), hand-written protobuf + JSON decoder fuzzed against protobufjs,
+  whitelisted span records (no SQL text, bodies, headers, Redis values, command lines), incremental aggregates
+  independent of raw-span retention (7 days / 100 000 spans), reconciliation onto the static graph (observed steps,
+  edges, entrypoints, coverage; same-class runtime edges; everything else "reachable", never a guessed edge),
+  cross-service confirmation (HTTP/Feign client→server, Kafka/RabbitMQ/RocketMQ consumers, Redis streams from both
+  sides of a key).
+- **Capture**: pinned OpenTelemetry javaagent 2.31.1 (sha256; Maven Central then Aliyun; ASCII-path copy), agent
+  config generated from the graph (filters, interceptors, aspects, controllers, services; MyBatis on), per-launcher
+  injection (`java -jar`, `mvn spring-boot:run` via `spring-boot.run.agents`, `JAVA_TOOL_OPTIONS` otherwise with
+  build-tool JVMs dropped). VS Code: "Copy VM options" (IDE-agnostic primary path), "Launch with tracing" (command
+  shown first, no file written), status bar, first-observation toast, 60 s no-span hint. CLI: `project-atlas trace
+  [--print-config] [-- <command>]`, `trace import <file>`, observed stats in `show`. MCP: observed stats in `get_flow`,
+  `list_traces` (aggregates only).
+- **UI**: Trace tab (receiver status, empty state with a request that needs no login, live list, waterfall with layer
+  badges and async marks, static-vs-observed report), observed badges and `count · p95 · errors` on the flow, single-
+  trace mode, observed links and channel nodes on the topology.
+- **Static precision**: data objects (entities, DTOs, enums, `AjaxResult`) and plain accessors are no longer flow
+  steps (199 such steps in RuoYi-Vue; JeecgBoot "flows reaching a service" 1635 → 1613, all removed ones were
+  accessor-only).
+- **Verified**: S0 spike on a real RuoYi-Vue run; `scripts/runtime-e2e.mjs` — RuoYi-Vue through
+  `project-atlas trace -- java -jar` (GET /system/user/list observed on 9/9 steps), Redis stream and Kafka (local KRaft)
+  two-service scenarios confirming their links; VS Code E2E (copy VM options → receiver → observed flow in ~3 s);
+  10 000 spans reconciled < 2 s; 720 000-span soak.
+
 ## 0.1.0 — 2026-10-15
 
 First release. Scope per docs/spec.md "范围裁决 v1.2".

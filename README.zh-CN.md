@@ -6,7 +6,8 @@
 
 - **模块与服务**：Maven 模块、Spring Boot 应用（服务名取自 `spring.application.name`，包括以 SQL 导出的 Nacos 配置）、Vue 应用。
 - **请求流转（关键部分精确）**：`GET /system/user/list` → 开发代理 → Spring Cloud Gateway 路由（`StripPrefix`）→ `JwtAuthenticationTokenFilter` → `RepeatSubmitInterceptor` → `@PreAuthorize` → `SysUserController.list` → `@DataScope` 切面 → `SysUserServiceImpl.selectUserList` → `SysUserMapper` → `<select id="selectUserList">`。
-- **跨服务链路**：前端 → 代理 → 网关 → 服务、Feign、RestTemplate。
+- **跨服务链路**：前端 → 代理 → 网关 → 服务、Feign、RestTemplate，以及消息队列（Kafka；RabbitMQ 含 topic / fanout 交换机和死信延迟队列；RocketMQ tag；Redis Stream；Spring Cloud Stream）。
+- **运行时对账（v0.2）**：用 OpenTelemetry javaagent 启动服务（把 VM 参数粘贴到 IDEA，或 `project-atlas trace -- java -jar app.jar`），流转图会标出哪些步骤和链路真的执行了、耗时多少，以及只在运行时出现的调用。数据只在本机，SQL 文本、请求体和 header 一律不存。[详细说明](docs/runtime-tracing.md)
 - **启动方式**：前置依赖、命令、端口，每一条都标出来源文件和行号。
 - **修改记录**：按模块统计 git 历史，可选 AI 演进摘要。
 - **可选 AI**：自带 Key，支持 Anthropic、任意 OpenAI 兼容接口（DeepSeek、通义等）或本地 Ollama，用于生成模块摘要和功能清单。发送任何内容之前，都会先按阶段列出 token 数和费用预估，等你确认。
@@ -19,16 +20,18 @@
 2. 打开项目，点击状态栏的 **Atlas: 分析**，不需要任何 Key。
 3. 可选：运行 **Atlas: 配置模型**。
 
-命令行：`npx project-atlas analyze . --no-ai --markdown ATLAS.md` · 供编码助手使用的 MCP：`atlas-mcp --dir .atlas`。
+命令行：`npx project-atlas analyze . --no-ai --markdown ATLAS.md` · 供编码助手使用的 MCP：`atlas-mcp --dir .atlas`。运行时对账：`npx project-atlas trace -- mvn spring-boot:run`。
 
-## v0.1 支持范围
+## 支持范围
 
 | 领域 | 支持 |
 |---|---|
 | Java | Spring MVC / Boot：`@RestController`、各类 Mapping 注解（常量和 `${}` 会被解析）、Servlet 过滤器（Spring Security 顺序、`FilterRegistrationBean` 的 URL 模式）、`HandlerInterceptor`（Ant 规则的 include / exclude）、`@PreAuthorize` / `@Secured`、AspectJ（`execution`、`within`、`@annotation`、`bean` 等）、依赖注入（`@Primary`、`@Qualifier`、`@Resource`、Lombok 构造器，多个实现以分支显示）、MyBatis Mapper XML、MyBatis-Plus `BaseMapper`、`@Scheduled` |
 | Spring Cloud | 网关路由（`Path`、`StripPrefix`、`RewritePath`、`PrefixPath`、全局过滤器）、以 SQL 导出的 Nacos 配置（shared / extension 配置、profile）、OpenFeign、使用 `lb://` 或服务名的 RestTemplate / WebClient |
 | Vue | Vue 2/3、`src/api` 中的请求函数（`request({url, method})`、`axios.get`）、页面、路由表、若依 `sys_menu` 动态路由、Vite / Vue CLI 开发代理 |
-| 后续版本 | v0.2 本地运行时追踪 + 消息队列（Redis Stream、Kafka、RabbitMQ、RocketMQ）· v0.3 Go · v0.4 Python + Dubbo / gRPC |
+| 消息队列 | Kafka（`topics`、`topicPattern`）、RabbitMQ（`@RabbitListener` 队列与绑定、`@Bean` Queue/Exchange/Binding、direct/topic/fanout/默认交换机、死信延迟队列、枚举常量）、RocketMQ（`topic:tag`、tag 表达式）、Redis Stream（监听容器、`opsForStream().add`）、Spring Cloud Stream 绑定；解析不出的目的地只列出、不猜 |
+| 运行时（Java） | OpenTelemetry javaagent 2.31.1（固定版本、校验 sha256）：过滤器、拦截器、切面、Controller、Service、MyBatis Mapper、SQL；HTTP/Feign、Kafka、RabbitMQ、RocketMQ、Redis Stream 链路由运行时印证；Trace 标签页与瀑布图；CLI `trace`、`trace import`；MCP `list_traces` |
+| 后续版本 | v0.3 Go + gRPC · v0.4 Python + Dubbo · 导入 SkyWalking / Arthas 的追踪数据 |
 
 ## 隐私
 
@@ -36,6 +39,6 @@
 
 ## 文档
 
-[错误码](docs/errors.md) · [架构](docs/architecture.md) · [贡献框架规则](CONTRIBUTING.md) · [规格说明](docs/spec.md)
+[错误码](docs/errors.md) · [运行时对账](docs/runtime-tracing.md) · [架构](docs/architecture.md) · [贡献框架规则](CONTRIBUTING.md) · [规格说明](docs/spec.md)
 
 MIT 许可证。
