@@ -1,7 +1,12 @@
-node_modules/
-dist/
-out/
+*.tsbuildinfo
 *.vsix
 .atlas/
-fixtures/local.yaml
 .local/
+dist/
+fixtures/local.yaml
+node_modules/
+out/
+.claude/
+fixtures/repos/
+
+.vscode-test/

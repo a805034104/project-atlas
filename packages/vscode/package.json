@@ -1,0 +1,311 @@
+{
+  "name": "projectatlas",
+  "displayName": "ProjectAtlas",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "project-atlas",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/project-atlas/project-atlas"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "architecture",
+    "spring",
+    "vue",
+    "ruoyi",
+    "request flow",
+    "microservices",
+    "项目地图"
+  ],
+  "main": "./dist/extension.js",
+  "l10n": "./l10n",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%untrusted%",
+      "restrictedConfigurations": [
+        "atlas.llm.provider",
+        "atlas.llm.baseUrl",
+        "atlas.llm.model",
+        "atlas.analysis.history"
+      ]
+    },
+    "virtualWorkspaces": false
+  },
+  "activationEvents": [
+    "workspaceContains:**/pom.xml",
+    "workspaceContains:**/package.json",
+    "workspaceContains:.atlas/graph/meta.json"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "atlas.analyze",
+        "title": "%cmd.analyze%",
+        "category": "Atlas",
+        "icon": "$(play)"
+      },
+      {
+        "command": "atlas.analyzeIncremental",
+        "title": "%cmd.analyzeIncremental%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.cancel",
+        "title": "%cmd.cancel%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.openPanel",
+        "title": "%cmd.openPanel%",
+        "category": "Atlas",
+        "icon": "$(map)"
+      },
+      {
+        "command": "atlas.revealInAtlas",
+        "title": "%cmd.revealInAtlas%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.showFlowForSymbol",
+        "title": "%cmd.showFlowForSymbol%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.configureProvider",
+        "title": "%cmd.configureProvider%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.testConnection",
+        "title": "%cmd.testConnection%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.exportHtml",
+        "title": "%cmd.exportHtml%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.exportMarkdown",
+        "title": "%cmd.exportMarkdown%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.diagnose",
+        "title": "%cmd.diagnose%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.clearCache",
+        "title": "%cmd.clearCache%",
+        "category": "Atlas"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "atlas.revealInAtlas",
+          "when": "resourceExtname =~ /\\.(java|vue|js|ts)$/",
+          "group": "navigation@90"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "atlas.analyze",
+          "when": "view == atlas.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "atlas.openPanel",
+          "when": "view == atlas.tree",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "atlas.showFlowForSymbol",
+          "when": "false"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "atlas",
+          "title": "Atlas",
+          "icon": "media/atlas.svg"
+        }
+      ]
+    },
+    "views": {
+      "atlas": [
+        {
+          "id": "atlas.tree",
+          "name": "ATLAS",
+          "contextualTitle": "ProjectAtlas"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "atlas.tree",
+        "contents": "%welcome%"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "atlas.gettingStarted",
+        "title": "%walkthrough.title%",
+        "description": "%walkthrough.description%",
+        "steps": [
+          {
+            "id": "analyze",
+            "title": "%walkthrough.analyze.title%",
+            "description": "%walkthrough.analyze.description%",
+            "media": {
+              "markdown": "walkthrough/analyze.md"
+            },
+            "completionEvents": [
+              "onCommand:atlas.analyze"
+            ]
+          },
+          {
+            "id": "provider",
+            "title": "%walkthrough.provider.title%",
+            "description": "%walkthrough.provider.description%",
+            "media": {
+              "markdown": "walkthrough/provider.md"
+            },
+            "completionEvents": [
+              "onCommand:atlas.configureProvider"
+            ]
+          },
+          {
+            "id": "test",
+            "title": "%walkthrough.test.title%",
+            "description": "%walkthrough.test.description%",
+            "media": {
+              "markdown": "walkthrough/provider.md"
+            },
+            "completionEvents": [
+              "onCommand:atlas.testConnection"
+            ]
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "ProjectAtlas",
+      "properties": {
+        "atlas.llm.provider": {
+          "type": "string",
+          "enum": [
+            "none",
+            "anthropic",
+            "openai-compatible",
+            "ollama"
+          ],
+          "default": "none",
+          "markdownDescription": "%cfg.provider%",
+          "scope": "application"
+        },
+        "atlas.llm.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "%cfg.model%",
+          "scope": "application"
+        },
+        "atlas.llm.baseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "%cfg.baseUrl%",
+          "scope": "application"
+        },
+        "atlas.llm.maxInputTokens": {
+          "type": "number",
+          "default": 2000000,
+          "minimum": 1000,
+          "markdownDescription": "%cfg.maxInputTokens%"
+        },
+        "atlas.llm.concurrency": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 16,
+          "markdownDescription": "%cfg.concurrency%"
+        },
+        "atlas.llm.outputLanguage": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "zh-cn",
+            "en"
+          ],
+          "default": "auto",
+          "markdownDescription": "%cfg.outputLanguage%"
+        },
+        "atlas.analysis.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "%cfg.exclude%"
+        },
+        "atlas.analysis.maxFileSizeKB": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 16,
+          "markdownDescription": "%cfg.maxFileSizeKB%"
+        },
+        "atlas.analysis.history": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%cfg.history%"
+        },
+        "atlas.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%cfg.codeLens%"
+        }
+      }
+    },
+    "yamlValidation": [
+      {
+        "fileMatch": [
+          "atlas.yaml",
+          ".atlas/overrides.yaml"
+        ],
+        "url": "./schemas/atlas.schema.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "package": "node build.mjs --production && vsce package --no-dependencies",
+    "e2e": "node e2e/run.mjs"
+  },
+  "devDependencies": {
+    "@project-atlas/core": "*",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  }
+}
