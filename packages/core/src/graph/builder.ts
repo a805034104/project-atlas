@@ -68,6 +68,11 @@ export class GraphBuilder {
     if (!this.entrypoints.has(entrypoint.id)) this.entrypoints.set(entrypoint.id, entrypoint);
   }
 
+  removeCallEdge(edge: CallEdge): void {
+    const list = this.callEdgesFrom.get(edge.from);
+    if (list) this.callEdgesFrom.set(edge.from, list.filter((e) => e.id !== edge.id));
+  }
+
   outgoing(stepId: string): readonly CallEdge[] {
     return this.callEdgesFrom.get(stepId) ?? [];
   }

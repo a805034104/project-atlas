@@ -1,5 +1,6 @@
 import { isAlias, isMap, isScalar, isSeq, LineCounter, parseAllDocuments, type Document, type Node as YamlNode } from "yaml";
 import type { SourceRef } from "../model/types.js";
+import { parseSqlInserts } from "./sql.js";
 
 /**
  * Config sources → flat key/value entries with locations.
@@ -124,71 +125,15 @@ export interface NacosConfigRow {
 
 /**
  * Nacos `config_info` rows from a SQL dump (`INSERT INTO config_info(cols) VALUES (...), (...)`).
- * Handles MySQL string escapes (`\n`, `\'`, `''`) inside values.
+ * Handles MySQL string escapes (`
+`, `'`, `''`) inside values.
  */
 export function parseNacosSqlDump(sql: string): NacosConfigRow[] {
-  const rows: NacosConfigRow[] = [];
-  const insert = /insert\s+into\s+`?config_info`?\s*\(([^)]*)\)\s*values\s*/gi;
-  for (let m = insert.exec(sql); m; m = insert.exec(sql)) {
-    const columns = (m[1] ?? "").split(",").map((c) => c.trim().replace(/`/g, "").toLowerCase());
-    let pos = insert.lastIndex;
-    for (;;) {
-      while (pos < sql.length && /\s/.test(sql[pos] ?? "")) pos++;
-      if (sql[pos] !== "(") break;
-      const rowLine = sql.slice(0, pos).split("\n").length;
-      const { values, end } = parseTuple(sql, pos + 1);
-      pos = end;
-      const get = (name: string): string => values[columns.indexOf(name)] ?? "";
-      rows.push({ dataId: get("data_id"), group: get("group_id"), tenant: get("tenant_id"), content: get("content"), line: rowLine });
-      while (pos < sql.length && /\s/.test(sql[pos] ?? "")) pos++;
-      if (sql[pos] === ",") {
-        pos++;
-        continue;
-      }
-      break;
-    }
-    insert.lastIndex = pos;
-  }
-  return rows;
-}
-
-function parseTuple(sql: string, start: number): { values: string[]; end: number } {
-  const values: string[] = [];
-  let pos = start;
-  for (;;) {
-    while (/\s/.test(sql[pos] ?? "")) pos++;
-    if (sql[pos] === "'") {
-      let value = "";
-      pos++;
-      while (pos < sql.length) {
-        const ch = sql[pos] as string;
-        if (ch === "\\") {
-          const next = sql[pos + 1] ?? "";
-          value += next === "n" ? "\n" : next === "r" ? "\r" : next === "t" ? "\t" : next === "0" ? "\0" : next;
-          pos += 2;
-        } else if (ch === "'" && sql[pos + 1] === "'") {
-          value += "'";
-          pos += 2;
-        } else if (ch === "'") {
-          pos++;
-          break;
-        } else {
-          value += ch;
-          pos++;
-        }
-      }
-      values.push(value);
-    } else {
-      const end = sql.slice(pos).search(/[,)]/);
-      values.push(sql.slice(pos, end < 0 ? undefined : pos + end).trim());
-      pos = end < 0 ? sql.length : pos + end;
-    }
-    while (/\s/.test(sql[pos] ?? "")) pos++;
-    if (sql[pos] === ",") {
-      pos++;
-      continue;
-    }
-    if (sql[pos] === ")") pos++;
-    return { values, end: pos };
-  }
+  return parseSqlInserts(sql, "config_info").map((row) => ({
+    dataId: row.values["data_id"] ?? "",
+    group: row.values["group_id"] ?? "",
+    tenant: row.values["tenant_id"] ?? "",
+    content: row.values["content"] ?? "",
+    line: row.line,
+  }));
 }
