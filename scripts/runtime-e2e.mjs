@@ -10,7 +10,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const jar = path.resolve(process.env.RUOYI_JAR ?? "E:/tools/ruoyi-vue-build/ruoyi-admin/target/ruoyi-admin.jar");
@@ -43,11 +43,85 @@ function javaPidOn(port) {
   return line?.trim().split(/\s+/).pop();
 }
 
+function traceCli(args, cwd) {
+  const child = spawn(process.execPath, [path.join(repo, "packages/cli/dist/bin.js"), "trace", ...args], { cwd, stdio: ["ignore", "pipe", "pipe"] });
+  const out = { stdout: "", stderr: "" };
+  child.stdout.on("data", (d) => (out.stdout += d));
+  child.stderr.on("data", (d) => (out.stderr += d));
+  out.exited = new Promise((resolve) => child.on("exit", resolve));
+  out.child = child;
+  return out;
+}
+
+function killPort(port) {
+  const pid = (() => {
+    try {
+      return javaPidOn(port);
+    } catch {
+      return undefined;
+    }
+  })();
+  if (!pid) return;
+  try {
+    if (process.platform === "win32") execFileSync("taskkill", ["/PID", String(pid), "/F"]);
+    else process.kill(Number(pid));
+  } catch {
+    // gone
+  }
+}
+
+/**
+ * AC#22 ② — two services linked only by a Redis stream (no trace context crosses it):
+ * consumer via CLI process A (owns the receiver), producer via CLI process B (reuses A's
+ * receiver, V8); POST /orders/{id} on the producer; the link must be confirmed at runtime.
+ */
+async function redisStreamScenario() {
+  const synth = path.join(repo, "fixtures/synthetic/redis-stream");
+  const consumerJar = path.join(synth, "order-consumer/target/order-consumer-1.0.0.jar");
+  const producerJar = path.join(synth, "order-producer/target/order-producer-1.0.0.jar");
+  if (!existsSync(consumerJar) || !existsSync(producerJar)) {
+    console.log("redis-stream scenario skipped: build fixtures/synthetic/redis-stream with `mvn -q -DskipTests package`");
+    return;
+  }
+  console.log("Redis stream scenario (AC#22):");
+  const { rmSync } = await import("node:fs");
+  rmSync(path.join(synth, ".atlas", "traces"), { recursive: true, force: true });
+  const a = traceCli(["--dir", synth, "--service", "order-consumer", "--json", "--", "java", "-jar", consumerJar], synth);
+  await until(() => existsSync(path.join(synth, ".atlas", "receiver.json")), 120_000, "receiver of CLI A");
+  const b = traceCli(["--dir", synth, "--service", "order-producer", "--", "java", "-jar", producerJar], synth);
+  try {
+    await until(async () => (await fetch("http://127.0.0.1:18082/")).status > 0, 120_000, "consumer on :18082");
+    await until(async () => (await fetch("http://127.0.0.1:18081/")).status > 0, 120_000, "producer on :18081");
+    check(/using the receiver of pid/.test(b.stderr), "second CLI reused the first one's receiver (V8)");
+    for (const id of ["1", "2", "3"]) check((await fetch(`http://127.0.0.1:18081/orders/${id}`, { method: "POST" })).ok, `POST /orders/${id}`);
+    await new Promise((r) => setTimeout(r, 3000));
+  } finally {
+    killPort(18081);
+    killPort(18082);
+  }
+  await Promise.race([Promise.all([a.exited, b.exited]), new Promise((_, reject) => setTimeout(() => reject(new Error("CLIs did not exit")), 30_000))]);
+  const core = await import(pathToFileURL(path.join(repo, "packages/core/dist/index.js")).href);
+  const stored = await core.loadStoredGraph(path.join(synth, ".atlas"));
+  const aggregates = await new core.TraceStore(path.join(synth, ".atlas", "traces")).loadAggregates();
+  const overlay = core.reconcile(stored.graph, aggregates);
+  const link = stored.graph.serviceLinks.find((l) => l.channel === "redis-stream:stream:orders");
+  check(!!link, "static link order-producer → order-consumer over redis-stream:stream:orders");
+  check(!!overlay.links[link.id], `AC#22: link confirmed at runtime (XADD + XREAD on stream:orders, ${overlay.links[link.id]?.count ?? 0} reads)`);
+  const create = stored.graph.entrypoints.find((e) => e.method === "POST" && e.path === "/orders/{}");
+  check(overlay.entrypoints[create.id]?.count === 3, "POST /orders/{id} observed 3×");
+  const summary = JSON.parse(a.stdout);
+  check(summary.spans > 0, `consumer-side CLI summary (${summary.spans} spans across both services)`);
+}
+
 if (!existsSync(jar)) {
   console.log(`runtime E2E skipped: ${jar} not built (see docs/s0-spike.md)`);
   process.exit(0);
 }
 execFileSync("bash", [startDeps], { stdio: "inherit" });
+if (process.argv.includes("--redis-only")) {
+  await redisStreamScenario();
+  process.exit(0);
+}
 
 const started = Date.now();
 const cli = spawn(process.execPath, [path.join(repo, "packages/cli/dist/bin.js"), "trace", "--dir", ws, "--json", "--", "java", "-jar", jar], {
@@ -87,7 +161,9 @@ try {
   check(summary.entrypoints.some((e) => e.label === "GET /system/role/list"), "GET /system/role/list observed");
   check(!summary.runtimeEdges.some((e) => e.to === "SysUserServiceImpl.selectUserByUserName"), "no guessed edge through Spring Security (login → selectUserByUserName stays reachable-only)");
   check(Date.now() - requested < 60_000, "observations reported promptly");
-  console.log(`runtime E2E passed (${summary.spans} spans)`);
+  console.log(`RuoYi scenario passed (${summary.spans} spans)`);
+  await redisStreamScenario();
+  console.log("runtime E2E passed");
 } catch (error) {
   console.error(stderr.split("\n").slice(-30).join("\n"));
   throw error;
