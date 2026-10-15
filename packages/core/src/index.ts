@@ -10,3 +10,4 @@ export * from "./overrides/atlas-yaml.js";
 export { createParsePool, type ParsePool } from "./parse/pool.js";
 export { grammarFiles, grammarSourcePaths } from "./parse/treesitter.js";
 export { entrypointLabel } from "./overrides/apply.js";
+export * from "./enrich.js";
