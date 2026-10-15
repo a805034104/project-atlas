@@ -51,8 +51,9 @@ export interface AggregateState {
 
 const MAX_SAMPLES = 5;
 const MAX_TRACES = 200;
-const MAX_RECENT_SPANS = 100_000;
-const MAX_WAITING = 50_000;
+/** Parent/child join window: at 200 spans/s, 20 000 spans is ~100 s (children usually arrive within a second). */
+const MAX_RECENT_SPANS = 20_000;
+const MAX_WAITING = 10_000;
 
 export function spanKey(r: SpanRecord): string {
   const a = r.a;

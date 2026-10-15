@@ -28,7 +28,7 @@ import { loadWorkspace, type LoadedFile, type Workspace } from "./workspace/load
  *     ─▶ git history ─▶ startup guides ─▶ AtlasGraph
  */
 
-export const ANALYZER_VERSION = "0.2.0-mq1";
+export const ANALYZER_VERSION = "0.2.0";
 
 export interface RootInput {
   path: string;
