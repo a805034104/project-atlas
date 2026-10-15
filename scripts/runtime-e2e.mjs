@@ -71,46 +71,66 @@ function killPort(port) {
 }
 
 /**
- * AC#22 ② — two services linked only by a Redis stream (no trace context crosses it):
- * consumer via CLI process A (owns the receiver), producer via CLI process B (reuses A's
- * receiver, V8); POST /orders/{id} on the producer; the link must be confirmed at runtime.
+ * AC#22 — two services linked by a message channel; the consumer starts through CLI process A
+ * (owns the receiver), the producer through CLI process B (reuses A's receiver, V8);
+ * POST /orders/{id} three times; the static link must be confirmed at runtime.
+ *   redis-stream: no trace context crosses the stream → confirmed from XADD + XREAD on one key
+ *   kafka:        context propagates → one trace spans producer and consumer as well
  */
-async function redisStreamScenario() {
-  const synth = path.join(repo, "fixtures/synthetic/redis-stream");
+async function channelScenario({ fixture, label, channel, producerPort, consumerPort, sameTrace }) {
+  const synth = path.join(repo, "fixtures/synthetic", fixture);
   const consumerJar = path.join(synth, "order-consumer/target/order-consumer-1.0.0.jar");
   const producerJar = path.join(synth, "order-producer/target/order-producer-1.0.0.jar");
   if (!existsSync(consumerJar) || !existsSync(producerJar)) {
-    console.log("redis-stream scenario skipped: build fixtures/synthetic/redis-stream with `mvn -q -DskipTests package`");
+    console.log(`${label} scenario skipped: build fixtures/synthetic/${fixture} with \`mvn -q -DskipTests package\``);
     return;
   }
-  console.log("Redis stream scenario (AC#22):");
+  console.log(`${label} scenario (AC#22):`);
   const { rmSync } = await import("node:fs");
   rmSync(path.join(synth, ".atlas", "traces"), { recursive: true, force: true });
   const a = traceCli(["--dir", synth, "--service", "order-consumer", "--json", "--", "java", "-jar", consumerJar], synth);
   await until(() => existsSync(path.join(synth, ".atlas", "receiver.json")), 120_000, "receiver of CLI A");
   const b = traceCli(["--dir", synth, "--service", "order-producer", "--", "java", "-jar", producerJar], synth);
   try {
-    await until(async () => (await fetch("http://127.0.0.1:18082/")).status > 0, 120_000, "consumer on :18082");
-    await until(async () => (await fetch("http://127.0.0.1:18081/")).status > 0, 120_000, "producer on :18081");
+    await until(async () => (await fetch(`http://127.0.0.1:${consumerPort}/`)).status > 0, 120_000, `consumer on :${consumerPort}`);
+    await until(async () => (await fetch(`http://127.0.0.1:${producerPort}/`)).status > 0, 120_000, `producer on :${producerPort}`);
     check(/using the receiver of pid/.test(b.stderr), "second CLI reused the first one's receiver (V8)");
-    for (const id of ["1", "2", "3"]) check((await fetch(`http://127.0.0.1:18081/orders/${id}`, { method: "POST" })).ok, `POST /orders/${id}`);
-    await new Promise((r) => setTimeout(r, 3000));
+    for (const id of ["1", "2", "3"]) check((await fetch(`http://127.0.0.1:${producerPort}/orders/${id}`, { method: "POST" })).ok, `POST /orders/${id}`);
+    await new Promise((r) => setTimeout(r, 4000));
   } finally {
-    killPort(18081);
-    killPort(18082);
+    killPort(producerPort);
+    killPort(consumerPort);
   }
   await Promise.race([Promise.all([a.exited, b.exited]), new Promise((_, reject) => setTimeout(() => reject(new Error("CLIs did not exit")), 30_000))]);
   const core = await import(pathToFileURL(path.join(repo, "packages/core/dist/index.js")).href);
   const stored = await core.loadStoredGraph(path.join(synth, ".atlas"));
   const aggregates = await new core.TraceStore(path.join(synth, ".atlas", "traces")).loadAggregates();
   const overlay = core.reconcile(stored.graph, aggregates);
-  const link = stored.graph.serviceLinks.find((l) => l.channel === "redis-stream:stream:orders");
-  check(!!link, "static link order-producer → order-consumer over redis-stream:stream:orders");
-  check(!!overlay.links[link.id], `AC#22: link confirmed at runtime (XADD + XREAD on stream:orders, ${overlay.links[link.id]?.count ?? 0} reads)`);
+  const link = stored.graph.serviceLinks.find((l) => l.channel === channel);
+  check(!!link, `static link order-producer → order-consumer over ${channel}`);
+  check(!!overlay.links[link.id], `AC#22: link confirmed at runtime (${overlay.links[link.id]?.count ?? 0} consumer-side observations)`);
   const create = stored.graph.entrypoints.find((e) => e.method === "POST" && e.path === "/orders/{}");
   check(overlay.entrypoints[create.id]?.count === 3, "POST /orders/{id} observed 3×");
+  if (sameTrace) {
+    const spanning = aggregates.traces.filter((t) => t.services.includes("order-producer") && t.services.includes("order-consumer"));
+    check(spanning.length >= 3, `trace context crossed the topic: ${spanning.length} traces span producer and consumer`);
+    const consumerEp = stored.graph.entrypoints.find((e) => e.kind === "mq-consumer");
+    const handler = stored.graph.steps.find((s) => s.symbol.name === "OrderHandler.handle");
+    check(!!overlay.steps[handler?.id ?? ""], `consumer handler ${consumerEp?.method} ${consumerEp?.path} → OrderHandler.handle observed`);
+  }
   const summary = JSON.parse(a.stdout);
   check(summary.spans > 0, `consumer-side CLI summary (${summary.spans} spans across both services)`);
+}
+
+const redisStreamScenario = () => channelScenario({ fixture: "redis-stream", label: "Redis stream", channel: "redis-stream:stream:orders", producerPort: 18081, consumerPort: 18082, sameTrace: false });
+async function kafkaScenario() {
+  try {
+    execFileSync("bash", [path.join(repo, "scripts/spike/start-kafka.sh")], { stdio: "inherit" });
+  } catch {
+    console.log("Kafka scenario skipped: no broker (scripts/spike/start-kafka.sh)");
+    return;
+  }
+  await channelScenario({ fixture: "kafka", label: "Kafka", channel: "kafka:order-created", producerPort: 18091, consumerPort: 18092, sameTrace: true });
 }
 
 if (!existsSync(jar)) {
@@ -118,8 +138,9 @@ if (!existsSync(jar)) {
   process.exit(0);
 }
 execFileSync("bash", [startDeps], { stdio: "inherit" });
-if (process.argv.includes("--redis-only")) {
+if (process.argv.includes("--channels-only")) {
   await redisStreamScenario();
+  await kafkaScenario();
   process.exit(0);
 }
 
@@ -163,6 +184,7 @@ try {
   check(Date.now() - requested < 60_000, "observations reported promptly");
   console.log(`RuoYi scenario passed (${summary.spans} spans)`);
   await redisStreamScenario();
+  await kafkaScenario();
   console.log("runtime E2E passed");
 } catch (error) {
   console.error(stderr.split("\n").slice(-30).join("\n"));

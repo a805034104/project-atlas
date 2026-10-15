@@ -1,0 +1,10 @@
+server:
+  port: 18092
+spring:
+  application:
+    name: order-consumer
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
+    consumer:
+      group-id: order-consumer
+      auto-offset-reset: earliest
