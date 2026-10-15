@@ -56,7 +56,7 @@ describe("extractScriptFacts", () => {
     const del = facts.functions.find((f) => f.name === "delUser");
     expect(del?.calls[0]?.args[0]).toMatchObject({ props: { url: { kind: "template", value: "/system/user/${userId}" } } });
     const get = facts.functions.find((f) => f.name === "getUser");
-    expect(get?.calls.find((c) => c.callee === "request")?.args[0]).toMatchObject({ props: { url: { kind: "expr" } } });
+    expect(get?.calls.find((c) => c.callee === "request")?.args[0]).toMatchObject({ props: { url: { kind: "template", value: "/system/user/${parseStrEmpty(userId)}" } } });
   });
 
   it("captures route tables with lazy components", () => {
@@ -136,5 +136,27 @@ describe("extractSfcScript", () => {
   it("ignores external script src and template-only files", () => {
     expect(extractSfcScript(`<template><div/></template>`)).toBeUndefined();
     expect(extractSfcScript(`<script src="./x.js"></script>`)).toBeUndefined();
+  });
+});
+
+describe("value shapes needed by the Vue rules", () => {
+  it("turns string concatenation into templates", () => {
+    const facts = script("javascript", `export function getUser(id) { return request({ url: '/system/user/' + parseStrEmpty(id) + '/detail', method: 'get' }) }
+export function a() { return request({ url: '/a' + '/b' }) }`);
+    expect(facts.functions[0]?.calls.find((c) => c.callee === "request")?.args[0]).toMatchObject({
+      props: { url: { kind: "template", value: "/system/user/${parseStrEmpty(id)}/detail" } },
+    });
+    expect(facts.functions[1]?.calls[0]?.args[0]).toMatchObject({ props: { url: { kind: "string", value: "/a/b" } } });
+  });
+
+  it("keeps the object returned by config functions", () => {
+    const facts = script("javascript", `export default defineConfig(({ mode, command }) => {
+  const env = loadEnv(mode, process.cwd())
+  return { server: { port: 80, proxy: { '/dev-api': { target: 'http://localhost:8080', rewrite: (p) => p.replace(/^\/dev-api/, '') } } } }
+})`, "vite.config.js");
+    expect(facts.defaultExport).toMatchObject({
+      kind: "call",
+      args: [{ kind: "function", returns: { kind: "object", props: { server: { props: { proxy: { props: { "/dev-api": { props: { target: { value: "http://localhost:8080" } } } } } } } } } }],
+    });
   });
 });

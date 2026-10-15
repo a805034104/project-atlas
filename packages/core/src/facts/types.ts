@@ -105,7 +105,8 @@ export type ScriptValue =
   | { kind: "dynamic-import"; source: string }
   /** `resolve => require(['@/views/x'], resolve)` (Vue 2 style lazy component). */
   | { kind: "require"; source: string }
-  | { kind: "function"; text: string }
+  /** Functions keep the value they return when it is a literal (e.g. `defineConfig(({ mode }) => ({ ... }))`). */
+  | { kind: "function"; text: string; returns?: ScriptValue }
   | { kind: "call"; callee: string; args: ScriptValue[] }
   | { kind: "expr"; text: string };
 

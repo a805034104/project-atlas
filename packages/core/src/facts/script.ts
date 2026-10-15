@@ -98,7 +98,15 @@ export function scriptValue(node: Node, depth = 0): ScriptValue {
     case "function": {
       const body = node.childForFieldName("body");
       const lazy = body ? lazyComponent(body) : undefined;
-      return lazy ?? { kind: "function", text: node.text.slice(0, MAX_TEXT) };
+      if (lazy) return lazy;
+      const fn: ScriptValue = { kind: "function", text: node.text.slice(0, MAX_TEXT) };
+      const returned = body ? returnedExpression(body) : undefined;
+      if (returned) fn.returns = scriptValue(returned, depth + 1);
+      return fn;
+    }
+    case "binary_expression": {
+      const concat = concatenation(node);
+      return concat ?? { kind: "expr", text: node.text.slice(0, MAX_TEXT) };
     }
     case "call_expression": {
       const lazy = lazyComponent(node);
@@ -114,6 +122,54 @@ export function scriptValue(node: Node, depth = 0): ScriptValue {
     default:
       return { kind: "expr", text: node.text.slice(0, MAX_TEXT) };
   }
+}
+
+/**
+ * `'/system/user/' + parseStrEmpty(userId)` → template `/system/user/${parseStrEmpty(userId)}`.
+ * Only produced when at least one operand is a string literal.
+ */
+function concatenation(node: Node): ScriptValue | undefined {
+  const parts: string[] = [];
+  let sawString = false;
+  let dynamic = false;
+  const walk = (n: Node): boolean => {
+    if (n.type === "binary_expression" && n.childForFieldName("operator")?.text === "+") {
+      const left = n.childForFieldName("left");
+      const right = n.childForFieldName("right");
+      return !!left && !!right && walk(left) && walk(right);
+    }
+    if (n.type === "string") {
+      sawString = true;
+      parts.push(stringValue(n));
+      return true;
+    }
+    if (n.type === "template_string") {
+      sawString = true;
+      parts.push(n.text.slice(1, -1));
+      dynamic ||= n.text.includes("${");
+      return true;
+    }
+    if (n.type === "parenthesized_expression") {
+      const inner = n.namedChildren[0];
+      return inner ? walk(inner) : false;
+    }
+    dynamic = true;
+    parts.push("${" + n.text.slice(0, 60) + "}");
+    return true;
+  };
+  if (!walk(node) || !sawString) return undefined;
+  const value = parts.join("");
+  return dynamic ? { kind: "template", value } : { kind: "string", value };
+}
+
+/** Expression an arrow/function body evaluates to: `=> ({...})` or the last top-level `return x`. */
+function returnedExpression(body: Node): Node | undefined {
+  if (body.type !== "statement_block") return body;
+  let found: Node | undefined;
+  for (const statement of body.namedChildren) {
+    if (statement.type === "return_statement") found = statement.namedChildren[0] ?? undefined;
+  }
+  return found;
 }
 
 /** `import('x')`, `() => import('x')`, `resolve => require(['x'], resolve)`. */
