@@ -90,6 +90,29 @@ function configDocuments(file: LoadedFile): ConfigDocument[] {
 
 const PROFILE_TOKEN = /^@([\w.-]+)@$/;
 
+/** Route keys across Spring Cloud Gateway generations (2025+ moved them under server.webflux / server.webmvc). */
+export const GATEWAY_ROUTE_PREFIXES = [
+  "spring.cloud.gateway.routes",
+  "spring.cloud.gateway.server.webflux.routes",
+  "spring.cloud.gateway.server.webmvc.routes",
+  "spring.cloud.gateway.mvc.routes",
+];
+
+/** Maven resource filtering tokens (`@artifactId@`, `@project.version@`, `@profiles.active@`). */
+function mavenTokens(module: MavenModule, all: readonly MavenModule[]): Record<string, string> {
+  const root = all.find((m) => m.rootId === module.rootId && m.dir === "");
+  const defaults = Object.assign({}, ...all.flatMap((m) => m.profiles.filter((p) => p.activeByDefault).map((p) => p.properties))) as Record<string, string>;
+  return {
+    ...defaults,
+    ...(root?.properties ?? {}),
+    ...module.properties,
+    artifactId: module.artifactId,
+    "project.artifactId": module.artifactId,
+    groupId: module.groupId,
+    "project.groupId": module.groupId,
+  };
+}
+
 function activeProfiles(base: ConfigView, maven: readonly MavenModule[]): string[] {
   const raw = base.value("spring.profiles.active")?.value ?? "";
   const token = PROFILE_TOKEN.exec(raw.trim());
@@ -127,27 +150,35 @@ function javaService(
 
   const bootstrap = named(/^bootstrap\.(ya?ml|properties)$/).map(layer);
   const application = named(/^application\.(ya?ml|properties)$/).map(layer);
-  const base = new ConfigView([...application, ...bootstrap]);
+  const tokens = mavenTokens(appModule, maven);
+  const base = new ConfigView([...application, ...bootstrap], [], tokens);
   const profiles = activeProfiles(base, maven);
 
   const profiled = (prefix: string) =>
     profiles.flatMap((p) => named(new RegExp(`^${prefix}-${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.(ya?ml|properties)$`)).map(layer)).reverse();
   const local: ConfigLayer[] = [...profiled("application"), ...application, ...profiled("bootstrap"), ...bootstrap];
-  const localView = new ConfigView(local, profiles);
+  const localView = new ConfigView(local, profiles, tokens);
 
   const remote: ConfigLayer[] = [];
-  if (nacos.length > 0 && localView.get("spring.cloud.nacos.config.server-addr")) {
+  // Spring Cloud Alibaba 2022+: `spring.config.import: optional:nacos:<dataId>` (later imports win).
+  const imported = localView
+    .list("spring.config.import")
+    .map((e) => /^(?:optional:)?nacos:([^?]+)/.exec(localView.resolve(e.value).value.trim())?.[1])
+    .filter((id): id is string => !!id)
+    .reverse();
+  if (nacos.length > 0 && (localView.get("spring.cloud.nacos.config.server-addr") || imported.length > 0)) {
     const appName = localView.value("spring.application.name")?.value ?? appModule.artifactId;
     const prefix = localView.value("spring.cloud.nacos.config.prefix")?.value || appName;
     const ext = localView.value("spring.cloud.nacos.config.file-extension")?.value || "properties";
     const dataIds = [
+      ...imported,
       ...profiles.map((p) => `${prefix}-${p}.${ext}`),
       `${prefix}.${ext}`,
       prefix,
       ...localView.list("spring.cloud.nacos.config.extension-configs").filter((e) => /data-?id$/i.test(e.key)).map((e) => localView.resolve(e.value).value).reverse(),
       ...localView.list("spring.cloud.nacos.config.shared-configs").filter((e) => /(\]|data-?id)$/i.test(e.key)).map((e) => localView.resolve(e.value).value).reverse(),
     ];
-    for (const dataId of dataIds) {
+    for (const dataId of [...new Set(dataIds)]) {
       const row = nacos.find((r) => r.dataId === dataId);
       if (!row) continue;
       const documents = dataId.endsWith(".properties")
@@ -159,10 +190,10 @@ function javaService(
     }
   }
 
-  const config = new ConfigView([...remote, ...local], profiles);
+  const config = new ConfigView([...remote, ...local], profiles, tokens);
   const closure = moduleClosure(appModule, maven);
   const deps = new Set(closure.flatMap((m) => m.dependencies.map((d) => d.artifactId)));
-  const isGateway = deps.has("spring-cloud-starter-gateway") || config.list("spring.cloud.gateway.routes").length > 0;
+  const isGateway = [...deps].some((d) => d.startsWith("spring-cloud-starter-gateway")) || GATEWAY_ROUTE_PREFIXES.some((p) => config.list(p).length > 0);
   const name =
     options.serviceNames?.[`${appModule.rootId}:${appModule.dir}`] ??
     config.value("spring.application.name")?.value ??
@@ -194,7 +225,8 @@ function javaService(
 function envReference(value: ScriptValue | undefined): string | undefined {
   if (!value) return undefined;
   const text = value.kind === "member" ? value.text : value.kind === "expr" ? value.text : undefined;
-  const m = text ? /(?:import\.meta\.env|process\.env)\.(\w+)/.exec(text) : null;
+  // import.meta.env.X, process.env.X, or loadEnv() results such as env.VITE_X / viteEnv.VITE_X
+  const m = text ? /(?:import\.meta\.env|process\.env|\w*[eE]nv)\.((?:VITE|VUE_APP)_\w+|\w+)/.exec(text) : null;
   return m?.[1];
 }
 
@@ -242,7 +274,12 @@ function objectAt(value: ScriptValue | undefined, ...keys: string[]): Record<str
 function proxyRules(config: LoadedFile | undefined, env: ConfigView): { proxies: ProxyRule[]; port?: number } {
   const facts = config?.facts as ScriptFileFacts | undefined;
   if (!config || !facts?.defaultExport) return { proxies: [] };
-  const exp = facts.defaultExport;
+  let exp = facts.defaultExport;
+  if (exp.kind === "identifier") {
+    // `const viteConfig = defineConfig(...); export default viteConfig;`
+    const name = exp.name;
+    exp = facts.variables.find((v) => v.name === name)?.value ?? exp;
+  }
   const server = objectAt(exp, "server") ?? objectAt(exp, "devServer");
   if (!server) return { proxies: [] };
   const portValue = server["port"];
@@ -299,8 +336,32 @@ function frontendApp(manifest: LoadedFile, files: readonly LoadedFile[], options
     if (opts?.kind === "object") baseApi = resolveScriptString(opts.props["baseURL"], env) ?? "";
   }
 
+  if (!baseApi) {
+    // Convention fallback when baseURL is computed indirectly (pig, vben/Jeecg templates).
+    for (const key of ["VITE_APP_BASE_API", "VUE_APP_BASE_API", "VITE_API_URL", "VITE_GLOB_API_URL", "VITE_BASE_API"]) {
+      const v = env.value(key)?.value;
+      if (v && v.startsWith("/")) {
+        baseApi = v;
+        break;
+      }
+    }
+  }
   const devConfig = files.find((f) => inApp(f) && /(^|\/)(vite|vue)\.config\.[cm]?[jt]s$/.test(f.relPath));
   const { proxies, port } = proxyRules(devConfig, env);
+  const vbenProxy = env.get("VITE_PROXY");
+  if (proxies.length === 0 && vbenProxy) {
+    // vben convention: VITE_PROXY=[["/prefix","http://host:port/ctx"]] with the prefix rewritten away.
+    try {
+      const pairs = JSON.parse(vbenProxy.value) as unknown;
+      if (Array.isArray(pairs)) {
+        for (const pair of pairs) {
+          if (Array.isArray(pair) && typeof pair[0] === "string" && typeof pair[1] === "string") proxies.push({ prefix: pair[0], target: pair[1], stripPrefix: true, at: vbenProxy.at });
+        }
+      }
+    } catch {
+      // not JSON: ignore, the call stays unresolved with a diagnostic
+    }
+  }
   const name = options.serviceNames?.[`${manifest.rootId}:${dir}`] ?? pkg.name ?? (dir || "frontend");
   const service: Service = {
     id: stableId("service", name, `${manifest.rootId}:${dir}`),

@@ -160,3 +160,14 @@ export function a() { return request({ url: '/a' + '/b' }) }`);
     });
   });
 });
+
+describe("TypeScript enums", () => {
+  it("exposes enum members as an object variable", () => {
+    const facts = script("typescript", `enum Api { list = '/sys/user/list', save = '/sys/user/add', Plain }\nexport const list = (params) => defHttp.get({ url: Api.list, params });`, "user.api.ts");
+    expect(facts.variables.find((v) => v.name === "Api")?.value).toEqual({
+      kind: "object",
+      props: { list: { kind: "string", value: "/sys/user/list" }, save: { kind: "string", value: "/sys/user/add" }, Plain: { kind: "string", value: "Plain" } },
+    });
+    expect(facts.functions.find((f) => f.name === "list")?.calls[0]).toMatchObject({ callee: "defHttp.get", args: [{ kind: "object", props: { url: { kind: "member", text: "Api.list" } } }] });
+  });
+});

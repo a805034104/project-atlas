@@ -242,6 +242,25 @@ export function extractScriptFacts(tree: Tree, lang: ScriptFileFacts["lang"]): S
   const facts: ScriptFileFacts = { lang, imports, functions, variables, calls: [], hasErrors: root.hasError };
 
   const declare = (decl: Node, exported: boolean): void => {
+    if (decl.type === "enum_declaration") {
+      // `enum Api { list = '/sys/user/list' }` → variable Api = { list: '/sys/user/list' }
+      const name = decl.childForFieldName("name")?.text;
+      const body = decl.childForFieldName("body");
+      if (!name || !body) return;
+      const props: Record<string, ScriptValue> = {};
+      for (const member of body.namedChildren) {
+        if (member.type === "enum_assignment") {
+          const key = member.childForFieldName("name");
+          const value = member.childForFieldName("value");
+          const k = key ? propertyKey(key) : undefined;
+          if (k !== undefined && value) props[k] = scriptValue(value);
+        } else if (member.type === "property_identifier") {
+          props[member.text] = { kind: "string", value: member.text };
+        }
+      }
+      variables.push({ name, exported, value: { kind: "object", props }, line: line(decl) });
+      return;
+    }
     if (decl.type === "function_declaration" || decl.type === "generator_function_declaration") {
       const name = decl.childForFieldName("name")?.text;
       if (!name) return;

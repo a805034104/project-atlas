@@ -58,6 +58,7 @@ export function runVueRules(app: FrontendApp, files: readonly LoadedFile[], sqlF
   const resolveImport = (from: string, source: string): LoadedFile | undefined => {
     let target: string;
     if (source.startsWith("@/")) target = `${base}src/${source.slice(2)}`;
+    else if (source.startsWith("/@/")) target = `${base}src/${source.slice(3)}`;
     else if (source.startsWith("~/")) target = `${base}src/${source.slice(2)}`;
     else if (source.startsWith(".")) target = path.normalize(path.join(path.dirname(from), source));
     else return undefined;
@@ -78,7 +79,7 @@ export function runVueRules(app: FrontendApp, files: readonly LoadedFile[], sqlF
       const resolved = resolveImport(file.relPath, imp.source);
       if (imp.source === "axios" || /(request|http|axios|service)/i.test(resolved?.relPath ?? imp.source)) {
         if (imp.default) clients.add(imp.default);
-        for (const n of imp.named) if (/^(request|http|service|axios)$/i.test(n.imported)) clients.add(n.local);
+        for (const n of imp.named) if (/(request|http|service|axios)$/i.test(n.imported)) clients.add(n.local);
       }
     }
     if (clients.size === 0) continue;
@@ -86,7 +87,7 @@ export function runVueRules(app: FrontendApp, files: readonly LoadedFile[], sqlF
       if (!fn.exported) continue;
       const call = fn.calls.find((c) => clients.has(c.callee) || clients.has(c.callee.split(".")[0] ?? ""));
       if (!call) continue;
-      const request = requestOf(call, clients);
+      const request = requestOf(call, clients, facts);
       if (!request) continue;
       const at: SymbolRef = { rootId: root, file: file.relPath, line: fn.line, name: `${fn.name}()`, fqn: `${file.relPath}#${fn.name}` };
       const stepId = graph.step(service.id, service.name, "frontend", at.fqn, at);
@@ -202,17 +203,36 @@ export function runVueRules(app: FrontendApp, files: readonly LoadedFile[], sqlF
   return result;
 }
 
-function requestOf(call: ScriptCall, clients: Set<string>): { method: string; url: string | undefined } | undefined {
+/** URL from a literal, a template, a module constant (`const API = '/x'`) or an enum / object member (`Api.list`). */
+function resolveUrl(value: ScriptValue | undefined, scope: ScriptFileFacts): string | undefined {
+  const direct = urlOf(value);
+  if (direct !== undefined || !value) return direct;
+  if (value.kind === "identifier") {
+    const v = scope.variables.find((x) => x.name === value.name)?.value;
+    return v && v.kind !== "identifier" ? resolveUrl(v, scope) : undefined;
+  }
+  if (value.kind === "member") {
+    const [owner, prop, ...rest] = value.text.split(".");
+    if (!owner || !prop || rest.length > 0) return undefined;
+    const v = scope.variables.find((x) => x.name === owner)?.value;
+    return v?.kind === "object" ? urlOf(v.props[prop]) : undefined;
+  }
+  return undefined;
+}
+
+function requestOf(call: ScriptCall, clients: Set<string>, scope: ScriptFileFacts): { method: string; url: string | undefined } | undefined {
   const [head, verb] = call.callee.split(".");
+  const opts = call.args[0];
   if (head && clients.has(head) && verb && HTTP_VERBS.has(verb.toLowerCase())) {
-    return { method: verb.toUpperCase(), url: urlOf(call.args[0]) };
+    // axios.get('/x') or defHttp.get({ url: Api.list })
+    const url = opts?.kind === "object" ? resolveUrl(opts.props["url"], scope) : resolveUrl(opts, scope);
+    return { method: verb.toUpperCase(), url };
   }
   if (clients.has(call.callee) || (head && clients.has(head) && verb === "request")) {
-    const opts = call.args[0];
     if (opts?.kind === "string") return { method: "GET", url: opts.value };
     if (opts?.kind !== "object") return undefined;
     const method = opts.props["method"];
-    return { method: method?.kind === "string" ? method.value.toUpperCase() : "GET", url: urlOf(opts.props["url"]) };
+    return { method: method?.kind === "string" ? method.value.toUpperCase() : "GET", url: resolveUrl(opts.props["url"], scope) };
   }
   return undefined;
 }
