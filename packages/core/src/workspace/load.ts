@@ -6,6 +6,10 @@ import { isParsedKind, type FileKind } from "../ingest/lang.js";
 import { hashBytes, walkWorkspace, type FileEntry } from "../ingest/walker.js";
 import type { Diagnostic, Root } from "../model/types.js";
 import type { ParsePool } from "../parse/pool.js";
+import { createLimiter } from "../llm/pipeline.js";
+
+/** Concurrent file reads; unbounded Promise.all hits EMFILE on large repositories. */
+const READ_CONCURRENCY = 64;
 
 /**
  * Load every root into memory as facts (parsed kinds) or text (config kinds).
@@ -105,8 +109,9 @@ export async function loadWorkspace(options: LoadOptions): Promise<Workspace> {
   let done = 0;
   let parseErrors = 0;
 
+  const limit = createLimiter(READ_CONCURRENCY);
   await Promise.all(
-    relevant.map(async (entry, index) => {
+    relevant.map((entry, index) => limit(async () => {
       signal?.throwIfAborted();
       const bytes = await readFile(entry.absPath);
       const hash = hashBytes(bytes);
@@ -138,7 +143,7 @@ export async function loadWorkspace(options: LoadOptions): Promise<Workspace> {
       }
       done++;
       options.onProgress?.(done, relevant.length);
-    }),
+    })),
   );
 
   if (parseErrors > 0) {
