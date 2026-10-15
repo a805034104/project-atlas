@@ -87,3 +87,15 @@ describe("redactText", () => {
     expect(redactText(plain)).toEqual({ text: plain, findings: [] });
   });
 });
+
+describe("connection URI credentials", () => {
+  it.each([
+    ["url: jdbc:postgresql://admin:Winter2024@db:5432/x", "url: jdbc:postgresql://admin:«redacted:credential»@db:5432/x"],
+    ["spring.redis.url=redis://:hunter2@cache:6379", "spring.redis.url=redis://:«redacted:credential»@cache:6379"],
+    ["MONGO=mongodb://u:p4ss@h/db", "MONGO=mongodb://u:«redacted:credential»@h/db"],
+    ["url: jdbc:mysql://${DB_USER}:${DB_PASS}@db/x", "url: jdbc:mysql://${DB_USER}:${DB_PASS}@db/x"],
+    ["see https://example.com/path", "see https://example.com/path"],
+  ])("%s", (input, expected) => {
+    expect(redactText(input).text).toBe(expected);
+  });
+});

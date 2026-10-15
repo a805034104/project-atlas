@@ -1,3 +1,4 @@
+import { pushTo } from "./util/collections.js";
 import { readFile } from "node:fs/promises";
 import { decodeSource } from "./ingest/decode.js";
 import { estimateTokens, planCost, TokenBudget, type CostPlan, type CostTask } from "./llm/budget.js";
@@ -62,7 +63,7 @@ export async function buildAiInput(graph: AtlasGraph, workspace: Workspace): Pro
     if (!score) continue;
     const module = moduleFor(graph.modules, rootOf, file.rootId, file.relPath);
     if (!module) continue;
-    perModule.set(module.id, [...(perModule.get(module.id) ?? []), { file, score }]);
+    pushTo(perModule, module.id, { file, score });
   }
 
   const files: AiFileInput[] = [];

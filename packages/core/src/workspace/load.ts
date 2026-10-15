@@ -6,7 +6,7 @@ import { isParsedKind, type FileKind } from "../ingest/lang.js";
 import { hashBytes, walkWorkspace, type FileEntry } from "../ingest/walker.js";
 import type { Diagnostic, Root } from "../model/types.js";
 import type { ParsePool } from "../parse/pool.js";
-import { createLimiter } from "../llm/pipeline.js";
+import { createLimiter } from "../util/collections.js";
 
 /** Concurrent file reads; unbounded Promise.all hits EMFILE on large repositories. */
 const READ_CONCURRENCY = 64;
@@ -19,7 +19,8 @@ const READ_CONCURRENCY = 64;
  *                                     └▶ pool.parse ─▶ cache write ─▶ facts
  *
  * Facts are cached per (content hash, analyzer version) under
- * `<cacheDir>/facts/`; config-like text is small and always re-read.
+ * `<cacheDir>/facts/`. Text of config-like kinds (yml, pom, sql dumps…) is kept
+ * in memory for the rules; it is not cached on disk.
  */
 
 export interface LoadedFile extends FileEntry {

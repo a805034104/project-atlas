@@ -15,6 +15,8 @@ describe("clone allow-list", () => {
     ["--upload-pack=evil", false],
     ["http://insecure.example/repo.git", false],
     ["https://host/repo.git --config core.sshCommand=x", false],
+    ["https://user:ghp_secret@github.com/a/b.git", false],
+    ["https://token@github.com/a/b.git", false],
   ])("%s → %s", (url, ok) => {
     expect(isAllowedGitUrl(url)).toBe(ok);
   });

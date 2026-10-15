@@ -78,6 +78,8 @@ const MAPPING_ANNOTATIONS: Record<string, string | undefined> = {
 const SECURITY_ANNOTATIONS = ["PreAuthorize", "PostAuthorize", "Secured", "RolesAllowed"];
 const FILTER_TYPES = new Set(["OncePerRequestFilter", "Filter", "GenericFilterBean", "HttpFilter", "AbstractRequestLoggingFilter"]);
 const REST_CLIENT_TYPES = new Set(["RestTemplate", "WebClient", "RestClient", "OkHttpClient"]);
+/** Common JDK/library receiver types: never project interfaces, skip the implementor lookup. */
+const JDK_TYPES = new Set(["String", "StringBuilder", "List", "ArrayList", "Map", "HashMap", "Set", "HashSet", "Collection", "Optional", "Stream", "Object", "Integer", "Long", "Boolean", "Date", "LocalDateTime", "BigDecimal", "Iterator", "Arrays", "Collections", "Objects"]);
 const ADVICE = ["Before", "Around", "After", "AfterReturning", "AfterThrowing"];
 const LOWEST = Number.MAX_SAFE_INTEGER;
 const HIGHEST = Number.MIN_SAFE_INTEGER;
@@ -312,7 +314,7 @@ export function runSpringRules(
         }
         // Interface from a jar, implementation in the project (`AIChatHandler implements IAIChatHandler`).
         const simple = raw.slice(raw.lastIndexOf(".") + 1);
-        const implementors = index.types.filter((t) => t.type.kind === "class" && index.isBean(t) && index.supertypeNames(t).includes(simple));
+        const implementors = JDK_TYPES.has(simple) ? [] : index.beansImplementing(simple);
         if (implementors.length > 0) {
           const branch = implementors.length > 1 ? `${implementors.length} implementations of ${simple}; branch shown for each` : undefined;
           implementors.forEach((impl, i) => {

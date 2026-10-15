@@ -29,7 +29,9 @@ export class AtlasCodeLens implements vscode.CodeLensProvider {
     const byLine = new Map<number, Entrypoint[]>();
     for (const e of entrypointsForFile(graph, document.uri.fsPath)) {
       const line = Math.max(0, (e.handler.line ?? 1) - 1);
-      byLine.set(line, [...(byLine.get(line) ?? []), e]);
+      const list = byLine.get(line);
+      if (list) list.push(e);
+      else byLine.set(line, [e]);
     }
     const lenses: vscode.CodeLens[] = [];
     for (const [line, eps] of byLine) {

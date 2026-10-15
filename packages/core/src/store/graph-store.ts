@@ -1,6 +1,8 @@
+import { pushTo } from "../util/collections.js";
 import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { loadGraph } from "../model/schema.js";
+import { validateGraph } from "../model/schema.js";
+import { DEFAULT_FLOW_DEPTH, projectDfs } from "../graph/builder.js";
 import type { AtlasGraph, CallEdge, Entrypoint, Flow, FlowStep, Module } from "../model/types.js";
 import type {
   FeaturesData,
@@ -103,7 +105,7 @@ export async function loadStoredGraph(atlasDir: string): Promise<LoadStoredResul
   } catch (error) {
     return { status: "rebuild", reason: `corrupt meta: ${(error as Error).message}` };
   }
-  const loaded = loadGraph(JSON.stringify({ ...(meta as object), steps, edges, flows }));
+  const loaded = validateGraph({ ...(meta as object), steps, edges, flows });
   return loaded.status === "ok" ? { status: "ok", graph: loaded.graph } : { status: "rebuild", reason: loaded.detail };
 }
 
@@ -196,7 +198,7 @@ export class GraphView {
     for (const e of g.entrypoints) {
       if (e.kind !== "http") continue;
       const owner = e.handler.name.split(".")[0] ?? e.handler.name;
-      byController.set(owner, [...(byController.get(owner) ?? []), e]);
+      pushTo(byController, owner, e);
     }
     return [...byController.entries()]
       .sort((a, b) => b[1].length - a[1].length)
@@ -239,7 +241,7 @@ export class GraphView {
     const entrypoint = this.graph.entrypoints.find((e) => e.id === entrypointId);
     const stored = this.flows.get(entrypointId);
     if (!entrypoint || !stored) return undefined;
-    const flow = depth && depth > 12 ? this.deepen(stored, Math.min(depth, MAX_FLOW_DEPTH)) : stored;
+    const flow = depth && depth > DEFAULT_FLOW_DEPTH ? this.deepen(stored, Math.min(depth, MAX_FLOW_DEPTH)) : stored;
     const steps = flow.stepIds.map((id) => this.steps.get(id)).filter((s): s is FlowStep => !!s);
     const edges = flow.edgeIds.map((id) => this.edgesById.get(id)).filter((e): e is CallEdge => !!e);
     const serviceIds = new Set(steps.map((s) => s.serviceId));
@@ -261,25 +263,10 @@ export class GraphView {
     const chainSources = new Set(chainEdges.map((e) => e.from));
     const handler = [...chainTargets].find((t) => !chainSources.has(t)) ?? flow.stepIds[0];
     if (!handler) return flow;
-    const stepIds = new Set<string>([...chainSources, ...chainTargets]);
-    const edgeIds = new Set<string>(chainEdges.map((e) => e.id));
-    let truncated = false;
-    const visit = (stepId: string, level: number, pathSet: Set<string>) => {
-      stepIds.add(stepId);
-      for (const edge of this.callEdgesFrom.get(stepId) ?? []) {
-        edgeIds.add(edge.id);
-        if (pathSet.has(edge.to)) continue;
-        if (level + 1 >= depth) {
-          truncated = true;
-          stepIds.add(edge.to);
-          continue;
-        }
-        pathSet.add(edge.to);
-        visit(edge.to, level + 1, pathSet);
-        pathSet.delete(edge.to);
-      }
-    };
-    visit(handler, 0, new Set([handler]));
+    const projected = projectDfs((id) => this.callEdgesFrom.get(id) ?? [], handler, depth);
+    const stepIds = new Set<string>([...chainSources, ...chainTargets, ...projected.stepIds]);
+    const edgeIds = new Set<string>([...chainEdges.map((e) => e.id), ...projected.edgeIds]);
+    const truncated = projected.truncated;
     return { entrypointId: flow.entrypointId, stepIds: [...stepIds], edgeIds: [...edgeIds], truncated };
   }
 }

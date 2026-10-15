@@ -129,7 +129,9 @@ export function validateStartup(value: unknown): { guides: RawGuide[] } {
       steps: arr(g.steps, `${p}.steps`, { optional: true }).map((raw, j) => {
         const q = `${p}.steps[${j}]`;
         const step = obj(raw, q);
-        const cwd = step.cwd === undefined || step.cwd === "" ? "." : str(step.cwd, `${q}.cwd`);
+        const rawCwd = step.cwd === undefined || step.cwd === "" ? "." : str(step.cwd, `${q}.cwd`).trim();
+        // Model-supplied: only a relative POSIX path inside the repo, else fall back to the root.
+        const cwd = /^(\.|[\w@.-]+(\/[\w@.-]+)*)$/.test(rawCwd) && !rawCwd.split("/").includes("..") ? rawCwd : ".";
         return { command: str(step.command, `${q}.command`).trim(), cwd, evidence: evidence(step.evidence, `${q}.evidence`) };
       }),
       ports: arr(g.ports, `${p}.ports`, { optional: true }).map((raw, j) => {

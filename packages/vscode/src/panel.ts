@@ -139,7 +139,13 @@ export class AtlasPanel implements vscode.Disposable {
   private async openSource(ref: SourceRef): Promise<void> {
     const root = this.controller.graph?.project.roots.find((r) => r.id === ref.rootId);
     if (!root) return;
-    const uri = vscode.Uri.file(path.join(root.path, ref.file));
+    const target = path.resolve(root.path, ref.file);
+    const relative = path.relative(root.path, target);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+      log(`Refused to open a path outside the workspace root: ${ref.file}`);
+      return;
+    }
+    const uri = vscode.Uri.file(target);
     try {
       const editor = await vscode.window.showTextDocument(uri, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true, preview: true });
       if (ref.line) {

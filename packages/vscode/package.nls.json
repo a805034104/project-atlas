@@ -1,6 +1,6 @@
 {
   "description": "Map any Spring / Vue / RuoYi project: modules, features, startup, change history and request flows across services. Deterministic rules first, AI optional.",
-  "untrusted": "In Restricted Mode Atlas only reads files: cloning repositories listed in atlas.yaml is disabled.",
+  "untrusted": "In Restricted Mode Atlas only reads files: AI requests, git history and cloning repositories listed in atlas.yaml are disabled.",
   "cmd.analyze": "Analyze Workspace",
   "cmd.analyzeIncremental": "Update Analysis",
   "cmd.cancel": "Cancel Analysis",

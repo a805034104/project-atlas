@@ -1,3 +1,4 @@
+import { withinDir } from "./util/collections.js";
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { collectModuleHistory } from "./git/index.js";
@@ -96,9 +97,7 @@ export async function resolveRoots(inputs: readonly RootInput[]): Promise<Root[]
   return roots;
 }
 
-function within(dir: string, rel: string): boolean {
-  return dir === "" || rel === dir || rel.startsWith(`${dir}/`);
-}
+const within = withinDir;
 
 export async function analyzeWorkspace(options: AnalyzeOptions): Promise<AnalysisResult> {
   const { signal } = options;
@@ -168,7 +167,10 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   const feignCalls: FeignCallSite[] = [];
   const restCalls: RestCallSite[] = [];
   const wrappers = overrides.wrappers.map((w) => ({ symbol: w.symbol, kind: w.kind, ...(w.urlArg !== undefined ? { urlArg: w.urlArg } : {}), ...(w.methodLiteral ? { methodLiteral: w.methodLiteral } : {}) }));
-  project.java.forEach((svc, i) => {
+  const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
+  for (const [i, svc] of project.java.entries()) {
+    // Let cancellation and progress callbacks run between services (extension host stays responsive).
+    await yieldToEventLoop();
     signal?.throwIfAborted();
     const files = workspace.files.filter((f) => svc.classpath.some((c) => c.rootId === f.rootId && within(c.dir, f.relPath)));
     const index = new JavaIndex(files);
@@ -180,11 +182,13 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
     restCalls.push(...result.restCalls);
     diagnostics.push(...result.diagnostics);
     phase("rules", (i + 1) / Math.max(1, project.java.length + project.frontends.length));
-  });
+  }
   const sqlFiles = workspace.files.filter((f) => f.kind === "sql");
   const frontendCalls = new Map<string, FrontendCall[]>();
   const routes: { entrypointId: string; pageStepId: string }[] = [];
   for (const app of project.frontends) {
+    await yieldToEventLoop();
+    signal?.throwIfAborted();
     const result = runVueRules(app, workspace.files, sqlFiles, graph);
     frontendCalls.set(app.service.id, result.calls);
     routes.push(...result.routes.map((r) => ({ entrypointId: r.entrypoint.id, pageStepId: r.pageStepId })));

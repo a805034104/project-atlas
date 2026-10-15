@@ -14,7 +14,6 @@ import {
   GraphView,
   loadStoredGraph,
   saveGraph,
-  LlmAuthError,
   type AiPhase,
   type AnalysisPhase,
   type AnalysisState,
@@ -112,10 +111,7 @@ export class AtlasController implements vscode.Disposable {
   }
 
   async analyze(): Promise<void> {
-    if (this.running) {
-      void vscode.commands.executeCommand("workbench.action.focusPanel");
-      return this.running.promise;
-    }
+    if (this.running) return this.running.promise; // single analysis at a time; callers just await it
     const cancel = new AbortController();
     const promise = this.runAnalysis(cancel).finally(() => {
       this.running = undefined;
@@ -150,7 +146,8 @@ export class AtlasController implements vscode.Disposable {
             workerPath,
             exclude: settings.exclude,
             maxFileSizeKB: settings.maxFileSizeKB,
-            history: settings.history,
+            // git log honours repo-local config (textconv etc.): only in trusted workspaces.
+            history: settings.history && vscode.workspace.isTrusted,
             overrides,
             signal: cancel.signal,
             onPhase: (phase, value) => {
@@ -191,6 +188,11 @@ export class AtlasController implements vscode.Disposable {
   ): Promise<void> {
     const config = await providerConfig(this.context.secrets, settings);
     if (!config) return;
+    if (!vscode.workspace.isTrusted) {
+      this.setState({ ai: "none" });
+      log("AI analysis skipped: workspace is not trusted (Restricted Mode)");
+      return;
+    }
     if (config.provider !== "ollama" && !config.apiKey) {
       this.setState({ ai: "error", error: missingKeyError() });
       return;
@@ -200,7 +202,14 @@ export class AtlasController implements vscode.Disposable {
     const plan = estimateAiCost(input, provider.model, config.provider);
     const zh = isChinese();
     const choices = phaseChoices(plan, zh);
-    const picked = await vscode.window.showQuickPick(choices, { canPickMany: true, title: planTitle(plan, zh), ignoreFocusOut: true });
+    const destination = config.provider === "ollama" ? config.baseUrl ?? "http://localhost:11434" : config.baseUrl ?? "https://api.anthropic.com";
+    let origin = destination;
+    try {
+      origin = new URL(destination).origin;
+    } catch {
+      // keep the raw value; the provider call will fail with a clear error
+    }
+    const picked = await vscode.window.showQuickPick(choices, { canPickMany: true, title: `${planTitle(plan, zh)} → ${origin}`, ignoreFocusOut: true });
     if (!picked || picked.length === 0) {
       this.setState({ ai: "declined" });
       log("AI analysis declined by the user; deterministic map kept");
@@ -312,7 +321,6 @@ export function toUserFacing(error: unknown): UserFacingError {
   if (error && typeof error === "object" && "toUserFacing" in error && typeof (error as { toUserFacing: unknown }).toUserFacing === "function") {
     return (error as { toUserFacing(): UserFacingError }).toUserFacing();
   }
-  if (error instanceof LlmAuthError) return error.toUserFacing();
   const message = error instanceof Error ? error.message : String(error);
   return {
     code: "ATLAS-E000",

@@ -83,27 +83,46 @@ export class GraphBuilder {
    * aspects…) followed by a DFS over call edges from `handlerStepId`.
    */
   projectFlow(entrypointId: string, chainStepIds: readonly string[], chainEdgeIds: readonly string[], handlerStepId: string, depth = DEFAULT_FLOW_DEPTH): Flow {
-    const stepIds = new Set<string>(chainStepIds);
-    const edgeIds = new Set<string>(chainEdgeIds);
-    let truncated = false;
-    const visit = (stepId: string, level: number, path: Set<string>): void => {
-      stepIds.add(stepId);
-      for (const edge of [...this.outgoing(stepId)].sort((a, b) => a.order - b.order)) {
-        edgeIds.add(edge.id);
-        if (path.has(edge.to)) continue; // recursion: keep the back edge, stop descending
-        if (level + 1 >= depth) {
-          truncated = true;
-          stepIds.add(edge.to);
-          continue;
-        }
-        path.add(edge.to);
-        visit(edge.to, level + 1, path);
-        path.delete(edge.to);
-      }
-    };
-    visit(handlerStepId, 0, new Set([handlerStepId]));
-    const flow: Flow = { entrypointId, stepIds: [...stepIds], edgeIds: [...edgeIds], truncated };
+    const { stepIds, edgeIds, truncated } = projectDfs((id) => this.outgoing(id), handlerStepId, depth);
+    const flow: Flow = { entrypointId, stepIds: [...new Set([...chainStepIds, ...stepIds])], edgeIds: [...new Set([...chainEdgeIds, ...edgeIds])], truncated };
     this.flows.push(flow);
     return flow;
   }
+
+}
+
+/**
+ * Depth-limited DFS over call edges shared by GraphBuilder and GraphView.
+ * Each step is expanded at most once per (shallowest) level, so diamond-shaped
+ * call graphs stay linear instead of enumerating every path. Back edges into the
+ * current path are kept (recursion marker) but not followed.
+ */
+export function projectDfs(
+  outgoing: (stepId: string) => readonly CallEdge[],
+  start: string,
+  depth: number,
+): { stepIds: string[]; edgeIds: string[]; truncated: boolean } {
+  const stepIds = new Set<string>([start]);
+  const edgeIds = new Set<string>();
+  const bestLevel = new Map<string, number>([[start, 0]]);
+  let truncated = false;
+  const visit = (stepId: string, level: number, path: Set<string>): void => {
+    for (const edge of [...outgoing(stepId)].sort((a, b) => a.order - b.order)) {
+      edgeIds.add(edge.id);
+      stepIds.add(edge.to);
+      if (path.has(edge.to)) continue;
+      if (level + 1 >= depth) {
+        truncated = true;
+        continue;
+      }
+      const seen = bestLevel.get(edge.to);
+      if (seen !== undefined && seen <= level + 1) continue;
+      bestLevel.set(edge.to, level + 1);
+      path.add(edge.to);
+      visit(edge.to, level + 1, path);
+      path.delete(edge.to);
+    }
+  };
+  visit(start, 0, new Set([start]));
+  return { stepIds: [...stepIds], edgeIds: [...edgeIds], truncated };
 }

@@ -1,3 +1,4 @@
+import { createLimiter } from "../util/collections.js";
 import type { UserFacingError } from "../protocol.js";
 import { stableId } from "../model/ids.js";
 import type { Feature, LlmUsage, StartupGuide } from "../model/types.js";
@@ -443,18 +444,5 @@ export async function runAiPipeline(input: AiPipelineInput): Promise<AiPipelineR
  * Tiny FIFO semaphore. A finishing task hands its slot directly to the next
  * waiter, so the number of running tasks never exceeds `max`.
  */
-export function createLimiter(max: number): <T>(task: () => Promise<T>) => Promise<T> {
-  let active = 0;
-  const waiting: (() => void)[] = [];
-  return async <T>(task: () => Promise<T>): Promise<T> => {
-    if (active >= max) await new Promise<void>((resolve) => waiting.push(resolve));
-    else active++;
-    try {
-      return await task();
-    } finally {
-      const next = waiting.shift();
-      if (next) next();
-      else active--;
-    }
-  };
-}
+
+export { createLimiter };

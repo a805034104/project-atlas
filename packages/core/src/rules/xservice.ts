@@ -1,3 +1,4 @@
+import { pushTo } from "../util/collections.js";
 import type { GraphBuilder } from "../graph/builder.js";
 import { normalizeHttpPath, stableId } from "../model/ids.js";
 import type { Entrypoint, ServiceLink, SourceRef, SymbolRef } from "../model/types.js";
@@ -59,7 +60,7 @@ export function parseGatewayRoutes(svc: JavaService): GatewayRoute[] {
     const m = /routes\[(\d+)\]/i.exec(e.key);
     if (!m) continue;
     const i = Number(m[1]);
-    byIndex.set(i, [...(byIndex.get(i) ?? []), e]);
+    pushTo(byIndex, i, e);
   }
   const defaultFilters = ["spring.cloud.gateway.default-filters", "spring.cloud.gateway.server.webflux.default-filters", "spring.cloud.gateway.server.webmvc.default-filters"]
     .flatMap((p) => svc.config.list(p))
@@ -101,15 +102,28 @@ export function applyRoute(route: GatewayRoute, path: string): string {
 }
 
 /** Best entrypoint for a concrete call path: literal segments beat path variables; `{}` in the call only matches variables. */
-export function matchEntrypoint(entries: readonly Entrypoint[], serviceId: string, method: string, path: string): Entrypoint | undefined {
+/** HTTP entrypoints bucketed by service and segment count, with pre-split segments. */
+export class EntrypointIndex {
+  private readonly buckets = new Map<string, { e: Entrypoint; segs: string[] }[]>();
+  constructor(entries: readonly Entrypoint[]) {
+    for (const e of entries) {
+      if (e.kind !== "http" || !e.path) continue;
+      const segs = e.path.split("/").filter(Boolean);
+      pushTo(this.buckets, `${e.serviceId}|${segs.length}`, { e, segs });
+    }
+  }
+  candidates(serviceId: string, segmentCount: number): readonly { e: Entrypoint; segs: string[] }[] {
+    return this.buckets.get(`${serviceId}|${segmentCount}`) ?? [];
+  }
+}
+
+export function matchEntrypoint(entries: readonly Entrypoint[] | EntrypointIndex, serviceId: string, method: string, path: string): Entrypoint | undefined {
   const callSegments = path.split("/").filter(Boolean);
+  const index = entries instanceof EntrypointIndex ? entries : new EntrypointIndex(entries);
   let best: Entrypoint | undefined;
   let bestScore = -1;
-  for (const e of entries) {
-    if (e.serviceId !== serviceId || e.kind !== "http" || !e.path) continue;
+  for (const { e, segs } of index.candidates(serviceId, callSegments.length)) {
     if (e.method !== "ANY" && method !== "ANY" && e.method !== method) continue;
-    const segs = e.path.split("/").filter(Boolean);
-    if (segs.length !== callSegments.length) continue;
     let score = 0;
     let ok = true;
     for (let i = 0; i < segs.length; i++) {
@@ -143,7 +157,17 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
 export function linkServices(input: XServiceInput, graph: GraphBuilder): XServiceResult {
   const result: XServiceResult = { links: [], upstream: new Map() };
-  const entries = [...graph.entrypoints.values()];
+  const entries = new EntrypointIndex([...graph.entrypoints.values()]);
+  const routeCache = new Map<string, GatewayRoute[]>();
+  const routesOf = (svc: JavaService): GatewayRoute[] => {
+    let routes = routeCache.get(svc.service.id);
+    if (!routes) {
+      routes = parseGatewayRoutes(svc);
+      routeCache.set(svc.service.id, routes);
+    }
+    return routes;
+  };
+  const globalFilterCache = new Map<string, TypeRef[]>();
   const byName = new Map(input.java.map((j) => [j.service.name.toLowerCase(), j]));
   const serviceFor = (host: string, port: number | undefined): JavaService | undefined => {
     const named = byName.get(host);
@@ -180,9 +204,12 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
       return graph.step(gateway.service.id, gateway.service.name, "filter", `${ref.type.fqcn}@${target.id}`, symbol);
     };
     if (index) {
-      for (const ref of index.types) {
-        if (index.supertypeNames(ref).includes("GlobalFilter") && index.isBean(ref)) hops.push(typeStep(ref, ref.type.name));
+      let globals = globalFilterCache.get(gateway.service.id);
+      if (!globals) {
+        globals = [...index.beansImplementing("GlobalFilter")];
+        globalFilterCache.set(gateway.service.id, globals);
       }
+      for (const ref of globals) hops.push(typeStep(ref, ref.type.name));
       for (const name of route.filterNames) {
         const ref = index.types.find((t) => t.type.name === name || t.type.name === `${name}GatewayFilterFactory`);
         if (ref && hasAnnotation(ref.type.annotations, "Component")) hops.push(typeStep(ref, `${ref.type.name} (route filter)`));
@@ -207,7 +234,7 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
   /** Resolve a request arriving at `service` with `path`; follows a gateway hop when needed. */
   const resolveAt = (svc: JavaService, method: string, path: string): { target?: Entrypoint; inferred?: string; via?: { gateway: JavaService; route: GatewayRoute; downstream: string; backend: JavaService } } => {
     if (svc.service.kind === "gateway") {
-      for (const route of parseGatewayRoutes(svc)) {
+      for (const route of routesOf(svc)) {
         if (!route.paths.some((p) => antMatch(p, path))) continue;
         const uri = parseUrl(route.uri);
         const backend = uri ? serviceFor(uri.host, uri.port) : undefined;

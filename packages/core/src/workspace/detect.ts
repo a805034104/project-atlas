@@ -1,3 +1,4 @@
+import { withinDir } from "../util/collections.js";
 import { parseDotEnv, parseNacosSqlDump, parsePropertiesConfig, parseYamlConfig, type ConfigDocument, type NacosConfigRow } from "../config/sources.js";
 import { ConfigView, type ConfigLayer } from "../config/view.js";
 import type { JavaFileFacts, ScriptFileFacts, ScriptValue } from "../facts/types.js";
@@ -68,9 +69,7 @@ function dirOf(relPath: string): string {
   return slash < 0 ? "" : relPath.slice(0, slash);
 }
 
-function within(dir: string, relPath: string): boolean {
-  return dir === "" || relPath === dir || relPath.startsWith(`${dir}/`);
-}
+const within = withinDir;
 
 function owningModule(file: LoadedFile, modules: readonly MavenModule[]): MavenModule | undefined {
   let best: MavenModule | undefined;
