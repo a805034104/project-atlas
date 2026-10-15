@@ -7,6 +7,7 @@ import { AtlasController, toUserFacing } from "./controller.js";
 import { initLog, log, recentLog, showLog } from "./log.js";
 import { AtlasPanel } from "./panel.js";
 import { isChinese, providerConfig, readSettings, storeApiKey, t, type ProviderName } from "./settings.js";
+import { RuntimeManager } from "./runtime.js";
 import { renderStaticHtml } from "./static-export.js";
 import { AtlasTree } from "./tree.js";
 
@@ -18,7 +19,13 @@ import { AtlasTree } from "./tree.js";
  *             configureProvider / testConnection / export html|md / diagnose / clearCache
  */
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+/** Read-only hooks for the E2E suite (the extension exposes no other API). */
+export interface AtlasExtensionApi {
+  flowDetail(entrypointId: string): import("@project-atlas/core").FlowDetailData | undefined;
+  runtimeState(): import("@project-atlas/core").RuntimeState | undefined;
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<AtlasExtensionApi | undefined> {
   context.subscriptions.push(initLog());
   const folder = vscode.workspace.workspaceFolders?.find((f) => f.uri.scheme === "file");
   if (!folder) return;
@@ -56,6 +63,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const openPanel = (reveal?: { view: ViewId; nodeId?: string }) => AtlasPanel.show(context, controller, reveal);
   const register = (id: string, fn: (...args: never[]) => unknown) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
+
+  // Runtime capture (v0.2): history loads now, the receiver starts on first use.
+  const runtime = new RuntimeManager(controller, () => openPanel({ view: "trace" }));
+  AtlasPanel.runtime = runtime;
+  context.subscriptions.push(runtime);
+  void runtime.restore();
+  const runtimeCommand = (fn: () => Promise<void>) => async () => {
+    try {
+      await fn();
+    } catch (error) {
+      const uf = (error as { userFacing?: { code: string; problem: string; fix: string } }).userFacing;
+      if (uf) void vscode.window.showErrorMessage(`${uf.code} ${uf.problem} ${uf.fix}`);
+      else throw error;
+    }
+  };
+  register("atlas.runtime.copyVmOptions", runtimeCommand(() => runtime.copyVmOptions()));
+  register("atlas.runtime.launch", runtimeCommand(() => runtime.launch()));
+  register("atlas.runtime.stop", runtimeCommand(() => runtime.stop()));
+  register("atlas.runtime.clear", runtimeCommand(() => runtime.clear()));
+  register("atlas.openTraceTab", () => openPanel({ view: "trace" }));
 
   register("atlas.analyze", async () => {
     openPanel();
@@ -202,6 +229,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   await controller.restore();
+  return {
+    flowDetail: (entrypointId) => controller.view?.flowDetail(entrypointId),
+    runtimeState: () => runtime.state,
+  };
 }
 
 export function deactivate(): void {

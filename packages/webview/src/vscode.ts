@@ -83,7 +83,7 @@ export function setVsCodeApiForTesting(api: VsCodeApi | undefined): void {
   cached = api;
 }
 
-const VIEW_IDS: readonly ViewId[] = ["overview", "topology", "modules", "features", "startup", "flow", "history"];
+const VIEW_IDS: readonly ViewId[] = ["overview", "topology", "modules", "features", "startup", "flow", "history", "trace"];
 
 function str(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback;

@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promise
 import path from "node:path";
 import { validateGraph } from "../model/schema.js";
 import { DEFAULT_FLOW_DEPTH, projectDfs } from "../graph/builder.js";
+import { emptyTraceData } from "../runtime/trace-view.js";
 import type { AtlasGraph, CallEdge, Entrypoint, Flow, FlowStep, Module } from "../model/types.js";
 import type {
   FeaturesData,
@@ -12,6 +13,7 @@ import type {
   ModulesData,
   OverviewData,
   StartupData,
+  TraceData,
   TopologyData,
   ViewId,
   ViewPayload,
@@ -140,7 +142,11 @@ export class GraphView {
   private readonly callEdgesFrom = new Map<string, CallEdge[]>();
   private readonly flows: Map<string, Flow>;
 
-  constructor(readonly graph: AtlasGraph) {
+  constructor(
+    readonly graph: AtlasGraph,
+    /** Runtime capture data for the Trace view (v0.2), supplied by the host. */
+    private readonly traceProvider?: () => TraceData,
+  ) {
     this.steps = new Map(graph.steps.map((s) => [s.id, s]));
     this.edgesById = new Map(graph.edges.map((e) => [e.id, e]));
     for (const e of graph.edges) {
@@ -175,6 +181,8 @@ export class GraphView {
         return { view, data: this.flowList() };
       case "history":
         return { view, data: this.history() };
+      case "trace":
+        return { view, data: this.traceProvider?.() ?? emptyTraceData(this.graph) };
     }
   }
 

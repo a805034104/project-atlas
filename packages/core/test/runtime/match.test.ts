@@ -6,6 +6,7 @@ import type { AtlasGraph } from "../../src/model/types.js";
 import { buildAgentConfig, formatMethodsInclude, instrumentedMethods } from "../../src/runtime/agent-config.js";
 import { Aggregator } from "../../src/runtime/aggregate.js";
 import { applyOverlay, reconcile } from "../../src/runtime/match.js";
+import { buildTraceData, buildTraceDetail } from "../../src/runtime/trace-view.js";
 import { decodeTraceRequest } from "../../src/runtime/otlp-decode.js";
 import { toSpanRecords, type SpanRecord } from "../../src/runtime/span-record.js";
 import { FIXTURES, haveFixtures } from "../helpers/fixtures.js";
@@ -68,6 +69,20 @@ describe.skipIf(!haveFixtures(FIXTURES.ruoyiVue))("reconcile — real RuoYi-Vue 
     expect(methods.get("com.ruoyi.framework.aspectj.DataScopeAspect")?.has("doBefore")).toBe(true);
     expect([...methods.keys()].some((c) => /\.domain\.|Mapper$/.test(c))).toBe(false);
     expect(formatMethodsInclude(methods).length).toBeLessThan(20_000);
+
+    // Trace tab data on the same spans: rows map to entrypoints with coverage; waterfall rows to steps.
+    const data = buildTraceData(graph, agg.state, overlay, { status: "receiving", spans: agg.state.total, duplicates: 0, rejected: 0, trusted: true });
+    const userList = data.traces.find((r) => r.rootName === "GET /system/user/list");
+    expect(userList?.entrypointId).toBe(ep?.id);
+    expect(userList?.coverage).toEqual({ observed: 9, instrumentable: 9 });
+    expect(data.suggestedRequest?.url).toMatch(/^http:\/\/localhost:8080\/captchaImage$/);
+    expect(data.diff.runtimeOnly.some((r) => !r.drawn && r.to === "SysUserServiceImpl.selectUserByUserName")).toBe(true);
+    const detail = buildTraceDetail(graph, golden().filter((r) => r.t === userList?.traceId));
+    const layers = detail?.spans.map((s) => s.layer);
+    expect(layers).toEqual(expect.arrayContaining(["entrypoint", "filter", "interceptor", "controller", "aspect", "service", "sql"]));
+    const sqlRows = detail?.spans.filter((s) => s.layer === "sql") ?? [];
+    expect(sqlRows.length).toBeGreaterThan(0);
+    expect(sqlRows.every((s) => s.stepId !== undefined)).toBe(true); // attributed through the mapper / service
   });
 });
 

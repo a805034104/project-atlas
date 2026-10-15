@@ -18,6 +18,7 @@ import {
   type AnalysisPhase,
   type AnalysisState,
   type AtlasGraph,
+  type TraceData,
   type UserFacingError,
 } from "@project-atlas/core";
 import { phaseChoices, planTitle } from "./cost.js";
@@ -79,8 +80,26 @@ export class AtlasController implements vscode.Disposable {
 
   private setGraph(graph: AtlasGraph): void {
     this.graphValue = graph;
-    this.viewValue = new GraphView(graph);
+    this.rebuildView();
     this.changed.fire();
+  }
+
+  private decorator: { decorate(graph: AtlasGraph): AtlasGraph; traceData(graph: AtlasGraph): TraceData } | undefined;
+
+  /**
+   * Runtime overlay (v0.2): observed stats folded into every view and flow. The analysis
+   * graph itself stays untouched (it is what gets saved); call again when spans arrive.
+   */
+  setRuntimeDecorator(decorator: { decorate(graph: AtlasGraph): AtlasGraph; traceData(graph: AtlasGraph): TraceData } | undefined): void {
+    this.decorator = decorator;
+    if (this.graphValue) this.rebuildView();
+  }
+
+  private rebuildView(): void {
+    const graph = this.graphValue;
+    if (!graph) return;
+    const decorator = this.decorator;
+    this.viewValue = decorator ? new GraphView(decorator.decorate(graph), () => decorator.traceData(graph)) : new GraphView(graph);
   }
 
   /** Patch the state; keys explicitly set to `undefined` are removed. */

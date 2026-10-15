@@ -19,9 +19,10 @@ import {
   USER_ADD_EP,
   genericDetail,
   entrypoints,
+  traceData,
 } from "../src/dev/mock.js";
 
-const VIEWS: ViewId[] = ["overview", "topology", "modules", "features", "startup", "flow", "history"];
+const VIEWS: ViewId[] = ["overview", "topology", "modules", "features", "startup", "flow", "history", "trace"];
 
 const PAYLOADS: Record<ViewId, () => ViewPayload> = {
   overview: () => ({ view: "overview", data: overviewData(true) }),
@@ -31,6 +32,7 @@ const PAYLOADS: Record<ViewId, () => ViewPayload> = {
   startup: () => ({ view: "startup", data: startupData() }),
   flow: () => ({ view: "flow", data: flowListData() }),
   history: () => ({ view: "history", data: historyData() }),
+  trace: () => ({ view: "trace", data: traceData(true) }),
 };
 
 const E020: UserFacingError = {

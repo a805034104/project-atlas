@@ -50,7 +50,7 @@ function FlowBody({ data }: { data: FlowListData }) {
   const detail = selectedId !== undefined ? state.flowDetails[selectedId] : undefined;
   const depths = useRef(new Map<string, number>());
   const requested = useRef(new Map<string, string>());
-  const key = phasesKey(state.analysis);
+  const key = phasesKey(state.analysis, state.runtimeVersion);
 
   useEffect(() => {
     if (selectedId === undefined || !data.entrypoints.some((e) => e.id === selectedId)) return;
@@ -77,6 +77,7 @@ function FlowBody({ data }: { data: FlowListData }) {
     send({ type: "requestFlow", entrypointId: selectedId, depth });
   };
   const selectedEp = data.entrypoints.find((e) => e.id === selectedId);
+  const singleTrace = state.singleTrace && state.singleTrace.entrypointId === selectedId ? state.traceDetails[state.singleTrace.traceId] : undefined;
 
   return (
     <div className={`flow${narrow ? " narrow" : ""}`}>
@@ -123,12 +124,28 @@ function FlowBody({ data }: { data: FlowListData }) {
             <h2 className="flow-title">
               <span className="code">{entrypointLabel(selectedEp)}</span>{" "}
               <SourceLink source={selectedEp.handler} label={selectedEp.handler.name} />
+              {detail.entrypoint.observed && !singleTrace ? (
+                <span className="observed-summary" title={t("trace.windowAll")}>
+                  {t("trace.observedSummary", { count: detail.entrypoint.observed.count, p50: detail.entrypoint.observed.p50Ms, p95: detail.entrypoint.observed.p95Ms })}
+                </span>
+              ) : null}
             </h2>
+            {singleTrace ? (
+              <div className="banner banner-info" role="status" data-mode="single-trace">
+                <span>
+                  {t("trace.singleBanner", { id: singleTrace.traceId.slice(0, 8), time: new Date(singleTrace.start).toLocaleTimeString() })}
+                </span>
+                <button type="button" className="secondary" onClick={() => dispatch({ type: "singleTrace", trace: undefined })}>
+                  {t("trace.exitSingle")}
+                </button>
+              </div>
+            ) : null}
             <Swimlane
               detail={detail}
               vertical={narrow}
               depth={depths.current.get(selectedEp.id) ?? DEFAULT_FLOW_DEPTH}
               onLoadMore={loadMore}
+              trace={singleTrace}
             />
             <Unresolved detail={detail} />
           </>
