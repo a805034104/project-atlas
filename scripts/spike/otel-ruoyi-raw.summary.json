@@ -1,0 +1,350 @@
+{
+  "classes": 105,
+  "methods": 661,
+  "includeLength": 13678,
+  "stepsPerLayer": {
+    "controller": 147,
+    "service": 364,
+    "repository": 143,
+    "filter": 3,
+    "interceptor": 117,
+    "aspect": 227
+  },
+  "raw": true,
+  "skippedCount": 0,
+  "skipped": [],
+  "classLayers": {
+    "com.ruoyi.common.annotation.Excel": [
+      "service"
+    ],
+    "com.ruoyi.common.annotation.Excels": [
+      "service"
+    ],
+    "com.ruoyi.common.config.RuoYiConfig": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.AjaxResult": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.entity.SysDept": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.entity.SysDictData": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.entity.SysDictType": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.entity.SysMenu": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.entity.SysRole": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.entity.SysUser": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.model.LoginBody": [
+      "service"
+    ],
+    "com.ruoyi.common.core.domain.model.LoginUser": [
+      "service"
+    ],
+    "com.ruoyi.common.core.page.TableDataInfo": [
+      "service"
+    ],
+    "com.ruoyi.common.filter.RepeatableFilter": [
+      "filter"
+    ],
+    "com.ruoyi.common.filter.XssFilter": [
+      "filter"
+    ],
+    "com.ruoyi.common.utils.poi.ExcelUtil": [
+      "service"
+    ],
+    "com.ruoyi.framework.aspectj.DataScopeAspect": [
+      "aspect"
+    ],
+    "com.ruoyi.framework.aspectj.LogAspect": [
+      "aspect"
+    ],
+    "com.ruoyi.framework.config.ServerConfig": [
+      "service"
+    ],
+    "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor": [
+      "interceptor"
+    ],
+    "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter": [
+      "filter"
+    ],
+    "com.ruoyi.framework.web.domain.Server": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.domain.server.Cpu": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.domain.server.Jvm": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.domain.server.Mem": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.domain.server.Sys": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.SysLoginService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.SysPasswordService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.SysPermissionService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.SysRegisterService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.TokenService": [
+      "service"
+    ],
+    "com.ruoyi.generator.controller.GenController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.generator.domain.GenTable": [
+      "service"
+    ],
+    "com.ruoyi.generator.domain.GenTableColumn": [
+      "service"
+    ],
+    "com.ruoyi.generator.mapper.GenTableColumnMapper": [
+      "repository"
+    ],
+    "com.ruoyi.generator.mapper.GenTableMapper": [
+      "repository"
+    ],
+    "com.ruoyi.generator.service.GenTableColumnServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.generator.service.GenTableServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.quartz.controller.SysJobController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.quartz.controller.SysJobLogController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.quartz.domain.SysJob": [
+      "service"
+    ],
+    "com.ruoyi.quartz.mapper.SysJobLogMapper": [
+      "repository"
+    ],
+    "com.ruoyi.quartz.mapper.SysJobMapper": [
+      "repository"
+    ],
+    "com.ruoyi.quartz.service.impl.SysJobLogServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.quartz.service.impl.SysJobServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysConfig": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysNoticeRead": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysPost": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysRoleDept": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysRoleMenu": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysUserOnline": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysUserPost": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.SysUserRole": [
+      "service"
+    ],
+    "com.ruoyi.system.domain.vo.RouterVo": [
+      "service"
+    ],
+    "com.ruoyi.system.mapper.SysConfigMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysDeptMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysDictDataMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysDictTypeMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysLogininforMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysMenuMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysNoticeMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysNoticeReadMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysOperLogMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysPostMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysRoleDeptMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysRoleMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysRoleMenuMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysUserMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysUserPostMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysUserRoleMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.service.impl.SysConfigServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysDeptServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysDictDataServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysDictTypeServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysLogininforServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysMenuServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysNoticeReadServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysNoticeServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysOperLogServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysPostServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysRoleServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysUserOnlineServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysUserServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.web.controller.common.CaptchaController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.common.CommonController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.monitor.CacheController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.ServerController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.SysLogininforController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.SysOperlogController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.SysUserOnlineController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysConfigController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysDeptController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysDictDataController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysDictTypeController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysIndexController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysLoginController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysMenuController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysNoticeController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysPostController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysProfileController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysRegisterController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysRoleController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysUserController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.tool.TestController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.tool.UserEntity": [
+      "service"
+    ]
+  }
+}

@@ -115,6 +115,19 @@ interface Advice {
   order: number;
 }
 
+const DATA_PACKAGE = /\.(domain|entity|entities|vo|dto|po|bo|do|model|pojo|bean|page|annotation|enums?)(\.|$)/;
+const ACCESSOR = /^(get|set|is|has)[A-Z]/;
+
+/**
+ * A call on a non-bean object that only reads or writes data: methods of classes in
+ * data packages, and accessor-named methods that call nothing else.
+ */
+function isDataCall(type: TypeRef, method: JavaMethod): boolean {
+  if (type.type.kind === "enum" || type.type.kind === "record" || type.type.kind === "annotation") return true;
+  if (DATA_PACKAGE.test(type.facts.package)) return true;
+  return ACCESSOR.test(method.name) && method.calls.every((c) => c.receiver === undefined || c.receiver === "this" || c.receiver === "super");
+}
+
 function simpleTypeName(ref: TypeRef): string {
   return ref.type.name.slice(ref.type.name.lastIndexOf(".") + 1);
 }
@@ -381,7 +394,8 @@ export function runSpringRules(
     if (!isInterface) {
       const methods = index.findMethods(type, call.method, call.argCount);
       const target = methods[0];
-      if (target && (index.isBean(type) || target.owner === type)) connect(fromStep, target, type, order, "static");
+      // Data objects (entities, DTOs, AjaxResult…) and plain accessors are not flow steps.
+      if (target && (index.isBean(type) || (target.owner === type && !isDataCall(type, target.method)))) connect(fromStep, target, type, order, "static");
       return;
     }
 
