@@ -65,6 +65,8 @@ export interface ServiceLink {
   provenance: Provenance;
   confidence: number;
   evidence: SourceRef[];
+  /** How the link was derived (proxy/gateway rewrite, Feign client…). */
+  rationale?: string;
   observed?: RuntimeStats;
 }
 
