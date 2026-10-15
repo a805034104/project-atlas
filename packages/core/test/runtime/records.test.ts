@@ -136,4 +136,40 @@ describe("TraceStore", () => {
     for await (const r of new TraceStore(dir).records()) out.push(r);
     expect(out).toEqual([ok]);
   });
+
+  it("appends after a torn last line without losing the new record", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "atlas-traces-"));
+    await writeFile(path.join(dir, "spans-1.jsonl"), '{"t":"trunc');
+    const fresh = record({ s: "f".repeat(16) });
+    await new TraceStore(dir).append([fresh]);
+    const out: SpanRecord[] = [];
+    for await (const r of new TraceStore(dir).records()) out.push(r);
+    expect(out).toEqual([fresh]);
+  });
+
+  it("a second store on the same directory sees rotated segments and clears them all", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "atlas-traces-"));
+    let now = 1;
+    const writer = new TraceStore(dir, { segmentSpans: 2, now: () => now++ });
+    const reader = new TraceStore(dir);
+    await writer.append([record({ s: "1".repeat(16) }), record({ s: "2".repeat(16) })]);
+    for await (const _ of reader.records()) void _;
+    await writer.append([record({ s: "3".repeat(16) })]);
+    const ids: string[] = [];
+    for await (const r of reader.records()) ids.push(r.s);
+    expect(ids).toContain("3".repeat(16));
+    await reader.clear();
+    expect((await readdir(dir)).filter((f) => f.startsWith("spans-"))).toEqual([]);
+  });
+});
+
+describe("Aggregator.reset", () => {
+  it("forgets cleared traces so they do not reappear on the next batch", () => {
+    const agg = new Aggregator();
+    agg.add([record({ t: "a".repeat(32), s: "1".repeat(16) })]);
+    agg.reset();
+    agg.add([record({ t: "b".repeat(32), s: "2".repeat(16) })]);
+    expect(agg.state.traces.map((t) => t.t)).toEqual(["b".repeat(32)]);
+    expect(agg.state.total).toBe(1);
+  });
 });

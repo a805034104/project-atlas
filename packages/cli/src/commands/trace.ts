@@ -134,6 +134,11 @@ async function importFile(cmd: TraceCommand, io: CliIo, workspace: string): Prom
     if (!(error instanceof OtlpDecodeError)) throw error;
     throw new CliError({ code: "ATLAS-W031", problem: `${path.basename(file)} is not an OTLP trace export.`, cause: error.message, fix: "Pass an ExportTraceServiceRequest as protobuf (.pb) or OTLP/JSON." }, EXIT_USAGE);
   }
+  // A live receiver owns .atlas/traces (its debounced saves would overwrite our aggregates).
+  const importOwner = await runtimeOwner(workspace);
+  if (importOwner) {
+    throw new CliError({ code: "ATLAS-E074", problem: `The receiver of pid ${importOwner.pid} is recording traces for this workspace.`, cause: "Importing now would race with its saves.", fix: "Stop tracing (Ctrl-C, or Atlas: Stop Tracing in VS Code), then import again." }, EXIT_USAGE);
+  }
   const graph = await loadOrAnalyze(io, workspace);
   const store = new TraceStore(path.join(workspace, ".atlas", "traces"));
   const aggregator = new Aggregator(await store.loadAggregates());
@@ -163,7 +168,7 @@ export async function traceCommand(cmd: TraceCommand, io: CliIo, deps: TraceDeps
   let endpoint: string;
   const owner = await runtimeOwner(workspace);
   if (owner) {
-    endpoint = `http://127.0.0.1:${owner.port}/v1/traces`;
+    endpoint = new URL(`http://127.0.0.1:${owner.port}/v1/traces`).toString();
     io.stderr(`atlas: using the receiver of pid ${owner.pid} on port ${owner.port}\n`);
   } else {
     try {

@@ -284,10 +284,12 @@ export class RuntimeManager implements vscode.Disposable {
   async clear(): Promise<void> {
     const yes = t("清除", "Clear");
     if ((await vscode.window.showWarningMessage(t("删除本工作区记录的所有追踪？", "Delete every trace recorded for this workspace?"), { modal: true }, yes)) !== yes) return;
-    await this.store.clear();
+    // One writer: while a session runs, clear through its store (same write queue) and reset
+    // its aggregator (including the join windows and trace index, or cleared traces reappear).
+    await (this.session?.store ?? this.store).clear();
     this.aggregates = emptyAggregates();
     if (this.session) {
-      Object.assign(this.session.aggregator.state, emptyAggregates());
+      this.session.aggregator.reset();
       this.aggregates = this.session.aggregator.state;
     }
     this.announced.clear();
@@ -334,7 +336,7 @@ export class RuntimeManager implements vscode.Disposable {
     this.updateTimer = setTimeout(() => {
       this.updateTimer = undefined;
       this.overlay = undefined;
-      this.controller.setRuntimeDecorator({ decorate: (graph) => this.decorated(graph), traceData: (graph) => this.traceData(graph) });
+      this.controller.invalidateRuntime();
       this.updated.fire();
     }, delay);
   }
@@ -356,7 +358,7 @@ export class RuntimeManager implements vscode.Disposable {
     const graph = this.controller.graph;
     if (!graph || !/^[0-9a-f]{32}$/.test(traceId)) return undefined;
     const records: SpanRecord[] = [];
-    for await (const r of this.store.records()) if (r.t === traceId) records.push(r);
+    for await (const r of (this.session?.store ?? this.store).records()) if (r.t === traceId) records.push(r);
     return buildTraceDetail(graph, records);
   }
 

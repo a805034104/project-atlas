@@ -4,6 +4,7 @@ import {
   compareEntrypoints,
   createRefFormatter,
   entrypointLabel,
+  entrypointsForRouteKey,
   findEntrypoints,
   flowStepLines,
   MAX_FLOW_DEPTH,
@@ -299,12 +300,13 @@ export interface ListTracesArgs {
 export function listTraces(view: GraphView, aggregates: AggregateState, args: ListTracesArgs = {}): ToolOutput {
   const since = args.since ? Date.parse(args.since) : undefined;
   if (args.since && Number.isNaN(since)) throw new ToolInputError(`"since" must be an ISO-8601 time, got "${args.since}".`);
-  const wanted = args.entrypoint ? findEntrypoints(view.graph, args.entrypoint).map((e) => entrypointLabel(e)) : undefined;
-  if (wanted && wanted.length === 0) throw new ToolInputError(`No entrypoint matches "${args.entrypoint}".`);
+  const wanted = args.entrypoint ? new Set(findEntrypoints(view.graph, args.entrypoint).map((e) => e.id)) : undefined;
+  if (wanted && wanted.size === 0) throw new ToolInputError(`No entrypoint matches "${args.entrypoint}".`);
   const limit = Math.min(Math.max(1, args.limit ?? 20), 200);
   const rows = aggregates.traces
     .filter((t) => (since === undefined || t.start >= since) && (!args.errorsOnly || t.err))
-    .filter((t) => !wanted || (t.root && wanted.some((w) => t.root?.name === w || t.root?.name.endsWith(w.split(" ").slice(1).join(" ")))))
+    // Match through the root's route key (service + method + normalized route), never by label text.
+    .filter((t) => !wanted || (t.root !== undefined && entrypointsForRouteKey(view.graph, t.root.key).some((e) => wanted.has(e.id))))
     .slice(0, limit)
     .map((t) => ({ traceId: t.t, start: new Date(t.start).toISOString(), durationMs: Math.round(t.dur * 100) / 100, error: t.err, spans: t.spans, services: t.services, root: t.root?.name ?? null }));
   const text =

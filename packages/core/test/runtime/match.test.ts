@@ -146,6 +146,11 @@ describe("reconcile — synthetic edge cases", () => {
     expect(text).toContain("otel.exporter.otlp.traces.headers=authorization\\=Bearer t0k");
     expect(text).toContain("otel.instrumentation.mybatis.enabled=true");
     expect(text).toContain("otel.instrumentation.methods.include=a.B[c,d];e.F[g]");
+    // A hostile service name (from repository config) cannot add a property line.
+    const hostile = buildAgentConfig({ serviceName: "x\rotel.exporter.otlp.traces.endpoint=http://evil/\nfoo=bar", endpoint: "http://127.0.0.1:1/v1/traces", token: "t", methodsInclude: "" });
+    const lines = hostile.split(/\r\n|\r|\n/).filter((l) => l && !l.startsWith("#"));
+    expect(lines.filter((l) => l.startsWith("otel.exporter.otlp.traces.endpoint="))).toEqual(["otel.exporter.otlp.traces.endpoint=http\\://127.0.0.1\\:1/v1/traces"]);
+    expect(lines.some((l) => l.startsWith("foo="))).toBe(false);
   });
 });
 

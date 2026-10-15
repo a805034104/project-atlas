@@ -28,7 +28,7 @@ export interface PreparedAgentConfig {
  */
 export async function writeAgentConfigFile(input: { graph: AtlasGraph; service: Service; workspace: string; endpoint: string; token: string; homeDir?: string; include?: readonly string[]; exclude?: readonly string[] }): Promise<PreparedAgentConfig> {
   const methods = instrumentedMethods(input.graph, { serviceIds: [input.service.id], ...(input.include ? { include: input.include } : {}), ...(input.exclude ? { exclude: input.exclude } : {}) });
-  const dir = runtimeConfigDir(input.homeDir);
+  const dir = await runtimeConfigDir(input.homeDir);
   await mkdir(dir, { recursive: true });
   const configPath = path.join(dir, `${input.service.name.replace(/[^\w.-]/g, "_")}-${createHash("sha1").update(path.resolve(input.workspace)).digest("hex").slice(0, 8)}.properties`);
   await writeFile(configPath, buildAgentConfig({ serviceName: input.service.name, endpoint: input.endpoint, token: input.token, methodsInclude: formatMethodsInclude(methods) }), { mode: 0o600 });

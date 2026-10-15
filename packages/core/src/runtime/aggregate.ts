@@ -103,6 +103,15 @@ export class Aggregator {
     for (const t of state.traces) this.traceIndex.set(t.t, t);
   }
 
+  /** Forget everything (user cleared the traces): state, join windows and trace index. */
+  reset(): void {
+    Object.assign(this.state, emptyAggregates());
+    this.recent.clear();
+    this.waiting.clear();
+    this.waitingCount = 0;
+    this.traceIndex.clear();
+  }
+
   /** Fold a batch in; returns the records that were new (duplicates from exporter retries are skipped). */
   add(records: readonly SpanRecord[]): SpanRecord[] {
     const fresh: SpanRecord[] = [];

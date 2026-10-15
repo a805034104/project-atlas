@@ -75,8 +75,16 @@ export class AtlasController implements vscode.Disposable {
   }
 
   get view(): GraphView | undefined {
+    // Built lazily: while spans stream in, the overlay changes every second, but the view
+    // (reconcile + applyOverlay over the whole graph) is only rebuilt when something reads it.
+    if (this.viewStale) {
+      this.viewStale = false;
+      this.rebuildView();
+    }
     return this.viewValue;
   }
+
+  private viewStale = false;
 
   private setGraph(graph: AtlasGraph): void {
     this.graphValue = graph;
@@ -92,12 +100,18 @@ export class AtlasController implements vscode.Disposable {
    */
   setRuntimeDecorator(decorator: { decorate(graph: AtlasGraph): AtlasGraph; traceData(graph: AtlasGraph): TraceData } | undefined): void {
     this.decorator = decorator;
-    if (this.graphValue) this.rebuildView();
+    this.invalidateRuntime();
+  }
+
+  /** Observed stats changed: the next `view` read rebuilds with the current overlay. */
+  invalidateRuntime(): void {
+    if (this.graphValue) this.viewStale = true;
   }
 
   private rebuildView(): void {
     const graph = this.graphValue;
     if (!graph) return;
+    this.viewStale = false;
     const decorator = this.decorator;
     this.viewValue = decorator ? new GraphView(decorator.decorate(graph), () => decorator.traceData(graph)) : new GraphView(graph);
   }
