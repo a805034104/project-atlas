@@ -18,9 +18,11 @@ describe("legend", () => {
       "runtime-observed",
       "branch",
       "recursion",
+      "observed",
+      "dimmed",
     ]);
     const marks = rows.map((r) => r.querySelector(".mark")?.textContent);
-    expect(marks).toEqual(["✓", "⚙", "✨ 72%", "●", "×N", "↺"]);
+    expect(marks).toEqual(["✓", "⚙", "✨ 72%", "●", "×N", "↺", "✓ p95", "▒"]);
     expect(within(dialog).getByText("dashed")).toBeTruthy();
     expect(within(dialog).getByText("dotted 2px")).toBeTruthy();
     fireEvent.keyDown(dialog, { key: "Escape" });
@@ -46,7 +48,7 @@ describe("i18n", () => {
 
   it("renders Chinese UI for zh-cn", () => {
     openView("overview", { locale: "zh-cn", payload: { view: "overview", data: overviewData(true) } });
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["总览", "拓扑", "模块", "功能", "启动", "流转", "修改记录"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["总览", "拓扑", "模块", "功能", "启动", "流转", "修改记录", "Trace"]);
     expect(screen.getByRole("heading", { name: "这是什么" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "怎么跑" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "重点在哪" })).toBeTruthy();

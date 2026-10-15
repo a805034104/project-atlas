@@ -1,0 +1,9 @@
+server:
+  port: 18081
+spring:
+  application:
+    name: order-producer
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379

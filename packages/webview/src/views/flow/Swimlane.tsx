@@ -1,5 +1,5 @@
 import { useMemo, useState, type MouseEvent } from "react";
-import type { CallEdge, FlowDetailData } from "@project-atlas/core";
+import type { CallEdge, FlowDetailData, TraceDetailData } from "@project-atlas/core";
 import { useI18n, type Translate } from "../../i18n.js";
 import { useApp } from "../../state.js";
 import { PROVENANCE_MARK } from "../../components/Legend.js";
@@ -16,7 +16,10 @@ const BAND_H = 30;
 export function edgeMark(edge: CallEdge, t: Translate): string {
   const mark = PROVENANCE_MARK[edge.provenance];
   if (edge.provenance === "ai-inferred") return `${mark} ${Math.round(edge.confidence * 100)}%`;
-  if (edge.observed) return `${mark} p95 ${edge.observed.p95Ms}ms`;
+  if (edge.observed) {
+    const errors = edge.observed.errorCount > 0 ? ` ⚠ ${edge.observed.errorCount}/${edge.observed.count}` : "";
+    return `${mark} ${edge.observed.count}× · p95 ${edge.observed.p95Ms}ms${errors}`;
+  }
   void t;
   return mark;
 }
@@ -86,15 +89,25 @@ export function Swimlane({
   vertical,
   onLoadMore,
   depth,
+  trace,
 }: {
   detail: FlowDetailData;
   vertical: boolean;
   onLoadMore(): void;
   depth: number;
+  /** Single-trace mode (from the Trace tab waterfall). */
+  trace?: TraceDetailData | undefined;
 }) {
   const { t } = useI18n();
   const { state, dispatch, send } = useApp();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  // Single-trace mode: this trace's own durations per step; everything else is dimmed.
+  const traceSteps = useMemo(() => {
+    if (!trace) return undefined;
+    const m = new Map<string, number>();
+    for (const s of trace.spans) if (s.stepId) m.set(s.stepId, Math.max(m.get(s.stepId) ?? 0, s.durationMs));
+    return m;
+  }, [trace]);
   const [menu, setMenu] = useState<{ edge: LaneEdge; x: number; y: number } | undefined>();
   const collapsedBands = useMemo(() => new Set(state.persisted.collapsedBands), [state.persisted.collapsedBands]);
   const model = useMemo(
@@ -165,7 +178,7 @@ export function Swimlane({
         data-node-id={n.id}
         aria-label={nodeAria(n, outCount(n.id), t)}
         {...(branchCount > 0 ? { "aria-expanded": n.branchGroups.every((g) => expanded.has(g)) } : {})}
-        className={`lane-node${n.step ? "" : " band-placeholder"}${n.layer ? ` layer-${n.layer}` : ""}`}
+        className={`lane-node${n.step ? "" : " band-placeholder"}${n.layer ? ` layer-${n.layer}` : ""}${n.step && traceSteps && !traceSteps.has(n.step.id) ? " dim" : ""}${n.step?.observed && !traceSteps ? " observed" : ""}`}
         style={style ? { left: style.left, top: style.top, width: NODE_W, height: NODE_H } : undefined}
         title={n.step ? `${n.step.symbol.fqn}\n${n.step.symbol.file}${n.step.symbol.line !== undefined ? `:${n.step.symbol.line}` : ""}` : n.label}
         onClick={() => activate(n.id)}
@@ -173,6 +186,18 @@ export function Swimlane({
       >
         <span className="code lane-node-label">{n.label}</span>
         {n.recursive ? <span className="badge" aria-hidden="true">↺</span> : null}
+        {n.step && traceSteps?.has(n.step.id) ? (
+          <span className="badge badge-observed" title={t("trace.thisTrace")}>
+            {traceSteps.get(n.step.id)} ms
+          </span>
+        ) : n.step?.observed && !traceSteps ? (
+          <span
+            className={`badge badge-observed${n.step.observed.errorCount > 0 ? " badge-error" : ""}`}
+            title={t("trace.observedTitle", { count: n.step.observed.count, p50: n.step.observed.p50Ms, p95: n.step.observed.p95Ms, errors: n.step.observed.errorCount })}
+          >
+            ✓ {n.step.observed.p95Ms} ms
+          </span>
+        ) : null}
       </div>
     );
   };
@@ -224,7 +249,7 @@ export function Swimlane({
     <button
       key={e.key}
       type="button"
-      className={`edge-label edge-label-${e.edge.provenance}`}
+      className={`edge-label edge-label-${e.edge.provenance}${traceSteps && !(traceSteps.has(e.from) && traceSteps.has(e.to)) ? " dim" : ""}`}
       data-edge-id={e.edge.id}
       style={style}
       aria-label={edgeAria(e)}

@@ -14,6 +14,8 @@ packages/
     git/        per-module history (git log --numstat -z per pathspec)
     llm/        providers, retry, budget, redaction, prompts, validation, cache, map-reduce pipeline
     store/      sharded graph persistence + view slicing (protocol payloads)
+    runtime/    OTLP receiver + decoder, whitelisted span records, aggregates, trace store, reconcile overlay,
+                javaagent fetch / config / per-launcher injection (v0.2, see runtime-tracing.md)
     analyze.ts  deterministic orchestrator     enrich.ts  AI enrichment (hub files, estimate, merge)
     protocol.ts host ⇄ webview message contract
   webview/   React + @xyflow/react + elkjs (ELK in a blob Web Worker), VS Code theme tokens only
@@ -29,6 +31,15 @@ workspace folders ─▶ walk ─▶ read+hash ─▶ facts (cache hit? skip par
    ─▶ overrides ─▶ flows ─▶ git history ─▶ startup ─▶ AtlasGraph ─▶ .atlas/graph (sharded)
    ─(AI configured + user confirmed)▶ hub files ─▶ redact ─▶ LLM (cached by input hash) ─▶ evidence check ─▶ merge
 ```
+
+Runtime (v0.2):
+
+```
+JVM + javaagent ─OTLP/HTTP─▶ receiver (127.0.0.1, token) ─▶ decode ─▶ SpanRecord whitelist ─┬▶ .atlas/traces (raw, 7 d / 100k)
+                                                                                         └▶ Aggregator ─▶ reconcile ─▶ overlay on views
+```
+
+The overlay is applied when a view is built; the saved graph is never modified.
 
 ## Invariants
 

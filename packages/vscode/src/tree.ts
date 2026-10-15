@@ -10,7 +10,7 @@ import { t } from "./settings.js";
 
 type Node =
   | { kind: "service"; service: Service }
-  | { kind: "group"; service: Service; group: "modules" | "http" | "routes" | "scheduled" }
+  | { kind: "group"; service: Service; group: "modules" | "http" | "mq" | "routes" | "scheduled" }
   | { kind: "module"; module: Module }
   | { kind: "entrypoint"; entrypoint: Entrypoint };
 
@@ -34,12 +34,13 @@ export class AtlasTree implements vscode.TreeDataProvider<Node> {
       if (graph.modules.some((m) => m.serviceId === node.service.id)) groups.push({ kind: "group", service: node.service, group: "modules" });
       if (eps.some((e) => e.kind === "http")) groups.push({ kind: "group", service: node.service, group: "http" });
       if (eps.some((e) => e.kind === "frontend-route")) groups.push({ kind: "group", service: node.service, group: "routes" });
+      if (eps.some((e) => e.kind === "mq-consumer")) groups.push({ kind: "group", service: node.service, group: "mq" });
       if (eps.some((e) => e.kind === "scheduled")) groups.push({ kind: "group", service: node.service, group: "scheduled" });
       return groups;
     }
     if (node.kind === "group") {
       if (node.group === "modules") return graph.modules.filter((m) => m.serviceId === node.service.id).sort((a, b) => a.name.localeCompare(b.name)).map((module) => ({ kind: "module", module }));
-      const kind = node.group === "http" ? "http" : node.group === "routes" ? "frontend-route" : "scheduled";
+      const kind = node.group === "http" ? "http" : node.group === "mq" ? "mq-consumer" : node.group === "routes" ? "frontend-route" : "scheduled";
       return graph.entrypoints
         .filter((e) => e.serviceId === node.service.id && e.kind === kind)
         .sort((a, b) => (a.path ?? a.handler.name).localeCompare(b.path ?? b.handler.name))
@@ -57,9 +58,9 @@ export class AtlasTree implements vscode.TreeDataProvider<Node> {
         return item;
       }
       case "group": {
-        const labels = { modules: t("模块", "Modules"), http: t("HTTP 入口", "HTTP entrypoints"), routes: t("前端路由", "Routes"), scheduled: t("定时任务", "Scheduled") };
+        const labels = { modules: t("模块", "Modules"), http: t("HTTP 入口", "HTTP entrypoints"), mq: t("消息消费", "Message consumers"), routes: t("前端路由", "Routes"), scheduled: t("定时任务", "Scheduled") };
         const item = new vscode.TreeItem(labels[node.group], vscode.TreeItemCollapsibleState.Collapsed);
-        item.iconPath = new vscode.ThemeIcon(node.group === "modules" ? "package" : node.group === "routes" ? "link" : node.group === "scheduled" ? "watch" : "symbol-method");
+        item.iconPath = new vscode.ThemeIcon(node.group === "modules" ? "package" : node.group === "routes" ? "link" : node.group === "scheduled" ? "watch" : node.group === "mq" ? "mail" : "symbol-method");
         return item;
       }
       case "module": {
@@ -72,10 +73,10 @@ export class AtlasTree implements vscode.TreeDataProvider<Node> {
       }
       case "entrypoint": {
         const e = node.entrypoint;
-        const item = new vscode.TreeItem(e.kind === "http" ? `${e.method} ${e.path}` : e.kind === "frontend-route" ? (e.path ?? e.handler.name) : e.handler.name, vscode.TreeItemCollapsibleState.None);
+        const item = new vscode.TreeItem(e.kind === "http" || e.kind === "mq-consumer" ? `${e.method} ${e.path}` : e.kind === "frontend-route" ? (e.path ?? e.handler.name) : e.handler.name, vscode.TreeItemCollapsibleState.None);
         item.description = e.kind === "http" ? e.handler.name : e.handler.name.replace(/^menu /, "");
         item.tooltip = `${entrypointLabel(e)}\n${e.handler.file}:${e.handler.line ?? 1}`;
-        item.iconPath = new vscode.ThemeIcon(e.kind === "http" ? "arrow-right" : e.kind === "frontend-route" ? "browser" : "watch");
+        item.iconPath = new vscode.ThemeIcon(e.kind === "http" ? "arrow-right" : e.kind === "mq-consumer" ? "mail" : e.kind === "frontend-route" ? "browser" : "watch");
         item.command = { command: "atlas.showFlowForSymbol", title: "", arguments: [e.id] };
         return item;
       }

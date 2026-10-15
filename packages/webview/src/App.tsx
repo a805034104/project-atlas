@@ -22,6 +22,7 @@ import { FeaturesView } from "./views/FeaturesView.js";
 import { StartupView } from "./views/StartupView.js";
 import { FlowView } from "./views/flow/FlowView.js";
 import { HistoryView } from "./views/HistoryView.js";
+import { TraceView } from "./views/TraceView.js";
 
 const VIEWS: Record<ViewId, () => JSX.Element> = {
   overview: OverviewView,
@@ -31,6 +32,7 @@ const VIEWS: Record<ViewId, () => JSX.Element> = {
   startup: StartupView,
   flow: FlowView,
   history: HistoryView,
+  trace: TraceView,
 };
 
 export function App({ bridge, vscode }: { bridge: Bridge; vscode: VsCodeApi }) {
@@ -61,7 +63,7 @@ export function App({ bridge, vscode }: { bridge: Bridge; vscode: VsCodeApi }) {
 
   // Request the active view's data when its phase completes (and again when phases change).
   const requested = useRef(new Map<ViewId, string>());
-  const key = phasesKey(state.analysis);
+  const key = phasesKey(state.analysis, state.runtimeVersion);
   useEffect(() => {
     if (!state.initialized || !viewReady(tab, state.analysis)) return;
     if (state.data[tab] !== undefined && state.dataKey[tab] === key) return;

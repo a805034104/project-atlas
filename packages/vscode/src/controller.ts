@@ -18,6 +18,7 @@ import {
   type AnalysisPhase,
   type AnalysisState,
   type AtlasGraph,
+  type TraceData,
   type UserFacingError,
 } from "@project-atlas/core";
 import { phaseChoices, planTitle } from "./cost.js";
@@ -74,13 +75,45 @@ export class AtlasController implements vscode.Disposable {
   }
 
   get view(): GraphView | undefined {
+    // Built lazily: while spans stream in, the overlay changes every second, but the view
+    // (reconcile + applyOverlay over the whole graph) is only rebuilt when something reads it.
+    if (this.viewStale) {
+      this.viewStale = false;
+      this.rebuildView();
+    }
     return this.viewValue;
   }
 
+  private viewStale = false;
+
   private setGraph(graph: AtlasGraph): void {
     this.graphValue = graph;
-    this.viewValue = new GraphView(graph);
+    this.rebuildView();
     this.changed.fire();
+  }
+
+  private decorator: { decorate(graph: AtlasGraph): AtlasGraph; traceData(graph: AtlasGraph): TraceData } | undefined;
+
+  /**
+   * Runtime overlay (v0.2): observed stats folded into every view and flow. The analysis
+   * graph itself stays untouched (it is what gets saved); call again when spans arrive.
+   */
+  setRuntimeDecorator(decorator: { decorate(graph: AtlasGraph): AtlasGraph; traceData(graph: AtlasGraph): TraceData } | undefined): void {
+    this.decorator = decorator;
+    this.invalidateRuntime();
+  }
+
+  /** Observed stats changed: the next `view` read rebuilds with the current overlay. */
+  invalidateRuntime(): void {
+    if (this.graphValue) this.viewStale = true;
+  }
+
+  private rebuildView(): void {
+    const graph = this.graphValue;
+    if (!graph) return;
+    this.viewStale = false;
+    const decorator = this.decorator;
+    this.viewValue = decorator ? new GraphView(decorator.decorate(graph), () => decorator.traceData(graph)) : new GraphView(graph);
   }
 
   /** Patch the state; keys explicitly set to `undefined` are removed. */

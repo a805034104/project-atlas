@@ -7,9 +7,10 @@ Purpose: robustness (no crashes, sane coverage) and recall gaps. **The precision
 |---|---|---|---|---|---|---|---|
 | pig,pig-ui | 1.4 s | 8 | 593 | 564/593 | 66/593 | frontend-proxy 224, gateway-route 224, http 26 | unknown-receiver 10, unresolved-config 16 |
 | mall-swarm | 0.9 s | 7 | 245 | 243/245 | 229/245 | http 7 | unknown-receiver 9, dynamic-dispatch 20 |
-| jeecgboot | 6.4 s | 11 | 1933 | 1635/1933 | 695/1933 | frontend-proxy 283, http 2 | unknown-receiver 651, unresolved-config 171 |
+| jeecgboot | 6.4 s | 11 | 1933 | 1613/1933 | 695/1933 | frontend-proxy 283, http 2 | unknown-receiver 651, unresolved-config 171 |
 
 Notes:
+- 2026-10-15 (v0.2 S0): data objects and plain accessors are no longer flow steps; JeecgBoot "reaching a service" went 1635 → 1613. All 22 removed flows had reached only `Result#success`, `XxlJobInfo#get*` and similar accessors, i.e. they were false positives.
 - **pig**: most service methods are inherited from MyBatis-Plus `ServiceImpl`, shown as `Xxx.list (ServiceImpl)` steps; the data layer behind them is a library and is not drawn. pig's gateway strips the route prefix in Java code (`PigRequestGlobalFilter`), so the final hop to the backend is shown as an **inferred** edge (dashed, confidence 0.6) with the reason.
 - **JeecgBoot**: ~650 unknown receivers are injected interfaces whose type lives in published jars with no implementation in the repository; they are listed under "Unresolved calls" instead of being guessed. The frontend uses `defHttp.get({ url: Api.x })` with TypeScript enums and a vben `VITE_PROXY`; both are supported.
 - **mall-swarm**: Spring Cloud 2025 gateway naming (`spring-cloud-starter-gateway-server-webflux`, `spring.cloud.gateway.server.webflux.routes`) is supported; the admin frontend is a separate repository and was not included.

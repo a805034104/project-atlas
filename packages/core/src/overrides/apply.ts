@@ -20,6 +20,7 @@ function findSteps(graph: GraphBuilder, ref: string): FlowStep[] {
 export function entrypointLabel(e: Entrypoint): string {
   if (e.kind === "http") return `${e.method ?? "ANY"} ${e.path ?? ""}`;
   if (e.kind === "frontend-route") return `ROUTE ${e.path ?? ""}`;
+  if (e.kind === "mq-consumer" && e.method && e.path) return `${e.method} ${e.path}`;
   return `${e.kind.toUpperCase()} ${e.handler.name}`;
 }
 

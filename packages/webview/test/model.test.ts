@@ -56,7 +56,7 @@ describe("bridge & persisted state", () => {
   it("loadState falls back to defaults on garbage", () => {
     const api = (s: unknown): VsCodeApi => ({ postMessage() {}, getState: () => s, setState() {} });
     expect(loadState(api(undefined))).toEqual(DEFAULT_STATE);
-    expect(loadState(api({ tab: "trace", filters: 3 }))).toEqual(DEFAULT_STATE);
+    expect(loadState(api({ tab: "bogus", filters: 3 }))).toEqual(DEFAULT_STATE);
     expect(loadState(api({ tab: "flow", selectedEntrypointId: "x", filters: { flowMethod: "GET" } }))).toMatchObject({
       tab: "flow",
       selectedEntrypointId: "x",

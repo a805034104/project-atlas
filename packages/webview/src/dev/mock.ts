@@ -11,6 +11,10 @@
  */
 
 import type {
+  RuntimeState,
+  TraceData,
+  TraceDetailData,
+  TraceSpanView,
   AnalysisState,
   CallEdge,
   CommitRecord,
@@ -402,5 +406,75 @@ export function doneState(overrides: Partial<AnalysisState> = {}): AnalysisState
     staleFiles: 0,
     ai: "done",
     ...overrides,
+  };
+}
+
+// ── v0.2 runtime (Trace tab) ─────────────────────────────────────────────────
+const TRACE_A = "4f2a9c0e7b1d4a3c9e8f00112233aabb";
+const TRACE_B = "9a8b7c6d5e4f30211201ffeeddccbbaa";
+const T0 = Date.parse("2026-10-15T14:02:11Z");
+
+export function runtimeState(status: RuntimeState["status"] = "receiving"): RuntimeState {
+  return { status, port: 43180, spans: status === "off" ? 0 : 132, duplicates: 0, rejected: status === "receiving" ? 3 : 0, since: T0 - 60_000, trusted: true };
+}
+
+export function traceData(withTraces = true): TraceData {
+  return {
+    runtime: runtimeState(withTraces ? "receiving" : "off"),
+    services: serviceRefs.filter((s) => s.id !== "svc-ui"),
+    suggestedRequest: { method: "GET", url: "http://localhost:8080/captchaImage" },
+    traces: withTraces
+      ? [
+          { traceId: TRACE_A, start: T0, durationMs: 38.4, error: false, spans: 14, services: ["ruoyi-gateway", "ruoyi-system", "ruoyi-auth"], rootName: "GET /system/user/list", entrypointId: USER_LIST_EP, coverage: { observed: 9, instrumentable: 10 } },
+          { traceId: TRACE_B, start: T0 - 13_000, durationMs: 12.1, error: true, spans: 3, services: ["ruoyi-system"], rootName: "GET /captchaImage" },
+        ]
+      : [],
+    diff: withTraces
+      ? {
+          observedEntrypoints: 2,
+          totalEntrypoints: entrypoints.length,
+          runtimeOnly: [
+            { from: "SysConfigServiceImpl.selectCaptchaEnabled", to: "SysConfigServiceImpl.selectConfigByKey", count: 4, async: false, drawn: true },
+            { from: "SysLoginService.login", to: "SysUserServiceImpl.selectUserByUserName", count: 1, async: false, drawn: false },
+          ],
+          unmatched: [],
+          links: { observed: 2, total: links.length },
+          runtimeLinks: [{ fromService: "ruoyi-system", toService: "ruoyi-job", kind: "mq", channel: "kafka:audit", count: 3 }],
+        }
+      : { observedEntrypoints: 0, totalEntrypoints: entrypoints.length, runtimeOnly: [], unmatched: [], links: { observed: 0, total: links.length }, runtimeLinks: [] },
+  };
+}
+
+export function traceDetail(traceId: string): TraceDetailData | undefined {
+  if (traceId !== TRACE_A) return undefined;
+  const span = (id: string, parent: string | undefined, name: string, layer: string | undefined, stepId: string | undefined, offsetMs: number, durationMs: number, extra: Partial<TraceSpanView> = {}): TraceSpanView => ({
+    spanId: id.padEnd(16, "0"),
+    ...(parent ? { parentSpanId: parent.padEnd(16, "0") } : {}),
+    name,
+    ...(layer ? { layer } : {}),
+    ...(stepId ? { stepId } : {}),
+    service: "ruoyi-system",
+    offsetMs,
+    durationMs,
+    error: false,
+    async: false,
+    ...extra,
+  });
+  return {
+    traceId,
+    start: T0,
+    entrypointId: USER_LIST_EP,
+    spans: [
+      span("1", undefined, "GET /system/user/list", "entrypoint", undefined, 0, 38.4),
+      span("2", "1", "JwtAuthenticationTokenFilter.doFilterInternal", "filter", "s-jwt", 0.4, 37.6),
+      span("3", "2", "RepeatSubmitInterceptor.preHandle", "interceptor", "s-repeat", 1.1, 0.05),
+      span("4", "2", "SysUserController.list", "controller", "s-ctrl", 1.3, 30.2),
+      span("5", "4", "DataScopeAspect.doBefore", "aspect", "s-aspect", 1.4, 0.06),
+      span("6", "4", "SysUserServiceImpl.selectUserList", "service", "s-svc", 1.6, 21.0),
+      span("7", "6", "SysUserMapper.selectUserList", "repository", "s-mapper", 1.7, 12.4),
+      span("8", "7", "SELECT sys_user", "sql", "s-sql", 1.9, 11.8),
+      span("9", "2", "HikariPool.getConnection", undefined, undefined, 1.8, 0.4),
+      span("a", "4", "INSERT sys_oper_log", "sql", undefined, 33.0, 2.1, { async: true }),
+    ],
   };
 }

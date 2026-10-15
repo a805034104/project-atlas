@@ -16,6 +16,7 @@ describe("tabs", () => {
       "Startup",
       "Flow",
       "History",
+      "Trace",
     ]);
   });
 
@@ -38,10 +39,12 @@ describe("tabs", () => {
     expect(document.activeElement).toBe(topo);
 
     fireEvent.keyDown(topo, { key: "End" });
-    expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
-    fireEvent.keyDown(screen.getByRole("tab", { name: "History" }), { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: "Trace" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Trace" }), { key: "ArrowRight" });
     expect(screen.getByRole("tab", { name: "Overview" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(screen.getByRole("tab", { name: "Overview" }), { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: "Trace" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Trace" }), { key: "ArrowLeft" });
     expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
 
     const panel = screen.getByRole("tabpanel");

@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import { GraphView, loadStoredGraph } from "@project-atlas/core";
+import { applyOverlay, emptyAggregates, GraphView, loadStoredGraph, reconcile, TraceStore, type AggregateState } from "@project-atlas/core";
 
 /**
  * Read-only access to `.atlas/graph/` for the MCP tools. Never analyzes and
@@ -10,6 +10,8 @@ import { GraphView, loadStoredGraph } from "@project-atlas/core";
  *   tool call ─▶ stat(meta.json) ─▶ same mtime/size/ino? ─▶ cached GraphView
  *                                   └─ changed ─▶ loadStoredGraph ─▶ new GraphView
  *                                   └─ missing / corrupt ─▶ StoreUnavailableError
+ *   traces/aggregates.json (project-atlas trace) is folded in as observed stats; only
+ *   aggregates (counts, latencies, ids) ever reach the client, never span attributes.
  */
 
 export class StoreUnavailableError extends Error {
@@ -27,7 +29,7 @@ export class StoreUnavailableError extends Error {
 }
 
 export class GraphSource {
-  private cached: { key: string; view: GraphView } | undefined;
+  private cached: { key: string; view: GraphView; aggregates: AggregateState } | undefined;
   private loading: Promise<GraphView> | undefined;
 
   constructor(readonly dir: string) {}
@@ -37,7 +39,8 @@ export class GraphSource {
     let key: string;
     try {
       const s = await stat(meta);
-      key = `${s.mtimeMs}:${s.size}:${s.ino}`;
+      const agg = await stat(path.join(this.dir, "traces", "aggregates.json")).catch(() => undefined);
+      key = `${s.mtimeMs}:${s.size}:${s.ino}|${agg ? `${agg.mtimeMs}:${agg.size}` : "-"}`;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT" || (error as NodeJS.ErrnoException).code === "ENOTDIR") {
         this.cached = undefined;
@@ -56,8 +59,16 @@ export class GraphSource {
     const loaded = await loadStoredGraph(this.dir);
     if (loaded.status === "missing") throw new StoreUnavailableError(this.dir, "graph/meta.json not found");
     if (loaded.status === "rebuild") throw new StoreUnavailableError(this.dir, `stored graph is unreadable: ${loaded.reason}`);
-    const view = new GraphView(loaded.graph);
-    this.cached = { key, view };
+    const aggregates = await new TraceStore(path.join(this.dir, "traces")).loadAggregates();
+    const graph = aggregates.total > 0 ? applyOverlay(loaded.graph, reconcile(loaded.graph, aggregates)) : loaded.graph;
+    const view = new GraphView(graph);
+    this.cached = { key, view, aggregates };
     return view;
+  }
+
+  /** Runtime aggregates of the last loaded view (empty when nothing was traced). */
+  async aggregates(): Promise<AggregateState> {
+    await this.view();
+    return this.cached?.aggregates ?? emptyAggregates();
   }
 }
