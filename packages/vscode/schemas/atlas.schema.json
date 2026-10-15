@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/project-atlas/project-atlas/schemas/atlas.schema.json",
+  "title": "ProjectAtlas configuration (atlas.yaml / .atlas/overrides.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1, "description": "Schema version. Only 1 exists." },
+    "services": {
+      "type": "array",
+      "description": "Override detected services or add repositories from other locations.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "Service name shown in the map (overrides spring.application.name / package.json name)." },
+          "path": { "type": "string", "description": "Directory of the service relative to the workspace root, e.g. ./ruoyi-modules/ruoyi-system" },
+          "git": { "type": "string", "pattern": "^(https://|git@[\\w.-]+:)", "description": "Repository to shallow-clone (https:// or git@ only). Ignored when path is set." },
+          "ref": { "type": "string", "description": "Branch, tag or commit for git." },
+          "stack": { "enum": ["java-spring", "vue", "go", "python"] },
+          "kind": { "enum": ["backend", "gateway", "frontend", "worker"] }
+        }
+      }
+    },
+    "wrappers": {
+      "type": "array",
+      "description": "In-house helpers that perform HTTP or MQ calls (e.g. HttpUtils.sendPost) so Atlas can link them.",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "symbol": { "type": "string", "description": "Fully qualified Class.method, e.g. com.ruoyi.common.utils.http.HttpUtils.sendPost" },
+          "kind": { "enum": ["http", "mq"] },
+          "urlArg": { "type": "integer", "minimum": 0, "description": "Index of the URL argument (http)." },
+          "methodLiteral": { "type": "string", "description": "HTTP method used by the helper, e.g. POST." },
+          "broker": { "enum": ["kafka", "rabbitmq", "rocketmq", "redis-stream"], "description": "MQ broker (v0.2)." },
+          "topicArg": { "type": "integer", "minimum": 0, "description": "Index of the topic argument (mq, v0.2)." }
+        }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "add": { "type": "array", "items": { "$ref": "#/definitions/edge" } },
+        "remove": { "type": "array", "items": { "$ref": "#/definitions/edge" } }
+      }
+    },
+    "ignoreEntrypoints": {
+      "type": "array",
+      "description": "Entrypoints to hide, as \"METHOD /ant/path\" or \"/ant/path\", e.g. \"GET /actuator/**\".",
+      "items": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string", "description": "Step symbol (SysUserController.list), fully-qualified symbol or step id." },
+        "to": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}
