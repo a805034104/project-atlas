@@ -37,9 +37,19 @@ interface Shard {
 
 async function writeAtomic(file: string, data: string): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   await writeFile(tmp, data);
-  await rename(tmp, file);
+  // Windows: a reader or antivirus can hold the target briefly (EPERM/EBUSY); retry a few times.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rename(tmp, file);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 5 || (code !== "EPERM" && code !== "EBUSY" && code !== "EACCES")) throw error;
+      await new Promise((r) => setTimeout(r, 50 * (attempt + 1)));
+    }
+  }
 }
 
 export async function saveGraph(atlasDir: string, graph: AtlasGraph): Promise<void> {
@@ -60,12 +70,18 @@ export async function saveGraph(atlasDir: string, graph: AtlasGraph): Promise<vo
   for (const e of edges) shard(stepService.get(e.from) ?? "").edges.push(e);
   for (const f of flows) shard(entryService.get(f.entrypointId) ?? "").flows.push(f);
 
-  await rm(path.join(dir, "services"), { recursive: true, force: true });
+  // New generation directory: readers keep seeing the previous complete set until meta.json flips.
+  const generation = `services.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   for (const [serviceId, data] of shards) {
-    await writeAtomic(path.join(dir, "services", `${serviceId || "_"}.json`), JSON.stringify(data));
+    await writeAtomic(path.join(dir, generation, `${serviceId || "_"}.json`), JSON.stringify(data));
   }
-  // meta last: a reader that sees the new meta also sees complete shards.
-  await writeAtomic(path.join(dir, "meta.json"), JSON.stringify(meta));
+  await writeAtomic(path.join(dir, "meta.json"), JSON.stringify({ ...meta, shardDir: generation, shardCount: shards.size }));
+  // Old generations (and the legacy "services" dir) are garbage once meta points at the new one.
+  for (const entry of await readdir(dir)) {
+    if ((entry === "services" || entry.startsWith("services.")) && entry !== generation) {
+      await rm(path.join(dir, entry), { recursive: true, force: true }).catch(() => undefined);
+    }
+  }
   await writeAtomic(path.join(atlasDir, ".gitignore"), "*\n");
 }
 
@@ -79,19 +95,32 @@ export async function loadStoredGraph(atlasDir: string): Promise<LoadStoredResul
   } catch {
     return { status: "missing" };
   }
+  let meta: Record<string, unknown>;
+  try {
+    meta = JSON.parse(metaText) as Record<string, unknown>;
+  } catch (error) {
+    return { status: "rebuild", reason: `corrupt meta: ${(error as Error).message}` };
+  }
+  const declared = meta["shardDir"];
+  const shardDir = typeof declared === "string" && /^services(\.[a-z0-9]+)?$/.test(declared) ? declared : "services";
+  const expected = typeof meta["shardCount"] === "number" ? meta["shardCount"] : undefined;
+  delete meta["shardDir"];
+  delete meta["shardCount"];
   const steps: FlowStep[] = [];
   const edges: CallEdge[] = [];
   const flows: Flow[] = [];
   try {
     let shardFiles: string[] = [];
     try {
-      shardFiles = await readdir(path.join(dir, "services"));
+      shardFiles = (await readdir(path.join(dir, shardDir))).filter((f) => f.endsWith(".json"));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
+    if (expected !== undefined && shardFiles.length !== expected) {
+      return { status: "rebuild", reason: `incomplete store: ${shardFiles.length}/${expected} shards in ${shardDir}` };
+    }
     for (const file of shardFiles) {
-      if (!file.endsWith(".json")) continue;
-      const shard = JSON.parse(await readFile(path.join(dir, "services", file), "utf8")) as Shard;
+      const shard = JSON.parse(await readFile(path.join(dir, shardDir, file), "utf8")) as Shard;
       steps.push(...shard.steps);
       edges.push(...shard.edges);
       flows.push(...shard.flows);
@@ -99,13 +128,7 @@ export async function loadStoredGraph(atlasDir: string): Promise<LoadStoredResul
   } catch (error) {
     return { status: "rebuild", reason: `corrupt shard: ${(error as Error).message}` };
   }
-  let meta: unknown;
-  try {
-    meta = JSON.parse(metaText);
-  } catch (error) {
-    return { status: "rebuild", reason: `corrupt meta: ${(error as Error).message}` };
-  }
-  const loaded = validateGraph({ ...(meta as object), steps, edges, flows });
+  const loaded = validateGraph({ ...meta, steps, edges, flows });
   return loaded.status === "ok" ? { status: "ok", graph: loaded.graph } : { status: "rebuild", reason: loaded.detail };
 }
 
@@ -264,7 +287,9 @@ export class GraphView {
     const handler = [...chainTargets].find((t) => !chainSources.has(t)) ?? flow.stepIds[0];
     if (!handler) return flow;
     const projected = projectDfs((id) => this.callEdgesFrom.get(id) ?? [], handler, depth);
-    const stepIds = new Set<string>([...chainSources, ...chainTargets, ...projected.stepIds]);
+    // Keep the stored order of the chain prefix (frontend → gateway → filters … → handler).
+    const chainInOrder = flow.stepIds.filter((id) => chainSources.has(id) || chainTargets.has(id));
+    const stepIds = new Set<string>([...chainInOrder, ...projected.stepIds]);
     const edgeIds = new Set<string>([...chainEdges.map((e) => e.id), ...projected.edgeIds]);
     const truncated = projected.truncated;
     return { entrypointId: flow.entrypointId, stepIds: [...stepIds], edgeIds: [...edgeIds], truncated };
