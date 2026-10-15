@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProjectAtlas webview (dev, mock host)</title>
+  </head>
+  <body class="vscode-dark">
+    <nav class="dev-scenarios" aria-label="Dev scenarios">
+      Scenarios:
+      <a href="?">zh-cn · phased analysis</a>
+      <a href="?locale=en">en</a>
+      <a href="?ai=none">AI not configured</a>
+      <a href="?status=done&amp;stale=3">stale (3 files)</a>
+      <a href="?status=error">analysis error</a>
+      <a href="?status=never">never analyzed</a>
+      <a href="?topology=0">single service</a>
+      <a href="?theme=light">light theme</a>
+    </nav>
+    <div id="root"></div>
+    <script type="module" src="/src/dev/main.tsx"></script>
+  </body>
+</html>
