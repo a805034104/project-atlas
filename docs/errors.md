@@ -21,6 +21,13 @@ Every user-facing error shows **problem → cause → fix** and links here. Diag
 | <a id="atlas-i001"></a>ATLAS-I001 | info | Folder is not a git repository / 不是 git 仓库 | — |
 | <a id="atlas-i002"></a>ATLAS-I002 | info | Shallow clone: history incomplete / 浅克隆，历史不完整 | `git fetch --unshallow` |
 | <a id="atlas-i003"></a>ATLAS-I003 | info | Symbolic link skipped / 跳过符号链接 | — |
+| <a id="atlas-i004"></a>ATLAS-I004 | info | A `git` service in atlas.yaml was not cloned (CLI never clones) / atlas.yaml 中的远程服务未克隆 | Clone it and add as `path`, or analyze in VS Code / 手动克隆并改用 `path`，或在 VS Code 中分析 |
+| <a id="atlas-e060"></a>ATLAS-E060 | error | CLI usage error / 命令行用法错误 | `project-atlas --help` |
+| <a id="atlas-e061"></a>ATLAS-E061 | error | CLI path not found / 路径不存在 | Check the path argument / 检查路径参数 |
+| <a id="atlas-e062"></a>ATLAS-E062 | error | No or corrupt `.atlas` store (CLI `show`, MCP) / 没有或损坏的 .atlas 数据 | `project-atlas analyze` or `Atlas: Analyze Workspace` |
+| <a id="atlas-e063"></a>ATLAS-E063 | error | Entrypoint not found or ambiguous / 入口不存在或不唯一 | Use the id or the exact `METHOD /path` label |
+| <a id="atlas-e064"></a>ATLAS-E064 | error | Cannot write output / 无法写入输出 | Check permissions / 检查权限 |
+| <a id="atlas-e065"></a>ATLAS-E065 | error | CLI analysis failed / 命令行分析失败 | Re-run with `--json` and attach output to an issue |
 | <a id="atlas-w001"></a>ATLAS-W001 | warning | git output exceeded 200 MB and was truncated / git 输出超过上限被截断 | Reduce modules or history window |
 | <a id="atlas-w002"></a>ATLAS-W002 | warning | Directory not readable / 目录无法读取 | Check permissions / 检查权限 |
 | <a id="atlas-w003"></a>ATLAS-W003 | warning | File larger than `atlas.analysis.maxFileSizeKB` skipped / 文件过大被跳过 | Raise the limit if needed / 需要时调大上限 |

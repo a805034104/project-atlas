@@ -4,6 +4,10 @@ import { rm } from "node:fs/promises";
 import {
   analyzeWorkspace,
   buildAiInput,
+  readAtlasOverrides,
+  shallowClone,
+  type Diagnostic,
+  type RootInput,
   createProvider,
   enrichWithAi,
   estimateAiCost,
@@ -122,8 +126,11 @@ export class AtlasController implements vscode.Disposable {
 
   private async runAnalysis(cancel: AbortController): Promise<void> {
     const settings = readSettings();
-    const roots = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === "file").map((f) => ({ path: f.uri.fsPath }));
+    const roots: RootInput[] = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === "file").map((f) => ({ path: f.uri.fsPath }));
     if (roots.length === 0) return;
+    const firstRoot = roots[0] as RootInput;
+    const { overrides } = await readAtlasOverrides(firstRoot.path);
+    const cloneDiagnostics = await this.cloneDeclaredServices(overrides.services, roots, cancel.signal);
     this.staleFiles.clear();
     this.setState({ status: "running", completedPhases: [], currentPhase: "parse", progress: 0, staleFiles: 0, error: undefined });
     const started = Date.now();
@@ -144,6 +151,7 @@ export class AtlasController implements vscode.Disposable {
             exclude: settings.exclude,
             maxFileSizeKB: settings.maxFileSizeKB,
             history: settings.history,
+            overrides,
             signal: cancel.signal,
             onPhase: (phase, value) => {
               const completed = last && last !== phase ? [...new Set([...this.state.completedPhases, last])] : this.state.completedPhases;
@@ -152,6 +160,7 @@ export class AtlasController implements vscode.Disposable {
               progress.report({ message: `${phaseLabel(phase)} ${Math.round(value * 100)}%` });
             },
           });
+          result.graph.diagnostics.push(...cloneDiagnostics);
           await saveGraph(this.atlasDir, result.graph);
           this.setGraph(result.graph);
           this.setState({ status: "done", completedPhases: ["parse", "rules", "cross-service", "history"], ai: settings.provider === "none" ? "none" : "pending-confirmation" });
@@ -225,6 +234,45 @@ export class AtlasController implements vscode.Disposable {
       this.setState({ ai: "error", error: err });
       log(`AI enrichment failed: ${err.code} ${err.problem}`);
     }
+  }
+
+  /**
+   * atlas.yaml `services[].git`: shallow-clone into .atlas/clones (trusted workspace + one-time
+   * confirmation per URL). A failed clone only fails that service.
+   */
+  private async cloneDeclaredServices(services: readonly { git?: string; ref?: string; path?: string; name?: string }[], roots: RootInput[], signal: AbortSignal): Promise<Diagnostic[]> {
+    const wanted = services.filter((s) => s.git && s.path === undefined);
+    if (wanted.length === 0) return [];
+    if (!vscode.workspace.isTrusted) {
+      return [{ code: "ATLAS-E030", severity: "warning", message: t("受限模式下不会克隆 atlas.yaml 中的仓库", "Repositories in atlas.yaml are not cloned in Restricted Mode") }];
+    }
+    const approvedKey = "atlas.approvedCloneUrls";
+    const approved = new Set(this.context.workspaceState.get<string[]>(approvedKey, []));
+    const pending = wanted.filter((s) => !approved.has(s.git as string));
+    if (pending.length > 0) {
+      const ok = t("克隆", "Clone");
+      const pick = await vscode.window.showWarningMessage(
+        t(`atlas.yaml 声明了 ${pending.length} 个远程仓库，需要浅克隆到 .atlas/clones：`, `atlas.yaml declares ${pending.length} remote repositories to shallow-clone into .atlas/clones:`) + "\n" + pending.map((s) => s.git).join("\n"),
+        { modal: true },
+        ok,
+      );
+      if (pick !== ok) return [{ code: "ATLAS-E030", severity: "info", message: t("已跳过 atlas.yaml 中的远程仓库", "Skipped remote repositories from atlas.yaml") }];
+      for (const s of pending) approved.add(s.git as string);
+      await this.context.workspaceState.update(approvedKey, [...approved]);
+    }
+    const diagnostics: Diagnostic[] = [];
+    for (const s of wanted) {
+      try {
+        const dir = await shallowClone({ atlasDir: this.atlasDir, url: s.git as string, ...(s.ref ? { ref: s.ref } : {}), signal });
+        roots.push({ path: dir, kind: "clone", git: { url: s.git as string, ...(s.ref ? { ref: s.ref } : {}), shallow: true } });
+        log(`Cloned ${s.git} → ${dir}`);
+      } catch (error) {
+        const err = toUserFacing(error);
+        diagnostics.push({ code: err.code, severity: "error", message: `${err.problem}: ${err.cause}` });
+        log(`Clone failed: ${err.problem} — ${err.cause}`);
+      }
+    }
+    return diagnostics;
   }
 
   markStale(file: string): void {
