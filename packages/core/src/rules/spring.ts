@@ -310,6 +310,25 @@ export function runSpringRules(
           recordRestCall(fromStep, call, at);
           continue;
         }
+        // Interface from a jar, implementation in the project (`AIChatHandler implements IAIChatHandler`).
+        const simple = raw.slice(raw.lastIndexOf(".") + 1);
+        const implementors = index.types.filter((t) => t.type.kind === "class" && index.isBean(t) && index.supertypeNames(t).includes(simple));
+        if (implementors.length > 0) {
+          const branch = implementors.length > 1 ? `${implementors.length} implementations of ${simple}; branch shown for each` : undefined;
+          implementors.forEach((impl, i) => {
+            const target = index.findMethods(impl, call.method, call.argCount)[0];
+            if (!target) return;
+            const toStep = methodStep(target);
+            graph.edge(fromStep, toStep, {
+              provenance: "framework-rule",
+              order,
+              rationale: branch ?? `implements external interface ${simple}`,
+              ...(branch ? { discriminator: `branch:${i}` } : {}),
+            });
+            expand(target, toStep);
+          });
+          continue;
+        }
         const imported = typeCtx.facts.imports[raw];
         const injected = !!field && (hasAnnotation(field.annotations, "Autowired", "Resource", "Inject") || field.modifiers.includes("final"));
         if (injected && (!imported || !THIRD_PARTY.test(imported)) && /^[A-Z]/.test(raw) && !/^(String|List|Map|Set|Long|Integer|Object)$/.test(raw)) {
@@ -371,9 +390,11 @@ export function runSpringRules(
           linkStatement(type, target.method.name, mapperStep);
           return;
         }
-        if (!target && isMapper(type) && index.supertypeNames(type).includes("BaseMapper")) {
-          const mapperStep = step("repository", `${type.type.fqcn}#${call.method}(BaseMapper)`, { ...typeSymbol(type, `${simpleTypeName(type)}.${call.method}`), line: at.line ?? type.type.line, file: type.file.relPath });
-          graph.edge(fromStep, mapperStep, { provenance: "framework-rule", order, rationale: "MyBatis-Plus BaseMapper" });
+        if (!target && isMapper(type)) {
+          // Inherited from a framework base mapper (MyBatis-Plus BaseMapper, MPJBaseMapper, project base mappers in jars).
+          const base = index.supertypeNames(type)[0] ?? "BaseMapper";
+          const mapperStep = step("repository", `${type.type.fqcn}#${call.method}(inherited)`, typeSymbol(type, `${simpleTypeName(type)}.${call.method} (${base})`));
+          graph.edge(fromStep, mapperStep, { provenance: "framework-rule", order, rationale: `inherited from ${base}` });
           return;
         }
       }
@@ -383,7 +404,14 @@ export function runSpringRules(
 
     impls.forEach((impl, i) => {
       const target = index.findMethods(impl, call.method, call.argCount)[0];
-      if (!target) return;
+      if (!target) {
+        // Method inherited from a library base class (MyBatis-Plus ServiceImpl / IService…): show it, stop there.
+        const base = index.supertypeNames(impl).find((n) => !index.types.some((t) => t.type.name === n)) ?? index.supertypeNames(type)[0];
+        if (!base) return;
+        const inherited = step(layerOf(impl), `${impl.type.fqcn}#${call.method}(inherited)`, typeSymbol(impl, `${simpleTypeName(impl)}.${call.method} (${base})`));
+        graph.edge(fromStep, inherited, { provenance: "framework-rule", order, rationale: `inherited from ${base}`, ...(rationale ? { discriminator: `branch:${i}` } : {}) });
+        return;
+      }
       const toStep = methodStep(target);
       const hops = [...aspectSteps(target, impl), toStep];
       let prev = fromStep;

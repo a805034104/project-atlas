@@ -39,6 +39,8 @@ export class ConfigView {
   constructor(
     layers: readonly ConfigLayer[],
     readonly profiles: readonly string[] = [],
+    /** Maven resource-filtering tokens substituted for `@name@` before placeholder resolution. */
+    private readonly mavenTokens: Readonly<Record<string, string>> = {},
   ) {
     for (const layer of layers) {
       // Within a file, later documents override earlier ones.
@@ -76,7 +78,8 @@ export class ConfigView {
 
   resolve(raw: string): Resolved {
     const unresolved: string[] = [];
-    const value = this.expand(raw, [], unresolved);
+    const filtered = raw.replace(/@([\w.-]+)@/g, (m, key: string) => this.mavenTokens[key] ?? m);
+    const value = this.expand(filtered, [], unresolved);
     return { value, unresolved };
   }
 

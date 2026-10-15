@@ -1,7 +1,7 @@
 import type { GraphBuilder } from "../graph/builder.js";
 import { normalizeHttpPath, stableId } from "../model/ids.js";
 import type { Entrypoint, ServiceLink, SourceRef, SymbolRef } from "../model/types.js";
-import type { FrontendApp, JavaService } from "../workspace/detect.js";
+import { GATEWAY_ROUTE_PREFIXES, type FrontendApp, type JavaService } from "../workspace/detect.js";
 import { antMatch } from "./ant.js";
 import { hasAnnotation, type JavaIndex, type TypeRef } from "./java-index.js";
 import type { FeignCallSite, RestCallSite } from "./spring.js";
@@ -53,7 +53,7 @@ export interface XServiceInput {
 }
 
 export function parseGatewayRoutes(svc: JavaService): GatewayRoute[] {
-  const entries = svc.config.list("spring.cloud.gateway.routes");
+  const entries = GATEWAY_ROUTE_PREFIXES.flatMap((p) => svc.config.list(p));
   const byIndex = new Map<number, typeof entries>();
   for (const e of entries) {
     const m = /routes\[(\d+)\]/i.exec(e.key);
@@ -61,6 +61,9 @@ export function parseGatewayRoutes(svc: JavaService): GatewayRoute[] {
     const i = Number(m[1]);
     byIndex.set(i, [...(byIndex.get(i) ?? []), e]);
   }
+  const defaultFilters = ["spring.cloud.gateway.default-filters", "spring.cloud.gateway.server.webflux.default-filters", "spring.cloud.gateway.server.webmvc.default-filters"]
+    .flatMap((p) => svc.config.list(p))
+    .map((e) => svc.config.resolve(e.value).value);
   const routes: GatewayRoute[] = [];
   for (const [, group] of [...byIndex.entries()].sort((a, b) => a[0] - b[0])) {
     const value = (suffix: RegExp) => group.find((e) => suffix.test(e.key.replace(/^.*routes\[\d+\]\./i, "")));
@@ -68,7 +71,7 @@ export function parseGatewayRoutes(svc: JavaService): GatewayRoute[] {
     const id = resolved(value(/^id$/i)?.value ?? "");
     const uri = resolved(value(/^uri$/i)?.value ?? "");
     const predicates = group.filter((e) => /\.predicates\[\d+\]$/i.test(e.key)).map((e) => resolved(e.value));
-    const filters = group.filter((e) => /\.filters\[\d+\]$/i.test(e.key)).map((e) => resolved(e.value));
+    const filters = [...defaultFilters, ...group.filter((e) => /\.filters\[\d+\]$/i.test(e.key)).map((e) => resolved(e.value))];
     const paths = predicates.filter((p) => /^Path\s*=/i.test(p)).flatMap((p) => p.replace(/^Path\s*=\s*/i, "").split(",").map((s) => s.trim()).filter(Boolean));
     const route: GatewayRoute = { id, uri, paths, stripPrefix: 0, filterNames: [], at: group[0]?.at ?? { rootId: svc.service.rootId, file: "" } };
     for (const f of filters) {
@@ -190,16 +193,19 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
     return hops;
   };
 
-  const chainTo = (fromStep: string, hops: readonly string[], handler: string, rationale: string): void => {
+  const chainTo = (fromStep: string, hops: readonly string[], handler: string, rationale: string, provenance: "framework-rule" | "ai-inferred" = "framework-rule"): void => {
     let prev = fromStep;
-    for (const hop of [...hops, handler]) {
-      graph.edge(prev, hop, { provenance: "framework-rule", rationale });
+    const all = [...hops, handler];
+    all.forEach((hop, i) => {
+      // Only the final hop into the backend carries the inference; config-derived hops stay rules.
+      const inferredHop = provenance === "ai-inferred" && i === all.length - 1;
+      graph.edge(prev, hop, { provenance: inferredHop ? "ai-inferred" : "framework-rule", rationale, ...(inferredHop ? { confidence: 0.6 } : {}) });
       prev = hop;
-    }
+    });
   };
 
   /** Resolve a request arriving at `service` with `path`; follows a gateway hop when needed. */
-  const resolveAt = (svc: JavaService, method: string, path: string): { target?: Entrypoint; via?: { gateway: JavaService; route: GatewayRoute; downstream: string; backend: JavaService } } => {
+  const resolveAt = (svc: JavaService, method: string, path: string): { target?: Entrypoint; inferred?: string; via?: { gateway: JavaService; route: GatewayRoute; downstream: string; backend: JavaService } } => {
     if (svc.service.kind === "gateway") {
       for (const route of parseGatewayRoutes(svc)) {
         if (!route.paths.some((p) => antMatch(p, path))) continue;
@@ -207,8 +213,16 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
         const backend = uri ? serviceFor(uri.host, uri.port) : undefined;
         if (!backend) return {};
         const downstream = applyRoute(route, path);
+        const via = { gateway: svc, route, downstream, backend };
         const target = matchEntrypoint(entries, backend.service.id, method, downstream);
-        return target ? { target, via: { gateway: svc, route, downstream, backend } } : { via: { gateway: svc, route, downstream, backend } };
+        if (target) return { target, via };
+        if (route.stripPrefix === 0 && !route.rewrite) {
+          // Gateways often strip the service prefix in code (custom GlobalFilter); infer it, never assert it.
+          const stripped = normalizeHttpPath(`/${downstream.split("/").filter(Boolean).slice(1).join("/")}`);
+          const guess = matchEntrypoint(entries, backend.service.id, method, stripped);
+          if (guess) return { target: guess, via: { ...via, downstream: stripped }, inferred: `no StripPrefix in config; matched ${stripped} assuming the gateway strips the first segment in code` };
+        }
+        return { via };
       }
       return {};
     }
@@ -226,14 +240,15 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
         graph.unresolved.push({ fromStepId: call.stepId, expression: `${call.method} ${call.browserPath}`, reason: "unresolved-config", at: call.at });
         continue;
       }
-      const upstream = proxy.stripPrefix && !proxy.prefix.startsWith("^") ? normalizeHttpPath(call.browserPath.slice(proxy.prefix.replace(/\/$/, "").length)) : call.browserPath;
       const url = parseUrl(proxy.target);
+      const stripped = proxy.stripPrefix && !proxy.prefix.startsWith("^") ? call.browserPath.slice(proxy.prefix.replace(/\/$/, "").length) : call.browserPath;
+      const upstream = normalizeHttpPath(`${url && url.path !== "/" ? url.path : ""}/${stripped}`);
       const first = url ? serviceFor(url.host, url.port) : undefined;
       if (!first) {
         graph.unresolved.push({ fromStepId: call.stepId, expression: `${call.method} ${call.browserPath} → ${proxy.target}`, reason: "unresolved-config", at: call.at });
         continue;
       }
-      const { target, via } = resolveAt(first, call.method, upstream);
+      const { target, via, inferred } = resolveAt(first, call.method, upstream);
       if (!target) {
         graph.unresolved.push({ fromStepId: call.stepId, expression: `${call.method} ${upstream}${via ? ` → ${via.backend.service.name} ${via.downstream}` : ` @ ${first.service.name}`}`, reason: "unresolved-config", at: call.at });
         continue;
@@ -244,12 +259,19 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
       const rationale = via
         ? `${proxy.prefix} → ${proxy.target}; ${via.route.paths.join(",")}${via.route.stripPrefix ? ` StripPrefix=${via.route.stripPrefix}` : ""} → ${via.route.uri}`
         : `${proxy.prefix} → ${proxy.target}`;
-      chainTo(call.stepId, hops, handler, rationale);
+      chainTo(call.stepId, hops, handler, inferred ? `${rationale}; ${inferred}` : rationale, inferred ? "ai-inferred" : "framework-rule");
       if (!result.upstream.has(target.id)) result.upstream.set(target.id, { stepIds: [call.stepId, ...hops] });
       const evidence = [proxy.at, { rootId: call.at.rootId, file: call.at.file, line: call.at.line ?? 1 }];
       if (via) {
         addLink(app.service.id, via.gateway.service.id, "frontend-proxy", `${call.method} ${call.browserPath}`, call.stepId, undefined, evidence, rationale);
-        addLink(via.gateway.service.id, via.backend.service.id, "gateway-route", `${call.method} ${via.downstream}`, hops[hops.length - 1] ?? call.stepId, target, [via.route.at], rationale);
+        addLink(via.gateway.service.id, via.backend.service.id, "gateway-route", `${call.method} ${via.downstream}`, hops[hops.length - 1] ?? call.stepId, target, [via.route.at], inferred ? `${rationale}; ${inferred}` : rationale);
+        if (inferred) {
+          const link = result.links[result.links.length - 1];
+          if (link) {
+            link.provenance = "ai-inferred";
+            link.confidence = 0.6;
+          }
+        }
       } else {
         addLink(app.service.id, first.service.id, "frontend-proxy", `${call.method} ${call.browserPath}`, call.stepId, target, evidence, rationale);
       }
