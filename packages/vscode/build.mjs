@@ -20,8 +20,9 @@ const common = {
   sourcemap: !production,
   minify: production,
   logLevel: "info",
-  // `import.meta.url` is unused in the bundle (wasmDir/workerPath are passed explicitly).
-  define: { "import.meta.url": "undefined" },
+  // CJS has no import.meta: web-tree-sitter (and core) need a real file URL at load time.
+  banner: { js: 'const __atlasImportMetaUrl = require("node:url").pathToFileURL(__filename).href;' },
+  define: { "import.meta.url": "__atlasImportMetaUrl" },
 };
 
 await build({ ...common, entryPoints: [path.join(here, "src/extension.ts")], outfile: path.join(dist, "extension.js"), external: ["vscode"] });

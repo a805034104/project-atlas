@@ -1,4 +1,5 @@
 import { availableParallelism } from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { FileFacts } from "../facts/types.js";
@@ -35,7 +36,7 @@ export function defaultPoolSize(): number {
 export async function createParsePool(options: PoolOptions = {}): Promise<ParsePool> {
   const moduleUrl: string = import.meta.url ?? "";
   const runningFromSource = moduleUrl.endsWith(".ts");
-  const workerPath = options.workerPath ?? (moduleUrl ? fileURLToPath(new URL("./worker.js", moduleUrl)) : undefined);
+  const workerPath = options.workerPath ? path.resolve(options.workerPath) : moduleUrl ? fileURLToPath(new URL("./worker.js", moduleUrl)) : undefined;
   const size = runningFromSource || !workerPath ? 0 : (options.size ?? defaultPoolSize());
   if (size === 0 || !workerPath) return inlinePool(await loadParsers(options.wasmDir));
   return workerPool(workerPath, size, options.wasmDir);
