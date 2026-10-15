@@ -43,17 +43,18 @@ import type { CliIo } from "../io.js";
 
 export interface TraceDeps {
   /** Spawn the traced command; returns its exit code. Tests replace this. */
-  run?: (command: string, env: Record<string, string>, cwd: string) => Promise<number>;
+  run?: (command: string, env: Record<string, string>, cwd: string, options: { stdoutToStderr: boolean }) => Promise<number>;
   /** Resolves when the user interrupts a `--print-config` session. */
   waitForInterrupt?: () => Promise<void>;
   /** Flush window after the command exits (exporter batch delay is 500 ms). */
   settleMs?: number;
 }
 
-function defaultRun(command: string, env: Record<string, string>, cwd: string): Promise<number> {
+function defaultRun(command: string, env: Record<string, string>, cwd: string, options: { stdoutToStderr: boolean }): Promise<number> {
   return new Promise((resolve, reject) => {
     // shell: the command comes from the user's own terminal (or the startup guide); mvn is mvn.cmd on Windows.
-    const child = spawn(command, { cwd, env: { ...process.env, ...env }, stdio: "inherit", shell: true });
+    // With --json the app's own output goes to stderr so stdout stays one JSON document.
+    const child = spawn(command, { cwd, env: { ...process.env, ...env }, stdio: options.stdoutToStderr ? ["inherit", process.stderr, "inherit"] : "inherit", shell: true });
     const forward = () => {}; // Ctrl-C reaches the child through the console; keep this process alive to summarise
     process.on("SIGINT", forward);
     child.on("error", reject);
@@ -210,7 +211,7 @@ export async function traceCommand(cmd: TraceCommand, io: CliIo, deps: TraceDeps
         );
       }
       io.stderr(`atlas: ${launch.launcher} → ${launch.command}${Object.keys(launch.env).length ? `  (JAVA_TOOL_OPTIONS set)` : ""}\n`);
-      const code = await (deps.run ?? defaultRun)(launch.command, launch.env, io.cwd);
+      const code = await (deps.run ?? defaultRun)(launch.command, launch.env, io.cwd, { stdoutToStderr: cmd.json });
       await new Promise((resolve) => setTimeout(resolve, deps.settleMs ?? 1500));
       if (!session) return code;
       const s = summary(graph, session.aggregator.state);
