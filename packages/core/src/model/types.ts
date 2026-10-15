@@ -117,6 +117,8 @@ export interface Entrypoint {
   /** Normalized path (see normalizeHttpPath). */
   path?: string;
   handler: SymbolRef;
+  /** Runtime overlay (v0.2): requests observed on this entrypoint. */
+  observed?: RuntimeStats;
 }
 
 export type FlowLayer =
@@ -138,6 +140,8 @@ export interface FlowStep {
   serviceId: string;
   layer: FlowLayer;
   symbol: SymbolRef;
+  /** Runtime overlay (v0.2): spans matched to this step. */
+  observed?: RuntimeStats;
 }
 
 export interface CallEdge {
