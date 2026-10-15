@@ -116,3 +116,16 @@ describe("flow overlay", () => {
     expect(h.sent.filter((m) => m.type === "requestFlow").length).toBe(before + 1);
   });
 });
+
+describe("topology MQ channels", () => {
+  it("draws one pill node per topic between producers and consumers", async () => {
+    const { topologyData } = await import("../src/dev/mock.js");
+    const base = topologyData();
+    const mq = (id: string, from: string, to: string, channel: string) => ({ id, fromServiceId: from, toServiceId: to, kind: "mq" as const, channel, fromStepId: "x", provenance: "framework-rule" as const, confidence: 1, evidence: [] });
+    const data = { ...base, links: [...base.links, mq("m1", "svc-system", "svc-auth", "kafka:order-created"), mq("m2", "svc-gateway", "svc-auth", "kafka:order-created")] };
+    const h = openView("topology", { payload: { view: "topology", data }, showTopology: true });
+    const pills = [...h.container.querySelectorAll(".graph-node.pill")];
+    expect(pills).toHaveLength(1);
+    expect(pills[0]?.getAttribute("aria-label")).toBe("kafka order-created: 2 producing service(s), 1 consuming service(s)");
+  });
+});
