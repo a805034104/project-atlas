@@ -91,11 +91,11 @@ describe("withRetry", () => {
 });
 
 describe("estimateTokens", () => {
-  it("counts CJK as one token per char and other text at ~3.5 chars/token", () => {
+  it("counts CJK as one token per char and other text at ~2.75 chars/token", () => {
     expect(estimateTokens("")).toBe(0);
     expect(estimateTokens("用户管理")).toBe(4);
-    expect(estimateTokens("abcdefg")).toBe(2);
-    expect(estimateTokens("用户 list")).toBe(2 + Math.ceil(5 / 3.5));
+    expect(estimateTokens("abcdefg")).toBe(3);
+    expect(estimateTokens("用户 list")).toBe(2 + Math.ceil(5 / 2.75));
   });
 });
 

@@ -110,7 +110,8 @@ export function featuresPrompt(input: FeaturesInput): Prompt {
       input.language,
     ),
     user: `${wrapUntrusted("atlas:modules", modules)}\n${wrapUntrusted("atlas:entrypoints", entrypoints)}`,
-    maxOutputTokens: 4000,
+    // Each feature lists entrypoint ids; ~170 RuoYi endpoints already overflow 4000 tokens.
+    maxOutputTokens: 8000,
   };
 }
 

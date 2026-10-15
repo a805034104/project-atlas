@@ -33,6 +33,8 @@ export interface LlmResponse {
   text: string;
   inputTokens: number;
   outputTokens: number;
+  /** The provider stopped at maxOutputTokens; the text is likely incomplete JSON. */
+  truncated?: boolean;
 }
 
 export interface LlmProvider {
@@ -212,7 +214,9 @@ function finish(
   truncated: boolean,
 ): LlmResponse {
   if (text.trim().length === 0) throw new LlmEmptyError(provider, truncated ? "truncated" : "empty");
-  return { text, inputTokens: toCount(inputTokens), outputTokens: toCount(outputTokens) };
+  const response: LlmResponse = { text, inputTokens: toCount(inputTokens), outputTokens: toCount(outputTokens) };
+  if (truncated) response.truncated = true;
+  return response;
 }
 
 function toCount(value: unknown): number {

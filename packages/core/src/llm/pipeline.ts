@@ -59,6 +59,8 @@ const DEFAULT_CONCURRENCY = 4;
 const MAX_HISTORY_COMMITS = 50;
 /** Hub files longer than this are cut (and marked) before sending. */
 const MAX_FILE_CHARS = 60_000;
+/** Ceiling for the one retry after a truncated response (non-streaming requests stay well under HTTP timeouts). */
+const MAX_OUTPUT_TOKENS = 16_000;
 
 export type AiPhase = "file-summary" | "module-summary" | "features" | "startup" | "history";
 
@@ -160,6 +162,17 @@ export async function runAiPipeline(input: AiPipelineInput): Promise<AiPipelineR
   };
 
   async function ask<T>(phase: AiPhase, prompt: Prompt, validate: (value: unknown) => T): Promise<T> {
+    let maxOutputTokens = prompt.maxOutputTokens;
+    for (;;) {
+      const response = await send(phase, prompt, maxOutputTokens);
+      if (!response.truncated) return validate(parseJsonObject(response.text));
+      // Cut off at the output limit: the JSON is incomplete. Retry once with a larger limit.
+      if (maxOutputTokens >= MAX_OUTPUT_TOKENS) throw new LlmEmptyError(provider.name, "truncated");
+      maxOutputTokens = Math.min(maxOutputTokens * 4, MAX_OUTPUT_TOKENS);
+    }
+  }
+
+  async function send(phase: AiPhase, prompt: Prompt, maxOutputTokens: number) {
     const estimate = estimateTokens(prompt.system) + estimateTokens(prompt.user);
     budget.reserve(estimate);
     let response;
@@ -169,7 +182,7 @@ export async function runAiPipeline(input: AiPipelineInput): Promise<AiPipelineR
           provider.complete({
             system: prompt.system,
             user: prompt.user,
-            maxOutputTokens: prompt.maxOutputTokens,
+            maxOutputTokens,
             signal: run.signal,
           }),
         {
@@ -193,7 +206,7 @@ export async function runAiPipeline(input: AiPipelineInput): Promise<AiPipelineR
     usage.inputTokens += response.inputTokens;
     usage.outputTokens += response.outputTokens;
     usageByPhase.set(phase, usage);
-    return validate(parseJsonObject(response.text));
+    return response;
   }
 
   async function call<T>(spec: CallSpec<T>): Promise<T | undefined> {

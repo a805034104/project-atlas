@@ -99,6 +99,7 @@ const report = {
   model: llm.model,
   estimate: plan.total,
   actual: { inputTokens: usedIn, outputTokens: usedOut },
+  usageByPhase: result.usage.map((u) => ({ phase: u.phase, inputTokens: u.inputTokens, outputTokens: u.outputTokens })),
   failures: result.failures.map((f) => ({ phase: f.phase, key: f.key, code: f.error.code, problem: scrub(f.error.problem) })),
   evidenceRejected: result.evidenceRejected,
   excludedFiles: result.excludedFiles,

@@ -107,7 +107,7 @@ export async function buildAiInput(graph: AtlasGraph, workspace: Workspace): Pro
   };
 }
 
-const OUTPUT_ESTIMATE: Record<AiPhase, number> = { "file-summary": 250, "module-summary": 400, features: 2500, startup: 1500, history: 400 };
+const OUTPUT_ESTIMATE: Record<AiPhase, number> = { "file-summary": 250, "module-summary": 400, features: 5000, startup: 1500, history: 400 };
 const PROMPT_OVERHEAD = 400;
 
 /** Upper-bound cost estimate per phase, shown in the confirmation dialog before any request is sent. */
@@ -171,17 +171,31 @@ export async function enrichWithAi(options: EnrichOptions): Promise<{ graph: Atl
 /** Deterministic startup guides stay; AI guides only add steps/prerequisites/ports not already present. */
 function mergeStartup(base: readonly StartupGuide[], ai: readonly StartupGuide[]): StartupGuide[] {
   const out = base.map((g) => ({ ...g, prerequisites: [...g.prerequisites], steps: [...g.steps], ports: [...g.ports] }));
+  const files = (g: StartupGuide): Set<string> =>
+    new Set([...g.steps, ...g.ports, ...g.prerequisites].map((x) => x.evidence.file));
+  // The model names targets freely ("后端（ruoyi-admin）"), so match on the exact name, a name
+  // mention, or shared evidence files before treating a guide as new.
+  const sameTarget = (g: StartupGuide, guide: StartupGuide): boolean => {
+    if (g.target === guide.target || guide.target.toLowerCase().includes(g.target.toLowerCase())) return true;
+    const cited = files(guide);
+    return [...files(g)].some((f) => cited.has(f));
+  };
   for (const guide of ai) {
-    const target = out.find((g) => g.target === guide.target);
+    const target = out.find((g) => sameTarget(g, guide));
     if (!target) {
       out.push(guide);
       continue;
     }
     for (const p of guide.prerequisites) if (!target.prerequisites.some((x) => x.name.toLowerCase() === p.name.toLowerCase())) target.prerequisites.push(p);
-    for (const s of guide.steps) if (!target.steps.some((x) => x.command === s.command)) target.steps.push(s);
+    for (const s of guide.steps) if (!target.steps.some((x) => normalizeCommand(x.command) === normalizeCommand(s.command))) target.steps.push(s);
     for (const p of guide.ports) if (!target.ports.some((x) => x.port === p.port)) target.ports.push(p);
   }
   return out;
+}
+
+/** `./ry.sh start` and `sh ry.sh start` are the same step. */
+function normalizeCommand(command: string): string {
+  return command.trim().replace(/\s+/g, " ").replace(/^(?:sh|bash) /, "").replace(/(^|\s)\.\//g, "$1");
 }
 
 export function mergeAiResult(graph: AtlasGraph, result: AiPipelineResult): AtlasGraph {
