@@ -1,0 +1,1102 @@
+/*
+ * ProjectAtlas webview styles.
+ * Rule (spec Pass 5): colours come ONLY from --vscode-* theme tokens. No literal
+ * colour values anywhere — enforced by test/no-color-literals.test.ts.
+ * React Flow's own stylesheet is NOT imported (it ships colour literals); the
+ * few structural rules it needs are reproduced at the bottom of this file.
+ */
+
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.atlas {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.code,
+code,
+.command {
+  font-family: var(--vscode-editor-font-family);
+}
+
+.muted,
+.subtle {
+  color: var(--vscode-descriptionForeground);
+}
+
+h2 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.6em 0 0.4em;
+}
+
+h3.subtle {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- focus & controls ---------- */
+
+:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  padding: 3px 10px;
+}
+
+button.primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+button.primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+button.secondary,
+.context-menu button {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+button.secondary:hover,
+.context-menu button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+button.small {
+  padding: 1px 6px;
+  font-size: 0.9em;
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--vscode-textLink-foreground);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.link:hover,
+a.link:hover {
+  text-decoration: underline;
+}
+
+a.link {
+  color: var(--vscode-textLink-foreground);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+input,
+select {
+  font: inherit;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, transparent);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+label.checkbox {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.toolbar h2 {
+  margin: 0;
+}
+
+.badge {
+  margin-left: 4px;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ---------- top bar / tabs ---------- */
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  padding: 0 12px;
+  position: sticky;
+  top: 0;
+  background: var(--vscode-editor-background);
+  z-index: 10;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--vscode-editor-background);
+  border-radius: 0;
+  padding: 6px 10px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--vscode-foreground);
+  border-bottom-color: var(--vscode-focusBorder);
+}
+
+.tab:hover {
+  color: var(--vscode-foreground);
+}
+
+.legend-button {
+  margin-bottom: 4px;
+}
+
+.tabpanel {
+  padding: 8px 16px 24px;
+  flex: 1;
+}
+
+.breadcrumb {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 16px;
+  font-size: 0.9em;
+}
+
+.breadcrumb ol {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.breadcrumb li + li::before {
+  content: "›";
+  margin-right: 4px;
+}
+
+.breadcrumb li[aria-current="page"] {
+  color: var(--vscode-foreground);
+}
+
+/* ---------- state matrix ---------- */
+
+.banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px;
+  border-left: 3px solid var(--vscode-charts-blue);
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  margin: 4px 0;
+}
+
+.banner-stale {
+  border-left-color: var(--vscode-charts-yellow);
+}
+
+.banner-partial {
+  border-left-color: var(--vscode-charts-purple);
+}
+
+.tabpanel .banner {
+  margin: 4px 0 8px;
+}
+
+.progress-line {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 4px 0 8px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.skeleton-section {
+  margin: 12px 0 20px;
+}
+
+.skeleton-line {
+  height: 10px;
+  margin: 8px 0;
+  width: 60%;
+  border-radius: 2px;
+  background: var(--vscode-editorWidget-background, var(--vscode-input-background));
+  animation: atlas-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-line.wide {
+  width: 35%;
+  height: 14px;
+}
+
+.skeleton-line.short {
+  width: 45%;
+}
+
+@keyframes atlas-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.empty-state {
+  max-width: 640px;
+  margin: 32px 0;
+}
+
+.error-panel {
+  border-left: 3px solid var(--vscode-charts-red);
+  padding: 4px 16px 12px;
+  margin: 8px 16px;
+  background: var(--vscode-inputValidation-errorBackground, var(--vscode-editor-background));
+}
+
+.tabpanel .error-panel {
+  margin: 8px 0;
+}
+
+.error-panel dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.error-panel dt {
+  color: var(--vscode-descriptionForeground);
+}
+
+.error-panel dd {
+  margin: 0;
+}
+
+/* ---------- lists & tables ---------- */
+
+.plain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plain-list li {
+  padding: 3px 0;
+}
+
+ol.plain-list {
+  list-style: decimal;
+  padding-left: 1.6em;
+}
+
+.command-list {
+  padding-left: 1.6em;
+  margin: 0;
+}
+
+.command-list li {
+  padding: 4px 0;
+}
+
+.command-list .command {
+  padding: 1px 6px;
+  margin-right: 6px;
+  background: var(--vscode-textCodeBlock-background, var(--vscode-input-background));
+}
+
+.data-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tr[aria-selected="true"] {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* ---------- overview ---------- */
+
+.ov-section {
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  padding: 4px 0 12px;
+}
+
+.ov-section:last-child {
+  border-bottom: none;
+}
+
+.diagnostics summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.sev-error .code {
+  color: var(--vscode-charts-red);
+}
+
+.sev-warning .code {
+  color: var(--vscode-charts-yellow);
+}
+
+/* ---------- split layouts ---------- */
+
+.split {
+  display: flex;
+  gap: 16px;
+}
+
+.split-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.split-side {
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  padding-left: 16px;
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.feature-column {
+  flex: 1;
+  min-width: 260px;
+}
+
+.feature-column li.selected > .feature-title {
+  font-weight: 600;
+}
+
+.feature-links {
+  padding-left: 12px;
+  border-left: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.startup-guide {
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  padding-bottom: 12px;
+}
+
+/* ---------- graph canvas (React Flow) ---------- */
+
+.graph-canvas {
+  height: 520px;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.graph-node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 8px;
+  border: 1px solid var(--vscode-contrastBorder, var(--vscode-descriptionForeground));
+  border-left-width: 4px;
+  border-radius: 2px;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.graph-node.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.graph-node:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.graph-node-label,
+.lane-node-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graph-node-sub {
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.tone-blue { border-left-color: var(--vscode-charts-blue); }
+.tone-green { border-left-color: var(--vscode-charts-green); }
+.tone-yellow { border-left-color: var(--vscode-charts-yellow); }
+.tone-orange { border-left-color: var(--vscode-charts-orange); }
+.tone-red { border-left-color: var(--vscode-charts-red); }
+.tone-purple { border-left-color: var(--vscode-charts-purple); }
+
+/* edge encoding (spec provenance table): line style + mark, colour only secondary */
+.edge-path,
+.react-flow__edge-path {
+  fill: none;
+  stroke: var(--vscode-descriptionForeground);
+  stroke-width: 1px;
+}
+
+.edge-static,
+.edge-framework-rule {
+  stroke-dasharray: none;
+}
+
+.edge-ai-inferred,
+.react-flow__edge.edge-ai-inferred .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+  stroke: var(--vscode-charts-purple);
+}
+
+.edge-runtime-observed,
+.react-flow__edge.edge-runtime-observed .react-flow__edge-path {
+  stroke-dasharray: 1 4;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke: var(--vscode-charts-green);
+}
+
+.edge-path.observed {
+  stroke-width: 2.5px;
+}
+
+.react-flow__edge.tone-blue .react-flow__edge-path { stroke: var(--vscode-charts-blue); }
+.react-flow__edge.tone-green .react-flow__edge-path { stroke: var(--vscode-charts-green); }
+.react-flow__edge.tone-purple .react-flow__edge-path { stroke: var(--vscode-charts-purple); }
+.react-flow__edge.tone-orange .react-flow__edge-path { stroke: var(--vscode-charts-orange); }
+.react-flow__edge.tone-yellow .react-flow__edge-path { stroke: var(--vscode-charts-yellow); }
+.react-flow__edge.tone-red .react-flow__edge-path { stroke: var(--vscode-charts-red); }
+
+.react-flow__edge-text {
+  fill: var(--vscode-foreground);
+  font-size: 10px;
+}
+
+.react-flow__edge-textbg {
+  fill: var(--vscode-editor-background);
+}
+
+.react-flow__arrowhead polyline {
+  stroke: var(--vscode-descriptionForeground);
+  fill: var(--vscode-descriptionForeground);
+}
+
+/* ---------- legend ---------- */
+
+.legend {
+  margin: 4px 16px;
+  padding: 4px 12px 8px;
+  border: 1px solid var(--vscode-contrastBorder, var(--vscode-panel-border, transparent));
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+
+.legend header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.legend table {
+  border-collapse: collapse;
+}
+
+.legend th,
+.legend td {
+  text-align: left;
+  padding: 2px 10px 2px 0;
+}
+
+.legend-line {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.legend .mark {
+  white-space: nowrap;
+}
+
+/* ---------- flow ---------- */
+
+.flow {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.flow-side {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-title {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.flow-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.flow-filters input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ep-list {
+  height: calc(100vh - 140px);
+  min-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.ep-group,
+.ep-item {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ep-group {
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+}
+
+.ep-item {
+  cursor: pointer;
+  padding-left: 16px;
+}
+
+.ep-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.ep-item.active {
+  outline: 1px dotted var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.ep-item.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.ep-item .method {
+  min-width: 3.6em;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.swimlane-scroll {
+  overflow: auto;
+  max-width: 100%;
+}
+
+.swimlane {
+  position: relative;
+}
+
+.lane-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--vscode-contrastBorder, var(--vscode-panel-border, var(--vscode-descriptionForeground)));
+}
+
+.band-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 30px;
+  font-weight: 600;
+}
+
+.lane-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.lane-label {
+  display: inline-block;
+  position: sticky;
+  left: 0;
+  background: var(--vscode-editor-background);
+  z-index: 1;
+  padding: 4px 6px;
+  font-size: 0.85em;
+}
+
+.swimlane-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.swimlane-edges .edge-path {
+  pointer-events: stroke;
+}
+
+.arrow-head {
+  fill: var(--vscode-descriptionForeground);
+}
+
+.lane-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--vscode-contrastBorder, var(--vscode-descriptionForeground));
+  border-radius: 2px;
+  background: var(--vscode-editor-background);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.lane-node:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.lane-node:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.lane-node.band-placeholder {
+  border-style: dashed;
+}
+
+.layer-controller { border-left: 3px solid var(--vscode-charts-blue); }
+.layer-service { border-left: 3px solid var(--vscode-charts-green); }
+.layer-repository,
+.layer-sql { border-left: 3px solid var(--vscode-charts-orange); }
+.layer-filter,
+.layer-interceptor,
+.layer-aspect { border-left: 3px solid var(--vscode-charts-purple); }
+.layer-frontend { border-left: 3px solid var(--vscode-charts-yellow); }
+.layer-external-http { border-left: 3px solid var(--vscode-charts-red); }
+
+.edge-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0 4px;
+  font-size: 0.8em;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  z-index: 2;
+}
+
+.swimlane.vertical .edge-label {
+  position: static;
+  transform: none;
+}
+
+.edge-label-ai-inferred {
+  border-style: dashed;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 360px;
+  padding: 6px;
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background, var(--vscode-editor-background)));
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-contrastBorder, var(--vscode-focusBorder)));
+}
+
+.context-menu p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.85em;
+}
+
+.swimlane.vertical .context-menu {
+  position: static;
+}
+
+.swimlane.vertical .lane-band {
+  position: static;
+  margin-bottom: 8px;
+}
+
+.vertical-step {
+  display: grid;
+  grid-template-columns: 7em minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 4px 0;
+}
+
+.vertical-step .lane-node {
+  position: static;
+  min-height: 30px;
+}
+
+.vertical-edges {
+  grid-column: 2;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 12px;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.unresolved {
+  margin-top: 16px;
+}
+
+.unresolved summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* narrow panel (< 600px): list → select, swimlane → vertical */
+.flow.narrow {
+  flex-direction: column;
+}
+
+.flow.narrow .flow-main {
+  width: 100%;
+}
+
+.flow.narrow .flow-side {
+  width: 100%;
+}
+
+@media (max-width: 599px) {
+  .flow {
+    flex-direction: column;
+  }
+
+  .flow-side,
+  .split-side {
+    width: 100%;
+  }
+
+  .split {
+    flex-direction: column;
+  }
+}
+
+/* ---------- history ---------- */
+
+.heatmap {
+  display: grid;
+  gap: 2px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.heat-week {
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+.heat-row-label {
+  padding-right: 8px;
+}
+
+.heat-row-label.selected {
+  font-weight: 600;
+}
+
+.heat-cell {
+  position: relative;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  background: none;
+}
+
+.heat-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--vscode-charts-blue);
+  opacity: 0;
+}
+
+.heat-1::before { opacity: 0.25; }
+.heat-2::before { opacity: 0.5; }
+.heat-3::before { opacity: 0.75; }
+.heat-4::before { opacity: 1; }
+
+.commit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.commit-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.ai-summary {
+  border-left: 3px solid var(--vscode-charts-purple);
+  padding-left: 12px;
+  margin-bottom: 12px;
+}
+
+.plain-text p {
+  margin: 0.3em 0;
+  white-space: pre-wrap;
+}
+
+/* ---------- high contrast ---------- */
+
+body.vscode-high-contrast .graph-node,
+body.vscode-high-contrast .lane-node,
+body.vscode-high-contrast .edge-label,
+body.vscode-high-contrast-light .graph-node,
+body.vscode-high-contrast-light .lane-node,
+body.vscode-high-contrast-light .edge-label {
+  border-color: var(--vscode-contrastBorder);
+}
+
+body.vscode-high-contrast .tab[aria-selected="true"],
+body.vscode-high-contrast-light .tab[aria-selected="true"] {
+  outline: 1px solid var(--vscode-contrastActiveBorder, var(--vscode-contrastBorder));
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- React Flow structural rules (from @xyflow/react base.css, colours removed) ---------- */
+
+.react-flow {
+  direction: ltr;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.react-flow__container,
+.react-flow__renderer,
+.react-flow__pane,
+.react-flow__viewport,
+.react-flow__nodes,
+.react-flow__edges,
+.react-flow__edgelabel-renderer,
+.react-flow__viewport-portal {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.react-flow__pane {
+  z-index: 1;
+  touch-action: none;
+}
+
+.react-flow__pane.draggable {
+  cursor: grab;
+}
+
+.react-flow__viewport {
+  transform-origin: 0 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.react-flow__renderer {
+  z-index: 4;
+}
+
+.react-flow .react-flow__edges svg {
+  overflow: visible;
+  position: absolute;
+  pointer-events: none;
+}
+
+.react-flow__edge {
+  pointer-events: visibleStroke;
+}
+
+.react-flow__nodes {
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+
+.react-flow__node {
+  position: absolute;
+  user-select: none;
+  pointer-events: all;
+  transform-origin: 0 0;
+  box-sizing: border-box;
+  cursor: default;
+}
+
+.react-flow__handle {
+  position: absolute;
+  pointer-events: none;
+  min-width: 1px;
+  min-height: 1px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.react-flow__handle-left {
+  top: 50%;
+  left: 0;
+}
+
+.react-flow__handle-right {
+  top: 50%;
+  right: 0;
+}
+
+.react-flow__edgelabel-renderer {
+  pointer-events: none;
+  user-select: none;
+}
+
+.react-flow__panel {
+  position: absolute;
+  z-index: 5;
+  margin: 15px;
+}
+
+.react-flow__panel.bottom {
+  bottom: 0;
+}
+
+.react-flow__panel.right {
+  right: 0;
+}
+
+.react-flow__attribution {
+  font-size: 10px;
+  padding: 2px 3px;
+  margin: 0;
+}
+
+.react-flow__attribution a {
+  color: var(--vscode-descriptionForeground);
+  text-decoration: none;
+}
