@@ -174,14 +174,15 @@ export function runSpringRules(
     if (!hasAnnotation(ref.type.annotations, "Aspect")) continue;
     const named: Record<string, string> = {};
     for (const m of ref.type.methods) {
-      const pc = annotationStrings(hasAnnotation(m.annotations, "Pointcut"), "value");
-      if (pc?.[0]) named[m.name] = pc[0];
+      const pointcut = hasAnnotation(m.annotations, "Pointcut");
+      const pc = annotationStrings(pointcut, "value")?.[0] ?? index.resolveConstant(annotationExpr(pointcut, "value") ?? "", ref);
+      if (pc) named[m.name] = pc;
     }
     const order = orderValue(annotationExpr(hasAnnotation(ref.type.annotations, "Order"), "value") ?? annotationStrings(hasAnnotation(ref.type.annotations, "Order"), "value")?.[0]) ?? LOWEST;
     for (const m of ref.type.methods) {
       for (const a of m.annotations) {
         if (!ADVICE.includes(a.name)) continue;
-        const expr = annotationStrings(a, "value", "pointcut")?.[0];
+        const expr = annotationStrings(a, "value", "pointcut")?.[0] ?? index.resolveConstant(annotationExpr(a, "value", "pointcut") ?? "", ref);
         if (!expr) continue;
         const paramTypes = Object.fromEntries(m.params.map((p) => [p.name, rawTypeName(p.type)]));
         try {

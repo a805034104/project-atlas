@@ -40,6 +40,7 @@ export interface AnalyzeOptions {
   cacheDir?: string;
   pool?: ParsePool;
   wasmDir?: string;
+  workerPath?: string;
   exclude?: readonly string[];
   maxFileSizeKB?: number;
   /** Already-parsed overrides; when absent, atlas.yaml / .atlas/overrides.yaml are read from the first root. */
@@ -106,7 +107,7 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   const diagnostics: Diagnostic[] = [];
 
   const ownPool = !options.pool;
-  const pool = options.pool ?? (await createParsePool(options.wasmDir ? { wasmDir: options.wasmDir } : {}));
+  const pool = options.pool ?? (await createParsePool({ ...(options.wasmDir ? { wasmDir: options.wasmDir } : {}), ...(options.workerPath ? { workerPath: options.workerPath } : {}) }));
   let workspace: Workspace;
   try {
     phase("parse", 0);

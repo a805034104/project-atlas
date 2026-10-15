@@ -24,6 +24,8 @@ export interface ParsePool {
 export interface PoolOptions {
   size?: number;
   wasmDir?: string;
+  /** Bundled worker script (packaged extension); defaults to ./worker.js next to this module. */
+  workerPath?: string;
 }
 
 export function defaultPoolSize(): number {
@@ -31,11 +33,12 @@ export function defaultPoolSize(): number {
 }
 
 export async function createParsePool(options: PoolOptions = {}): Promise<ParsePool> {
-  const workerUrl = new URL("./worker.js", import.meta.url);
-  const runningFromSource = import.meta.url.endsWith(".ts");
-  const size = runningFromSource ? 0 : (options.size ?? defaultPoolSize());
-  if (size === 0) return inlinePool(await loadParsers(options.wasmDir));
-  return workerPool(fileURLToPath(workerUrl), size, options.wasmDir);
+  const moduleUrl: string = import.meta.url ?? "";
+  const runningFromSource = moduleUrl.endsWith(".ts");
+  const workerPath = options.workerPath ?? (moduleUrl ? fileURLToPath(new URL("./worker.js", moduleUrl)) : undefined);
+  const size = runningFromSource || !workerPath ? 0 : (options.size ?? defaultPoolSize());
+  if (size === 0 || !workerPath) return inlinePool(await loadParsers(options.wasmDir));
+  return workerPool(workerPath, size, options.wasmDir);
 }
 
 function inlinePool(set: ParserSet): ParsePool {
