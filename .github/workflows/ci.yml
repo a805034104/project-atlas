@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cache fixtures
+        uses: actions/cache@v4
+        with:
+          path: fixtures/repos
+          key: fixtures-${{ hashFiles('fixtures/fixtures.json') }}
+      - run: npm run fixtures
+      - run: npx tsc -b
+      - run: npx tsc -p packages/vscode/tsconfig.json
+      - run: npx vitest run
+      - run: npm run build -w @project-atlas/webview
+      - run: npm run build -w project-atlas
+      - name: Package VSIX (smoke)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: packages/vscode
+        run: npx vsce package --no-dependencies -o project-atlas.vsix
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: vsix
+          path: packages/vscode/project-atlas.vsix
+
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b
+      - name: Synthetic 50k-file repository (AC-PERF)
+        run: node scripts/perf-synthetic.mjs --files 50000 --budget-ms 90000
