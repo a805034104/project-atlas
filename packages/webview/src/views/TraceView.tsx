@@ -127,6 +127,20 @@ function Diff({ data }: { data: TraceData }) {
     <section className="trace-diff" aria-labelledby="trace-diff">
       <h3 id="trace-diff" className="subtle">{t("trace.diff")}</h3>
       <p>{t("trace.diffObserved", { n: d.observedEntrypoints, total: d.totalEntrypoints })}</p>
+      {d.links.total > 0 ? <p>{t("trace.diffLinks", { n: d.links.observed, total: d.links.total })}</p> : null}
+      {d.runtimeLinks.length > 0 ? (
+        <>
+          <p className="muted">{t("trace.runtimeLinksHelp")}</p>
+          <ul className="plain-list">
+            {d.runtimeLinks.map((l, i) => (
+              <li key={i}>
+                <span className="code">{l.fromService}</span> → <span className="code">{l.toService}</span>
+                <span className="muted"> · {l.kind} {l.channel} · {l.count}×</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {d.runtimeOnly.length > 0 ? (
         <>
           <p className="muted">{t("trace.runtimeOnlyHelp")}</p>

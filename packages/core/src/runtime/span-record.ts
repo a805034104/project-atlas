@@ -119,6 +119,19 @@ export function toSpanRecord(span: RawSpan, service: string, scope: string): Spa
     // ("SELECT sys_user sys_dept") when semconv opt-in is on; else parse the text in memory.
     const summary = str(a["db.query.summary"])?.split(/\s+/);
     set("dbTable", str(a["db.collection.name"]) ?? str(a["db.sql.table"]) ?? summary?.[1] ?? parsed.table);
+    // Redis streams: keep only the stream key of stream commands (never values or other keys,
+    // which can be session ids such as login_tokens:<uuid>).
+    if (/redis/i.test(dbSystem) && statement) {
+      const m = /^\s*(XADD|XREADGROUP|XREAD|XACK|XCLAIM|XAUTOCLAIM)\s+(.+)$/i.exec(statement);
+      if (m) {
+        const op = (m[1] as string).toUpperCase();
+        const args = (m[2] as string).trim().split(/\s+/);
+        const streamsAt = args.findIndex((x) => /^STREAMS$/i.test(x));
+        const key = op === "XADD" || op === "XACK" || op === "XCLAIM" || op === "XAUTOCLAIM" ? args[0] : streamsAt >= 0 ? args[streamsAt + 1] : undefined;
+        set("dbOp", op);
+        if (key && key !== "?") set("dbTable", key);
+      }
+    }
   }
   set("msgSystem", str(a["messaging.system"]));
   set("msgDest", str(a["messaging.destination.name"]) ?? str(a["messaging.destination"]));

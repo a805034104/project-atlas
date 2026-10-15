@@ -53,11 +53,15 @@ describe("Trace tab", () => {
   it("static vs observed lists drawn (→) and reachable-only (⇝) runtime calls", () => {
     openView("trace", { payload: { view: "trace", data: traceData(true) } });
     expect(screen.getByText(/2 of \d+ HTTP entrypoints observed/)).toBeTruthy();
-    const items = [...document.querySelectorAll(".trace-diff li")].map((li) => li.textContent);
-    expect(items[0]).toContain("→");
-    expect(items[0]).toContain("drawn");
-    expect(items[1]).toContain("⇝");
-    expect(items[1]).toContain("reachable, not drawn");
+    const items = [...document.querySelectorAll(".trace-diff li")].map((li) => li.textContent ?? "");
+    const drawn = items.find((i) => i.includes("selectConfigByKey"));
+    const reachable = items.find((i) => i.includes("selectUserByUserName"));
+    expect(drawn).toContain("→");
+    expect(drawn).toContain("drawn");
+    expect(reachable).toContain("⇝");
+    expect(reachable).toContain("reachable, not drawn");
+    expect(screen.getByText(/^2 of \d+ cross-service links confirmed at runtime\.$/)).toBeTruthy();
+    expect(items.some((i) => i.includes("ruoyi-system → ruoyi-job · mq kafka:audit · 3×"))).toBe(true);
   });
 
   it("keeps the list stable while a trace is selected; new rows wait behind 'N new ↑'", () => {

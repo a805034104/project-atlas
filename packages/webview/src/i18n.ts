@@ -271,6 +271,8 @@ const en = {
   "topology.channel": "{broker} {name}: {producers} producing service(s), {consumers} consuming service(s)",
   "topology.produce": "publish",
   "topology.consume": "consume",
+  "trace.diffLinks": "{n} of {total} cross-service links confirmed at runtime.",
+  "trace.runtimeLinksHelp": "Cross-service traffic seen at runtime that the static map has no link for:",
 } as const;
 
 export type StringKey = keyof typeof en;
@@ -538,6 +540,8 @@ const zh: Record<StringKey, string> = {
   "topology.channel": "{broker} {name}：{producers} 个服务生产，{consumers} 个服务消费",
   "topology.produce": "发送",
   "topology.consume": "消费",
+  "trace.diffLinks": "{total} 条跨服务链路中，运行时已印证 {n} 条。",
+  "trace.runtimeLinksHelp": "运行时出现、静态地图里没有对应链路的跨服务调用：",
 };
 
 export type Lang = "en" | "zh";

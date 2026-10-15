@@ -71,12 +71,13 @@ function TopologyBody({ data }: { data: TopologyData }) {
         id: l.id,
         from: l.fromServiceId,
         to: l.toServiceId,
-        label: `${PROVENANCE_MARK[l.provenance]} ${l.kind} ${l.channel}`,
-        className: `edge-${l.provenance} tone-${KIND_TONE[l.kind]}`,
+        label: `${PROVENANCE_MARK[l.provenance]} ${l.kind} ${l.channel}${l.observed ? ` · ${l.observed.count}×` : ""}`,
+        className: `edge-${l.provenance} tone-${KIND_TONE[l.kind]}${l.observed ? " observed" : ""}`,
       }));
+    const observedChannel = new Set(links.filter((l) => l.kind === "mq" && l.observed).map((l) => l.channel));
     for (const [channel, c] of channels) {
       for (const p of c.producers) out.push({ id: `mq-in:${p}:${channel}`, from: p, to: `mq:${channel}`, label: `${PROVENANCE_MARK["framework-rule"]} ${t("topology.produce")}`, className: "edge-framework-rule tone-orange" });
-      for (const s of c.consumers) out.push({ id: `mq-out:${channel}:${s}`, from: `mq:${channel}`, to: s, label: `⇢ ${t("topology.consume")}`, className: "edge-framework-rule tone-orange async" });
+      for (const s of c.consumers) out.push({ id: `mq-out:${channel}:${s}`, from: `mq:${channel}`, to: s, label: `⇢ ${t("topology.consume")}`, className: `edge-framework-rule tone-orange async${observedChannel.has(channel) ? " observed" : ""}` });
     }
     return out;
   }, [links, channels, t]);

@@ -39,6 +39,10 @@ export interface RuntimeOverlay {
   unmatched: { key: string; count: number; reason: "no-step" | "ambiguous" | "stale" }[];
   /** entrypointId → observed / instrumentable steps on its flow */
   coverage: Record<string, { observed: number; instrumentable: number }>;
+  /** ServiceLink id → observed (AC#22: HTTP client→server pairs, MQ consumers, Redis stream both sides). */
+  links: Record<string, RuntimeStats>;
+  /** Cross-service traffic seen at runtime that no static link covers. */
+  runtimeLinks: { fromService: string; toService: string; kind: "http" | "mq"; channel: string; count: number }[];
 }
 
 const METHOD_LAYERS = new Set<FlowLayer>(["filter", "interceptor", "controller", "service", "repository", "cache", "external-http", "mq"]);
@@ -80,7 +84,7 @@ function isMarker(step: FlowStep | undefined): boolean {
 }
 
 export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOverlay {
-  const overlay: RuntimeOverlay = { steps: {}, edges: {}, entrypoints: {}, runtimeEdges: [], reachability: [], unmatched: [], coverage: {} };
+  const overlay: RuntimeOverlay = { steps: {}, edges: {}, entrypoints: {}, runtimeEdges: [], reachability: [], unmatched: [], coverage: {}, links: {}, runtimeLinks: [] };
   const stepById = new Map(graph.steps.map((s) => [s.id, s]));
   const outgoing = new Map<string, CallEdge[]>();
   const incoming = new Map<string, CallEdge[]>();
@@ -247,6 +251,8 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
     if (to && overlay.steps[e.from]) overlay.edges[e.id] = to;
   }
 
+  reconcileLinks(graph, state, overlay);
+
   // ── Coverage per entrypoint flow ───────────────────────────────────────────
   for (const flow of graph.flows) {
     let instrumentable = 0;
@@ -263,6 +269,93 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
   return overlay;
 }
 
+/**
+ * Cross-service confirmation (AC#22):
+ *   h:A:GET peer > r:B:GET /p                    HTTP / Feign / gateway hop A → B on that entrypoint
+ *   q:kafka|rabbitmq|rocketmq:consumer:B:dest   consumer of a topic / queue (context propagates)
+ *   d:A:XADD key  +  d:B:XREAD(GROUP) key       Redis stream: no context, both sides on one key
+ */
+function reconcileLinks(graph: AtlasGraph, state: AggregateState, overlay: RuntimeOverlay): void {
+  const serviceName = new Map(graph.services.map((s) => [s.id, s.name.toLowerCase()]));
+  const mark = (linkId: string, stats: Stats) => (overlay.links[linkId] = mergeStats(overlay.links[linkId], toRuntimeStats(stats)));
+  const extra = new Map<string, RuntimeOverlay["runtimeLinks"][number]>();
+  const runtimeOnly = (fromService: string, toService: string, kind: "http" | "mq", channel: string, count: number) => {
+    const k = `${fromService}|${toService}|${kind}|${channel}`;
+    const e = extra.get(k) ?? { fromService, toService, kind, channel, count: 0 };
+    e.count += count;
+    extra.set(k, e);
+  };
+
+  // HTTP: a client span in A whose child is a server span in B.
+  for (const [edgeKey, stats] of Object.entries(state.edges)) {
+    const gt = edgeKey.indexOf(">");
+    const parent = edgeKey.slice(0, gt);
+    const child = edgeKey.slice(gt + 1);
+    if (!parent.startsWith("h:") || !child.startsWith("r:")) continue;
+    const from = parent.split(":")[1]?.toLowerCase() ?? "";
+    const to = child.split(":")[1]?.toLowerCase() ?? "";
+    if (!from || from === to) continue;
+    const eps = new Set(entrypointsForRoute(graph, child).map((e) => e.id));
+    const links = graph.serviceLinks.filter((l) => l.toEntrypointId && eps.has(l.toEntrypointId) && serviceName.get(l.fromServiceId) === from);
+    for (const l of links) mark(l.id, stats);
+    if (links.length === 0) runtimeOnly(from, to, "http", child.slice(child.indexOf(":", 2) + 1), stats.count);
+  }
+
+  // Message queues with context propagation: the consumer side confirms the channel.
+  const consumed = new Map<string, { stats: Stats; services: Set<string> }>();
+  const produced = new Map<string, Set<string>>();
+  for (const [key, stats] of Object.entries(state.nodes)) {
+    const q = /^q:([^:]+):(consumer|producer|client|server|internal|unspecified):([^:]*):(.*)$/.exec(key);
+    if (q) {
+      const system = (q[1] as string).toLowerCase();
+      const svc = (q[3] as string).toLowerCase();
+      const channelKey = `${system}:${q[4] as string}`;
+      if (q[2] === "consumer") {
+        const c = consumed.get(channelKey) ?? { stats, services: new Set<string>() };
+        c.services.add(svc);
+        consumed.set(channelKey, c);
+      } else if (q[2] === "producer") produced.set(channelKey, (produced.get(channelKey) ?? new Set<string>()).add(svc));
+      continue;
+    }
+    // Redis streams: XADD / XREAD(GROUP) on the same key.
+    const d = /^d:([^:]*):(XADD|XREADGROUP|XREAD) (.+)$/.exec(key);
+    if (d) {
+      const channelKey = `redis-stream:${d[3] as string}`;
+      const svc = (d[1] as string).toLowerCase();
+      if (d[2] === "XADD") produced.set(channelKey, (produced.get(channelKey) ?? new Set<string>()).add(svc));
+      else {
+        const c = consumed.get(channelKey) ?? { stats, services: new Set<string>() };
+        c.services.add(svc);
+        consumed.set(channelKey, c);
+      }
+    }
+  }
+  for (const [channelKey, c] of consumed) {
+    const colon = channelKey.indexOf(":");
+    const system = channelKey.slice(0, colon);
+    const dest = channelKey.slice(colon + 1);
+    const producers = produced.get(channelKey);
+    // Redis streams carry no trace context: both sides must have been seen on the key.
+    if (system === "redis-stream" && !producers) continue;
+    const links = graph.serviceLinks.filter((l) => {
+      if (l.kind !== "mq" || !c.services.has(serviceName.get(l.toServiceId) ?? "")) return false;
+      if (system === "redis-stream" && !producers?.has(serviceName.get(l.fromServiceId) ?? "")) return false;
+      return l.channel === `${system}:${dest}` || l.channel === `stream:${dest}`;
+    });
+    for (const l of links) mark(l.id, c.stats);
+    if (links.length === 0) for (const to of c.services) for (const from of producers ?? new Set(["?"])) runtimeOnly(from, to, "mq", `${system}:${dest}`, c.stats.count);
+  }
+  overlay.runtimeLinks = [...extra.values()];
+}
+
+function entrypointsForRoute(graph: AtlasGraph, key: string): AtlasGraph["entrypoints"] {
+  const m = /^r:([^:]*):(\S+) (.*)$/.exec(key);
+  if (!m) return [];
+  const service = graph.services.find((s) => s.name.toLowerCase() === (m[1] as string).toLowerCase());
+  const path = normalizeHttpPath(m[3] as string);
+  return graph.entrypoints.filter((e) => e.kind === "http" && (!service || e.serviceId === service.id) && e.path === path && (e.method === m[2] || e.method === "ANY"));
+}
+
 /** Graph with the overlay folded in (observed fields + runtime-observed edges); the input is not modified. */
 export function applyOverlay(graph: AtlasGraph, overlay: RuntimeOverlay): AtlasGraph {
   const runtimeEdges: CallEdge[] = overlay.runtimeEdges.map((r) => ({ id: r.id, from: r.from, to: r.to, order: 1000, provenance: "runtime-observed", confidence: 1, rationale: r.async ? "observed at runtime (async)" : "observed at runtime", observed: r.observed }));
@@ -271,5 +364,6 @@ export function applyOverlay(graph: AtlasGraph, overlay: RuntimeOverlay): AtlasG
     steps: graph.steps.map((s) => (overlay.steps[s.id] ? { ...s, observed: overlay.steps[s.id] as RuntimeStats } : s)),
     edges: [...graph.edges.map((e) => (overlay.edges[e.id] ? { ...e, observed: overlay.edges[e.id] as RuntimeStats } : e)), ...runtimeEdges],
     entrypoints: graph.entrypoints.map((e) => (overlay.entrypoints[e.id] ? { ...e, observed: overlay.entrypoints[e.id] as RuntimeStats } : e)),
+    serviceLinks: graph.serviceLinks.map((l) => (overlay.links[l.id] ? { ...l, observed: overlay.links[l.id] as RuntimeStats } : l)),
   };
 }

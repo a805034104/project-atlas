@@ -438,8 +438,10 @@ export function traceData(withTraces = true): TraceData {
             { from: "SysLoginService.login", to: "SysUserServiceImpl.selectUserByUserName", count: 1, async: false, drawn: false },
           ],
           unmatched: [],
+          links: { observed: 2, total: links.length },
+          runtimeLinks: [{ fromService: "ruoyi-system", toService: "ruoyi-job", kind: "mq", channel: "kafka:audit", count: 3 }],
         }
-      : { observedEntrypoints: 0, totalEntrypoints: entrypoints.length, runtimeOnly: [], unmatched: [] },
+      : { observedEntrypoints: 0, totalEntrypoints: entrypoints.length, runtimeOnly: [], unmatched: [], links: { observed: 0, total: links.length }, runtimeLinks: [] },
   };
 }
 
