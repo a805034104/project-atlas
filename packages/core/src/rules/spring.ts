@@ -7,6 +7,7 @@ import type { JavaService } from "../workspace/detect.js";
 import { antMatch, servletPatternMatch } from "./ant.js";
 import { annotationExpr, annotationStrings, hasAnnotation, type JavaIndex, type MethodRef, type TypeRef } from "./java-index.js";
 import { javaStringLiteralText, splitArrayElements } from "./java-literals.js";
+import { MQ_CLIENT_TYPES, MqCollector, REDIS_TEMPLATE_TYPES, type MqBroker, type MqServiceResult } from "./mq.js";
 import type { MapperStatement } from "./mybatis.js";
 import { compilePointcut, UnsupportedPointcut, type JoinPoint, type Pointcut } from "./pointcut.js";
 
@@ -56,6 +57,7 @@ export interface SpringResult {
   scheduled: { entrypoint: Entrypoint; handlerStepId: string }[];
   feignCalls: FeignCallSite[];
   restCalls: RestCallSite[];
+  mq: MqServiceResult;
   diagnostics: Diagnostic[];
 }
 
@@ -65,6 +67,8 @@ export interface Wrapper {
   kind: "http" | "mq";
   urlArg?: number;
   methodLiteral?: string;
+  broker?: string;
+  topicArg?: number;
 }
 
 const MAPPING_ANNOTATIONS: Record<string, string | undefined> = {
@@ -132,7 +136,7 @@ export function runSpringRules(
 ): SpringResult {
   const { service } = svc;
   const diagnostics: Diagnostic[] = [];
-  const result: SpringResult = { chains: [], scheduled: [], feignCalls: [], restCalls: [], diagnostics };
+  const result: SpringResult = { chains: [], scheduled: [], feignCalls: [], restCalls: [], mq: { sends: [], consumers: [], topology: { exchanges: new Map(), bindings: [], deadLetters: new Map() } }, diagnostics };
   const mapperNamespaces = new Set([...mappers.values()].map((m) => m.namespace));
 
   const symbolOf = (owner: TypeRef, method: JavaMethod): SymbolRef => ({
@@ -169,6 +173,19 @@ export function runSpringRules(
     const symbol = symbolOf(m.owner, m.method);
     return step(layerOf(m.owner), symbol.fqn, symbol);
   };
+
+  const mq = new MqCollector({
+    svc,
+    index,
+    graph,
+    diagnostics,
+    symbolOf,
+    handlerStep: (m) => {
+      const id = methodStep(m);
+      expand(m, id);
+      return id;
+    },
+  });
 
   // ── Aspects ───────────────────────────────────────────────────────────────
   const advices: Advice[] = [];
@@ -270,6 +287,19 @@ export function runSpringRules(
   };
 
   const wrapperFor = (typeFqcn: string, method: string): Wrapper | undefined => wrappers.find((w) => w.symbol === `${typeFqcn}.${method}`);
+  const mqWrapper = (fromStep: string, w: Wrapper, call: JavaCall, ctx: MethodRef, at: SymbolRef): void => {
+    const broker = (["kafka", "rabbitmq", "rocketmq", "redis-stream", "stream"].includes(w.broker ?? "") ? w.broker : "kafka") as MqBroker;
+    mq.recordSend(fromStep, broker, call, ctx.owner, at, { ...(w.topicArg !== undefined ? { topicArg: w.topicArg } : {}) });
+  };
+
+  /** Declared type of a receiver identifier: local, parameter, then field (with its declaring type). */
+  const receiverType = (receiver: string, ctx: MethodRef): { typeText?: string; field?: JavaField; typeCtx: TypeRef } => {
+    if (ctx.method.locals[receiver]) return { typeText: ctx.method.locals[receiver], typeCtx: ctx.owner };
+    const param = ctx.method.params.find((p) => p.name === receiver);
+    if (param) return { typeText: param.type, typeCtx: ctx.owner };
+    const found = fieldOf(ctx.owner, receiver);
+    return found ? { typeText: found.field.type, field: found.field, typeCtx: found.declaring } : { typeCtx: ctx.owner };
+  };
 
   function expand(m: MethodRef, fromStep: string): void {
     if (expanded.has(fromStep)) return;
@@ -280,28 +310,21 @@ export function runSpringRules(
       const receiver = (call.receiver ?? "").replace(/^this\./, "");
       const at: SymbolRef = { ...symbolOf(ctx.owner, ctx.method), line: call.line };
 
-      if (!/^[A-Za-z_$][\w$]*$/.test(receiver)) continue; // chained / computed receivers: not a bean reference
-      let typeText: string | undefined;
-      let field: JavaField | undefined;
-      let typeCtx: TypeRef = ctx.owner;
-      if (ctx.method.locals[receiver]) typeText = ctx.method.locals[receiver];
-      else {
-        const param = ctx.method.params.find((p) => p.name === receiver);
-        if (param) typeText = param.type;
-        else {
-          const found = fieldOf(ctx.owner, receiver);
-          if (found) {
-            typeText = found.field.type;
-            field = found.field;
-            typeCtx = found.declaring;
-          }
-        }
+      // `redisTemplate.opsForStream().add(..)`: the only chained receiver that is a send.
+      const streamOps = /^([A-Za-z_$][\w$]*)\.opsForStream\(\)$/.exec(receiver);
+      if (streamOps) {
+        const head = receiverType(streamOps[1] as string, ctx);
+        if (head.typeText && REDIS_TEMPLATE_TYPES.has(rawTypeName(head.typeText).replace(/^.*\./, ""))) mq.recordSend(fromStep, "redis-stream", call, ctx.owner, at);
+        continue;
       }
+      if (!/^[A-Za-z_$][\w$]*$/.test(receiver)) continue; // chained / computed receivers: not a bean reference
+      const { typeText, field, typeCtx } = receiverType(receiver, ctx);
       if (!typeText) {
         // Static call (`SecurityUtils.getUserId()`) or unknown identifier: maybe a declared wrapper.
         const staticType = /^[A-Z]/.test(receiver) ? index.resolveType(receiver, ctx.owner) : undefined;
         const w = staticType ? wrapperFor(staticType.type.fqcn, call.method) : undefined;
         if (w?.kind === "http") recordRestCall(fromStep, call, at, w);
+        if (w?.kind === "mq") mqWrapper(fromStep, w, call, ctx, at);
         continue;
       }
 
@@ -312,6 +335,8 @@ export function runSpringRules(
           recordRestCall(fromStep, call, at);
           continue;
         }
+        const broker = MQ_CLIENT_TYPES[raw.slice(raw.lastIndexOf(".") + 1)];
+        if (broker && mq.recordSend(fromStep, broker, call, ctx.owner, at)) continue;
         // Interface from a jar, implementation in the project (`AIChatHandler implements IAIChatHandler`).
         const simple = raw.slice(raw.lastIndexOf(".") + 1);
         const implementors = JDK_TYPES.has(simple) ? [] : index.beansImplementing(simple);
@@ -341,6 +366,10 @@ export function runSpringRules(
       const w = wrapperFor(type.type.fqcn, call.method);
       if (w?.kind === "http") {
         recordRestCall(fromStep, call, at, w);
+        continue;
+      }
+      if (w?.kind === "mq") {
+        mqWrapper(fromStep, w, call, ctx, at);
         continue;
       }
       dispatch(fromStep, type, field, call, order, at);
@@ -700,6 +729,9 @@ export function runSpringRules(
     }
   }
 
+  mq.collectConsumers();
+  mq.finishTopology();
+  result.mq = mq.result;
   return result;
 }
 

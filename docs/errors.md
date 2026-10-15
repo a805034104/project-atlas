@@ -34,6 +34,7 @@ Every user-facing error shows **problem → cause → fix** and links here. Diag
 | <a id="atlas-w010"></a>ATLAS-W010 | warning | Unsupported AspectJ pointcut; the advice is not drawn / 不支持的切点表达式 | Supported: `execution`, `within`, `@annotation`, `@within`, `@target`, `bean`, `||`, `&&`, `!`; add the edge via `atlas.yaml` |
 | <a id="atlas-w020"></a>ATLAS-W020 | warning | Invalid `atlas.yaml` entry (ignored) / atlas.yaml 条目无效 | Fix the entry; the schema is validated in the editor |
 | <a id="atlas-w021"></a>ATLAS-W021 | warning | `atlas.yaml` edge refers to unknown steps / 边引用的步骤不存在 | Use names shown in the flow view (e.g. `SysUserController.list`) |
+| <a id="atlas-w034"></a>ATLAS-W034 | warning | MQ destination (topic / queue / stream key / binding) could not be resolved; no link drawn / 消息队列目的地无法解析，未连线 | Use a literal, a constant or a `${}` placeholder present in config, or declare an `mq` wrapper in `atlas.yaml` |
 | <a id="atlas-ai01"></a>ATLAS-AI01 | warning | Some AI requests failed; map is partial / 部分 AI 请求失败 | Re-run analysis; successful results are cached |
 | <a id="atlas-ai02"></a>ATLAS-AI02 | info | Evidence check dropped AI items without repository evidence / 证据校验丢弃了无出处的 AI 结果 | — (by design: no fabricated commands or features) |
 | <a id="atlas-ai03"></a>ATLAS-AI03 | info | Files excluded from AI (secrets list) / 因敏感被排除的文件 | — |
