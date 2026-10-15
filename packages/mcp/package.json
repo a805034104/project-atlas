@@ -1,0 +1,29 @@
+{
+  "name": "@project-atlas/mcp",
+  "version": "0.0.0",
+  "description": "Read-only MCP server over a ProjectAtlas .atlas/graph store (stdio)",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "atlas-mcp": "dist/bin.js"
+  },
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "exports": {
+    ".": "./dist/server.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "@project-atlas/core": "0.0.0",
+    "zod": "4.6.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
