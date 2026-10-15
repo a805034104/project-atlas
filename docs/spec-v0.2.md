@@ -1,7 +1,7 @@
 <!-- /autoplan restore point: /c/Users/admin/.gstack/projects/project-atlas/feat-v0.2-autoplan-restore-20261015-124844.md -->
 # ProjectAtlas v0.2 计划：运行时对账（Java）+ 消息队列链路
 
-> 状态：/autoplan 评审后修订版，2026-10-15，等待最终闸门。上位文档是 `docs/spec.md`：本文件只写 v0.2 的范围、取舍和新增决策；
+> 状态：**已实现并发布 v0.2.0（2026-10-15，tag `v0.2.0`）**。闸门批准后实现，/review（安全、测试、性能、红队四路）发现的问题已修复，见 CHANGELOG。未完成项：AC#23 真实反射 JVM 只有单元级、AC-RT-WIN 的 Windows Ctrl-C 进程树需人工、RabbitMQ/RocketMQ 运行时只在 Linux CI 覆盖、四主题截图、留存样本人工评分。上位文档是 `docs/spec.md`：本文件只写 v0.2 的范围、取舍和新增决策；
 > 未在此改写的细节沿用 spec.md「运行时追踪（仅本地）」「评审修订 v1.1」两节。**本文与 spec.md 冲突时以本文为准。**
 
 ## 0. 定位（评审后新增）
