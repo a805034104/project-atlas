@@ -153,6 +153,10 @@ export interface TraceDiff {
   /** Runtime-only calls: drawn (same-class) or reachable through uninstrumented code. */
   runtimeOnly: { from: string; to: string; count: number; async: boolean; drawn: boolean }[];
   unmatched: { key: string; count: number; reason: string }[];
+  /** Cross-service links confirmed at runtime / all static links. */
+  links: { observed: number; total: number };
+  /** Cross-service traffic seen at runtime that no static link covers. */
+  runtimeLinks: { fromService: string; toService: string; kind: "http" | "mq"; channel: string; count: number }[];
 }
 
 export interface TraceData {

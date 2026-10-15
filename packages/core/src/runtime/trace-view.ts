@@ -39,7 +39,7 @@ export function emptyTraceData(graph: AtlasGraph, runtime: RuntimeState = OFF): 
   const data: TraceData = {
     runtime,
     traces: [],
-    diff: { observedEntrypoints: 0, totalEntrypoints: graph.entrypoints.filter((e) => e.kind === "http").length, runtimeOnly: [], unmatched: [] },
+    diff: { observedEntrypoints: 0, totalEntrypoints: graph.entrypoints.filter((e) => e.kind === "http").length, runtimeOnly: [], unmatched: [], links: { observed: 0, total: graph.serviceLinks.length }, runtimeLinks: [] },
     services: graph.services.filter((s) => s.stack === "java-spring").map((s) => ({ id: s.id, name: s.name })),
   };
   const hint = suggestedRequest(graph);
@@ -71,6 +71,8 @@ export function buildTraceData(graph: AtlasGraph, state: AggregateState, overlay
       ...overlay.reachability.map((r) => ({ from: names.get(r.from) ?? r.from, to: names.get(r.to) ?? r.to, count: r.count, async: r.async, drawn: false })),
     ].sort((a, b) => b.count - a.count),
     unmatched: overlay.unmatched.map((u) => ({ key: u.key.replace(/^[a-z]:/, ""), count: u.count, reason: u.reason })),
+    links: { observed: Object.keys(overlay.links).length, total: graph.serviceLinks.length },
+    runtimeLinks: overlay.runtimeLinks,
   };
   return data;
 }

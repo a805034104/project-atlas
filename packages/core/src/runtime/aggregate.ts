@@ -4,7 +4,8 @@ import type { SpanRecord } from "./span-record.js";
 /**
  * Incremental runtime aggregates, independent of raw-span retention.
  *
- *   SpanRecord ─▶ canonical key (m: method | r: route | d: db | q: queue | h: http client | n: name)
+ *   SpanRecord ─▶ canonical key (m: method | r: route | d: db | q: queue system:kind:service:destination |
+ *                               h: http client | n: name)
  *              ─▶ node stats            count / errors / sketch / last seen / sample traces
  *   parent ⨝ child (window, either order) ─▶ edge stats "parentKey>childKey" (+ async when the
  *              child starts after the parent ended or on another thread)
@@ -58,7 +59,7 @@ export function spanKey(r: SpanRecord): string {
   if (a.cls && a.fn) return `m:${a.cls}#${a.fn}`;
   if (r.kind === "server" && a.route) return `r:${r.svc}:${a.method ?? "ANY"} ${a.route}`;
   if (a.dbSystem) return `d:${r.svc}:${a.dbOp ?? "?"} ${a.dbTable ?? "?"}`;
-  if (a.msgSystem && a.msgDest) return `q:${a.msgSystem}:${a.msgDest}:${r.kind}`;
+  if (a.msgSystem && a.msgDest) return `q:${a.msgSystem}:${r.kind}:${r.svc}:${a.msgDest}`;
   if (r.kind === "client" && a.method) return `h:${r.svc}:${a.method} ${a.peer ?? ""}`;
   return `n:${r.svc}:${r.name}`;
 }
