@@ -30,7 +30,8 @@ export function flowStepLines(detail: FlowDetailData, fmt: RefFormatter, options
   const multi = options.withService ?? detail.services.length > 1;
   return detail.steps.map((s) => {
     const service = multi ? ` [${serviceName.get(s.serviceId) ?? s.serviceId}]` : "";
-    return `${s.layer} · ${s.symbol.name} (${fmt(s.symbol)})${service}`;
+    const observed = s.observed ? `  ✓ ${s.observed.count}× p95 ${s.observed.p95Ms} ms` : "";
+    return `${s.layer} · ${s.symbol.name} (${fmt(s.symbol)})${service}${observed}`;
   });
 }
 

@@ -79,6 +79,15 @@ function defaultAsciiDir(): string {
   return "/tmp/project-atlas-agents";
 }
 
+/**
+ * Directory for generated agent configuration files: `~/.project-atlas/configs` when that
+ * path is ASCII, else an ASCII fallback (the JVM reads `-Dotel.javaagent.configuration-file`).
+ */
+export function runtimeConfigDir(homeDir?: string): string {
+  const preferred = path.join(atlasHome(homeDir), "configs");
+  return isAscii(preferred) ? preferred : path.join(defaultAsciiDir(), "..", "configs");
+}
+
 /** Copy to an ASCII-only directory when needed; the copy is verified too. */
 async function asciiSafe(file: string, options: EnsureAgentOptions): Promise<string> {
   if (isAscii(file)) return file;

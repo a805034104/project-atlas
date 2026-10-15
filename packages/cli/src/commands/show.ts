@@ -1,5 +1,5 @@
 import path from "node:path";
-import { createRefFormatter, entrypointLabel, findEntrypoints, flowStepLines, GraphView, loadStoredGraph } from "@project-atlas/core";
+import { applyOverlay, createRefFormatter, entrypointLabel, findEntrypoints, flowStepLines, GraphView, loadStoredGraph, reconcile, TraceStore } from "@project-atlas/core";
 import type { ShowCommand } from "../args.js";
 import { CliError, EXIT_OK, EXIT_USAGE, storeError } from "../errors.js";
 import type { CliIo } from "../io.js";
@@ -16,7 +16,9 @@ export async function showCommand(cmd: ShowCommand, io: CliIo): Promise<number> 
   const loaded = await loadStoredGraph(dir);
   if (loaded.status === "missing") throw storeError(dir, "graph/meta.json does not exist.");
   if (loaded.status === "rebuild") throw storeError(dir, `The stored graph cannot be read (${loaded.reason}).`);
-  const graph = loaded.graph;
+  // Runtime observations (project-atlas trace) are folded in when present.
+  const aggregates = await new TraceStore(path.join(dir, "traces")).loadAggregates();
+  const graph = aggregates.total > 0 ? applyOverlay(loaded.graph, reconcile(loaded.graph, aggregates)) : loaded.graph;
 
   const matches = findEntrypoints(graph, cmd.entrypoint);
   const serviceName = new Map(graph.services.map((s) => [s.id, s.name]));
@@ -50,6 +52,7 @@ export async function showCommand(cmd: ShowCommand, io: CliIo): Promise<number> 
   const lines = [
     `${entrypointLabel(entrypoint)}  [${serviceName.get(entrypoint.serviceId) ?? entrypoint.serviceId}]`,
     `handler: ${entrypoint.handler.name} (${fmt(entrypoint.handler)})`,
+    ...(entrypoint.observed ? [`observed: ${entrypoint.observed.count} request(s), p50 ${entrypoint.observed.p50Ms} ms, p95 ${entrypoint.observed.p95Ms} ms, ${entrypoint.observed.errorCount} error(s)`] : []),
     "",
     ...flowStepLines(detail, fmt).map((l, i) => `${String(i + 1).padStart(3)}. ${l}`),
   ];
