@@ -12,3 +12,4 @@ export { grammarFiles, grammarSourcePaths } from "./parse/treesitter.js";
 export { entrypointLabel } from "./overrides/apply.js";
 export * from "./enrich.js";
 export * from "./export/index.js";
+export * from "./workspace/clone.js";

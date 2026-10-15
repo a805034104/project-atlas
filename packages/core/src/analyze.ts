@@ -58,7 +58,7 @@ export interface AnalysisResult {
   overrides: AtlasOverrides;
 }
 
-async function readOverrides(rootPath: string): Promise<{ overrides: AtlasOverrides; diagnostics: Diagnostic[] }> {
+export async function readAtlasOverrides(rootPath: string): Promise<{ overrides: AtlasOverrides; diagnostics: Diagnostic[] }> {
   const read = async (file: string) => {
     try {
       return await readFile(path.join(rootPath, file), "utf8");
@@ -140,9 +140,15 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   const firstRoot = roots[0];
   let overrides = options.overrides;
   if (!overrides) {
-    const read = firstRoot ? await readOverrides(firstRoot.path) : { overrides: emptyOverrides(), diagnostics: [] };
+    const read = firstRoot ? await readAtlasOverrides(firstRoot.path) : { overrides: emptyOverrides(), diagnostics: [] };
     overrides = read.overrides;
     diagnostics.push(...read.diagnostics.map((d) => ({ ...d, ...(d.at ? { at: { ...d.at, rootId: firstRoot?.id ?? "" } } : {}) })));
+  }
+
+  for (const s of overrides.services) {
+    if (s.git && s.path === undefined && !roots.some((r) => r.git?.url === s.git)) {
+      diagnostics.push({ code: "ATLAS-I004", severity: "info", message: `atlas.yaml service ${s.name ?? s.git} (${s.git}) was not cloned; clone it locally or analyze from VS Code` });
+    }
   }
 
   // ── Rules ─────────────────────────────────────────────────────────────────
