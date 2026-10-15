@@ -7,3 +7,4 @@ fixtures/local.yaml
 node_modules/
 out/
 .claude/
+fixtures/repos/
