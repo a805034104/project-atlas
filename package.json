@@ -1,0 +1,22 @@
+{
+  "name": "project-atlas",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
