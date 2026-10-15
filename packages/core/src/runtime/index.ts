@@ -7,3 +7,5 @@ export * from "./receiver.js";
 export * from "./agent-config.js";
 export * from "./session.js";
 export * from "./match.js";
+export * from "./agent-fetch.js";
+export * from "./launch.js";
