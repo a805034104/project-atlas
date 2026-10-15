@@ -1,0 +1,7 @@
+{
+  "_comment": "Upstream fixtures cloned into fixtures/repos (gitignored). Run scripts/fetch-fixtures to reproduce.",
+  "ruoyi-vue": { "url": "https://github.com/yangzongzhuan/RuoYi-Vue.git", "branch": "springboot2", "commit": "6230a34b5f9b60b670a9f438dc43b41b8a856598" },
+  "ruoyi-vue3": { "url": "https://github.com/yangzongzhuan/RuoYi-Vue3.git", "branch": "master", "commit": "838965c5a18d2c61b73ec30c6e288057aaa08b63" },
+  "ruoyi-cloud": { "url": "https://github.com/yangzongzhuan/RuoYi-Cloud.git", "branch": "springboot2", "commit": "86527f4da8448a11630ea8dcd03a585cdd6565c6" },
+  "ruoyi-cloud-vue3": { "url": "https://github.com/yangzongzhuan/RuoYi-Cloud-Vue3.git", "branch": "master", "commit": "64a0f944e0ba5df490e35974f1bf7a1be30cf7c9" }
+}
