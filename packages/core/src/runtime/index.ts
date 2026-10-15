@@ -4,3 +4,6 @@ export * from "./sketch.js";
 export * from "./aggregate.js";
 export * from "./store.js";
 export * from "./receiver.js";
+export * from "./agent-config.js";
+export * from "./session.js";
+export * from "./match.js";

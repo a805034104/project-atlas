@@ -88,6 +88,11 @@ S0 在本机实测：便携 Maven 3.9.16 + MySQL 8.0.46，JDK 21，RuoYi-Vue（B
   - `client.address`、`network.peer.*`、`user_agent.original` 都不落盘。
 - **semconv**：默认不开启新代属性。`otel.semconv-stability.opt-in` 只能用 `-D` 或环境变量传，写在配置文件里无效。解析器同时认新旧两代属性（已实现）。
 - **V7 补充**：切面 advice span 的父节点是「最近的被插桩帧」（controller 或 filter），和静态图里「切面 → 目标方法」的关系不同。所以切面 span 只按步骤直接匹配，**不用它的父子关系生成边**。判定为异步需要两个条件同时成立：子 span 的线程与父 span 不同，并且子 span 开始时间晚于父 span 结束。实测例子：操作日志 INSERT 跑在 `schedule-pool-1`，比父 span 晚 15 ms。
+- **V7 再收紧（R2 在真实数据上验证后）**：「静态无路径、所有静态调用方都已插桩」这个条件挡不住假边。反例：`SysLoginService.login` 之后先经过 Spring Security，再到没被任何入口走到的 `UserDetailsServiceImpl`，最后才是 `selectUserByUserName`。中间那个方法不在静态图里，静态调用方集合本身就不完整。修订后的规则：
+  - **只有同一个类内的调用才生成 runtime-observed 边**，例如 `selectCaptchaEnabled → selectConfigByKey`。这类调用被静态规则内联掉了，中间不可能夹着别的帧。
+  - 跨类且静态图里没有路径的，一律记为「运行时可达」，放进差异报告的「仅运行时」一栏，不画边。
+  - 静态路径存在、且中间每一步都被观测到（或是 `@PreAuthorize` 这类不可能有 span 的标记步骤）时，整条路径上的边都标为已观测。
+  - 相应地，**AC#23 修订**为：反射调用的合成用例出现在「仅运行时」一栏；中间隔一个未插桩方法时不生成边；同类 helper 调用生成 runtime-observed 边。
 - **context-path**：`http.route` 带 context-path（`/ctx/system/user/{userId}`）。v0.1 的静态入口路径本来就带 context-path，把路径变量统一成 `{}` 之后直接比对即可，不需要剥离。
 - **时延**：`otel.bsp.schedule.delay=500` 时，从发出请求到 span 送达接收器为 89–577 ms，AC#19 的 10 秒预算余量充足。exporter 默认不压缩，接收端两种情况都支持。
 
