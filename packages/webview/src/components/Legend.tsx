@@ -10,7 +10,7 @@ export const PROVENANCE_MARK: Record<Provenance, string> = {
 };
 
 interface Row {
-  provenance: Provenance | "branch" | "recursion";
+  provenance: Provenance | "branch" | "recursion" | "observed" | "dimmed";
   line: StringKey | null;
   lineClass: string;
   mark: string;
@@ -42,6 +42,8 @@ const ROWS: Row[] = [
   },
   { provenance: "branch", line: "legend.lineSolid", lineClass: "edge-static", mark: "×N", meaning: "legend.branch" },
   { provenance: "recursion", line: null, lineClass: "", mark: "↺", meaning: "legend.recursion" },
+  { provenance: "observed", line: "legend.lineSolid", lineClass: "edge-static observed", mark: "✓ p95", meaning: "legend.observed" },
+  { provenance: "dimmed", line: null, lineClass: "", mark: "▒", meaning: "legend.dimmed" },
 ];
 
 /** Provenance legend (spec Pass 6 table). Redundant encoding: line style + mark, never colour alone. */

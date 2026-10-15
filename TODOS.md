@@ -28,6 +28,23 @@
 - v0.3: Go rules + Go tracing diff + gRPC
 - v0.4: Python rules (pyright LSP) + Python tracing + Dubbo
 
+### SkyWalking trace import (v0.2 /autoplan X5, gate T3)
+- **What:** Import traces from a running SkyWalking OAP (GraphQL query API) into the v0.2 reconciliation layer.
+- **Why:** Many Chinese enterprise Java teams already run SkyWalking; they should not need a second agent.
+- **Context:** Reuse the v0.2 internal `SpanRecord` format; SkyWalking segments map to spans (endpoint name ≈ route, component = layer). Needs a live OAP to validate.
+- **Effort:** M → CC S. **Depends on:** v0.2 R1/R2.
+
+### Arthas `trace` output import (v0.2 /autoplan X6, gate T3)
+- **What:** Parse Arthas `trace` text output into SpanRecords, so a running JVM can be reconciled without restart.
+- **Why:** Arthas is the default runtime tool for Chinese Java developers; no restart needed.
+- **Context:** Text format varies between Arthas versions; fixture-driven parser.
+- **Effort:** M → CC S. **Depends on:** v0.2 R2.
+
+### Docker-hosted services (`trace --listen`)
+- **What:** Opt-in receiver bind for `host.docker.internal` with token-only auth.
+- **Why:** v0.2 receiver listens on 127.0.0.1 only; services in containers cannot reach it.
+- **Effort:** S. **Depends on:** v0.2 R1 security review.
+
 ## P3
 
 ### "Ask the map" chat (E3)

@@ -1,0 +1,487 @@
+{
+  "classes": 69,
+  "methods": 431,
+  "includeLength": 9677,
+  "stepsPerLayer": {
+    "service": 155,
+    "repository": 143,
+    "filter": 3,
+    "interceptor": 102,
+    "controller": 126,
+    "aspect": 227
+  },
+  "raw": false,
+  "skippedCount": 245,
+  "skipped": [
+    "com.ruoyi.web.controller.common.CaptchaController#getCode(HttpServletResponse)",
+    "com.ruoyi.system.domain.SysConfig#setConfigKey(String)",
+    "com.ruoyi.system.domain.SysConfig#getConfigValue()",
+    "com.ruoyi.common.core.domain.AjaxResult#put(String,Object)",
+    "com.ruoyi.framework.config.ServerConfig#getUrl()",
+    "com.ruoyi.web.controller.monitor.CacheController#getInfo()",
+    "com.ruoyi.web.controller.monitor.CacheController#getInfo()",
+    "com.ruoyi.web.controller.monitor.CacheController#getCacheKeys(String)",
+    "com.ruoyi.web.controller.monitor.CacheController#getCacheKeys(String)",
+    "com.ruoyi.web.controller.monitor.CacheController#getCacheValue(String,String)",
+    "com.ruoyi.web.controller.monitor.CacheController#getCacheValue(String,String)",
+    "com.ruoyi.web.controller.monitor.ServerController#getInfo()",
+    "com.ruoyi.framework.web.domain.Server#copyTo()",
+    "com.ruoyi.framework.web.domain.server.Cpu#setCpuNum(int)",
+    "com.ruoyi.framework.web.domain.server.Cpu#setTotal(double)",
+    "com.ruoyi.framework.web.domain.server.Cpu#setSys(double)",
+    "com.ruoyi.framework.web.domain.server.Cpu#setUsed(double)",
+    "com.ruoyi.framework.web.domain.server.Cpu#setWait(double)",
+    "com.ruoyi.framework.web.domain.server.Cpu#setFree(double)",
+    "com.ruoyi.framework.web.domain.server.Mem#setTotal(long)",
+    "com.ruoyi.framework.web.domain.server.Mem#setUsed(long)",
+    "com.ruoyi.framework.web.domain.server.Mem#setFree(long)",
+    "com.ruoyi.framework.web.domain.server.Sys#setComputerName(String)",
+    "com.ruoyi.framework.web.domain.server.Sys#setComputerIp(String)",
+    "com.ruoyi.framework.web.domain.server.Sys#setOsName(String)",
+    "com.ruoyi.framework.web.domain.server.Sys#setOsArch(String)",
+    "com.ruoyi.framework.web.domain.server.Sys#setUserDir(String)",
+    "com.ruoyi.framework.web.domain.server.Jvm#setTotal(double)",
+    "com.ruoyi.framework.web.domain.server.Jvm#setMax(double)",
+    "com.ruoyi.framework.web.domain.server.Jvm#setFree(double)",
+    "com.ruoyi.framework.web.domain.server.Jvm#setVersion(String)",
+    "com.ruoyi.framework.web.domain.server.Jvm#setHome(String)",
+    "com.ruoyi.web.controller.monitor.ServerController#getInfo()",
+    "com.ruoyi.common.core.page.TableDataInfo#setCode(int)",
+    "com.ruoyi.common.core.page.TableDataInfo#setMsg(String)",
+    "com.ruoyi.common.core.page.TableDataInfo#setRows(List)",
+    "com.ruoyi.common.core.page.TableDataInfo#setTotal(long)",
+    "com.ruoyi.common.utils.poi.ExcelUtil#exportExcel(List,String,String)",
+    "com.ruoyi.common.annotation.Excel#type()",
+    "com.ruoyi.common.annotation.Excels#value()",
+    "com.ruoyi.common.annotation.Excel#targetAttr()",
+    "com.ruoyi.common.annotation.Excel#height()",
+    "com.ruoyi.common.annotation.Excel#headerColor()",
+    "com.ruoyi.common.annotation.Excel#headerBackgroundColor()",
+    "com.ruoyi.common.annotation.Excel#align()",
+    "com.ruoyi.common.annotation.Excel#color()",
+    "com.ruoyi.common.annotation.Excel#backgroundColor()",
+    "com.ruoyi.common.annotation.Excel#cellType()",
+    "com.ruoyi.common.annotation.Excel#wrapText()",
+    "com.ruoyi.common.annotation.Excel#name()",
+    "com.ruoyi.common.annotation.Excel#width()",
+    "com.ruoyi.common.annotation.Excel#prompt()",
+    "com.ruoyi.common.annotation.Excel#combo()",
+    "com.ruoyi.common.annotation.Excel#comboReadDict()",
+    "com.ruoyi.common.annotation.Excel#dictType()",
+    "com.ruoyi.common.annotation.Excel#needMerge()",
+    "com.ruoyi.common.annotation.Excel#isExport()",
+    "com.ruoyi.common.annotation.Excel#dateFormat()",
+    "com.ruoyi.common.annotation.Excel#readConverterExp()",
+    "com.ruoyi.common.annotation.Excel#separator()",
+    "com.ruoyi.common.annotation.Excel#scale()",
+    "com.ruoyi.common.annotation.Excel#roundingMode()",
+    "com.ruoyi.common.annotation.Excel#handler()",
+    "com.ruoyi.common.annotation.Excel#args()",
+    "com.ruoyi.common.annotation.Excel#defaultValue()",
+    "com.ruoyi.common.annotation.Excel#suffix()",
+    "com.ruoyi.common.annotation.Excel#isStatistics()",
+    "com.ruoyi.common.core.domain.model.LoginUser#getIpaddr()",
+    "com.ruoyi.common.core.domain.model.LoginUser#getUsername()",
+    "com.ruoyi.common.core.domain.entity.SysUser#getUserName()",
+    "com.ruoyi.common.core.domain.model.LoginUser#getUser()",
+    "com.ruoyi.system.domain.SysUserOnline#setTokenId(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#getToken()",
+    "com.ruoyi.system.domain.SysUserOnline#setUserName(String)",
+    "com.ruoyi.system.domain.SysUserOnline#setIpaddr(String)",
+    "com.ruoyi.system.domain.SysUserOnline#setLoginLocation(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#getLoginLocation()",
+    "com.ruoyi.system.domain.SysUserOnline#setBrowser(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#getBrowser()",
+    "com.ruoyi.system.domain.SysUserOnline#setOs(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#getOs()",
+    "com.ruoyi.system.domain.SysUserOnline#setLoginTime(Long)",
+    "com.ruoyi.common.core.domain.model.LoginUser#getLoginTime()",
+    "com.ruoyi.system.domain.SysUserOnline#setDeptName(String)",
+    "com.ruoyi.web.controller.system.SysConfigController#getInfo(Long)",
+    "com.ruoyi.system.domain.SysConfig#setConfigId(Long)",
+    "com.ruoyi.web.controller.system.SysConfigController#getInfo(Long)",
+    "com.ruoyi.web.controller.system.SysConfigController#getConfigKey(String)",
+    "com.ruoyi.system.domain.SysConfig#getConfigId()",
+    "com.ruoyi.system.domain.SysConfig#getConfigKey()",
+    "com.ruoyi.system.domain.SysConfig#getConfigName()",
+    "com.ruoyi.system.domain.SysConfig#getConfigType()",
+    "com.ruoyi.web.controller.system.SysDeptController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysDept#setDeptId(Long)",
+    "com.ruoyi.web.controller.system.SysDeptController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysDept#getDeptId()",
+    "com.ruoyi.common.core.domain.entity.SysDept#getDeptName()",
+    "com.ruoyi.common.core.domain.entity.SysDept#getParentId()",
+    "com.ruoyi.common.core.domain.entity.SysDept#getStatus()",
+    "com.ruoyi.common.core.domain.entity.SysDept#setAncestors(String)",
+    "com.ruoyi.common.core.domain.entity.SysDept#getAncestors()",
+    "com.ruoyi.common.core.domain.entity.SysDept#setOrderNum(Integer)",
+    "com.ruoyi.web.controller.system.SysDictDataController#getInfo(Long)",
+    "com.ruoyi.web.controller.system.SysDictDataController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysDictData#getDictType()",
+    "com.ruoyi.web.controller.system.SysDictTypeController#getInfo(Long)",
+    "com.ruoyi.web.controller.system.SysDictTypeController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysDictType#getDictId()",
+    "com.ruoyi.common.core.domain.entity.SysDictType#getDictType()",
+    "com.ruoyi.common.core.domain.entity.SysDictType#getDictName()",
+    "com.ruoyi.common.core.domain.entity.SysDictData#setStatus(String)",
+    "com.ruoyi.common.config.RuoYiConfig#getName()",
+    "com.ruoyi.common.config.RuoYiConfig#getVersion()",
+    "com.ruoyi.common.core.domain.entity.SysUser#getPassword()",
+    "com.ruoyi.common.core.domain.model.LoginUser#getUserId()",
+    "com.ruoyi.common.core.domain.model.LoginUser#setToken(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#setIpaddr(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#setLoginLocation(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#setBrowser(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#setOs(String)",
+    "com.ruoyi.common.core.domain.model.LoginUser#setLoginTime(Long)",
+    "com.ruoyi.common.core.domain.model.LoginUser#setExpireTime(Long)",
+    "com.ruoyi.common.core.domain.model.LoginBody#getUsername()",
+    "com.ruoyi.common.core.domain.model.LoginBody#getPassword()",
+    "com.ruoyi.common.core.domain.model.LoginBody#getCode()",
+    "com.ruoyi.common.core.domain.model.LoginBody#getUuid()",
+    "com.ruoyi.web.controller.system.SysLoginController#getInfo()",
+    "com.ruoyi.framework.web.service.SysPermissionService#getRolePermission(SysUser)",
+    "com.ruoyi.common.core.domain.entity.SysUser#isAdmin()",
+    "com.ruoyi.common.core.domain.entity.SysUser#getUserId()",
+    "com.ruoyi.framework.web.service.SysPermissionService#getMenuPermission(SysUser)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getRoles()",
+    "com.ruoyi.common.core.domain.model.LoginUser#getPermissions()",
+    "com.ruoyi.common.core.domain.model.LoginUser#setPermissions(Set)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getPwdUpdateDate()",
+    "com.ruoyi.web.controller.system.SysLoginController#getRouters()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getParentId()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getMenuId()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#setChildren(List)",
+    "com.ruoyi.system.domain.vo.RouterVo#setHidden(boolean)",
+    "com.ruoyi.system.domain.vo.RouterVo#setName(String)",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getMenuType()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getIsFrame()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getRouteName()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getPath()",
+    "com.ruoyi.system.domain.vo.RouterVo#setPath(String)",
+    "com.ruoyi.system.domain.vo.RouterVo#setComponent(String)",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getComponent()",
+    "com.ruoyi.system.domain.vo.RouterVo#setQuery(String)",
+    "com.ruoyi.system.domain.vo.RouterVo#setMeta(MetaVo)",
+    "com.ruoyi.system.domain.vo.RouterVo#setAlwaysShow(Boolean)",
+    "com.ruoyi.system.domain.vo.RouterVo#setRedirect(String)",
+    "com.ruoyi.system.domain.vo.RouterVo#setChildren(List)",
+    "com.ruoyi.web.controller.system.SysMenuController#getInfo(Long)",
+    "com.ruoyi.web.controller.system.SysMenuController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysRole#isMenuCheckStrictly()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#getMenuName()",
+    "com.ruoyi.common.core.domain.entity.SysMenu#setMenuId(Long)",
+    "com.ruoyi.common.core.domain.entity.SysMenu#setOrderNum(Integer)",
+    "com.ruoyi.web.controller.system.SysNoticeController#getInfo(Long)",
+    "com.ruoyi.system.domain.SysNoticeRead#setNoticeId(Long)",
+    "com.ruoyi.system.domain.SysNoticeRead#setUserId(Long)",
+    "com.ruoyi.web.controller.system.SysPostController#getInfo(Long)",
+    "com.ruoyi.web.controller.system.SysPostController#getInfo(Long)",
+    "com.ruoyi.system.domain.SysPost#getPostId()",
+    "com.ruoyi.system.domain.SysPost#getPostName()",
+    "com.ruoyi.system.domain.SysPost#getPostCode()",
+    "com.ruoyi.common.core.domain.entity.SysUser#setNickName(String)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getNickName()",
+    "com.ruoyi.common.core.domain.entity.SysUser#setEmail(String)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getEmail()",
+    "com.ruoyi.common.core.domain.entity.SysUser#setPhonenumber(String)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getPhonenumber()",
+    "com.ruoyi.common.core.domain.entity.SysUser#setSex(String)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getSex()",
+    "com.ruoyi.framework.web.service.TokenService#setLoginUser(LoginUser)",
+    "com.ruoyi.common.core.domain.entity.SysUser#setUserName(String)",
+    "com.ruoyi.common.core.domain.entity.SysUser#setPwdUpdateDate(Date)",
+    "com.ruoyi.common.core.domain.entity.SysUser#setPassword(String)",
+    "com.ruoyi.web.controller.system.SysRoleController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysRole#setRoleId(Long)",
+    "com.ruoyi.web.controller.system.SysRoleController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysRole#getRoleId()",
+    "com.ruoyi.common.core.domain.entity.SysRole#getRoleName()",
+    "com.ruoyi.common.core.domain.entity.SysRole#getRoleKey()",
+    "com.ruoyi.common.core.domain.entity.SysRole#getMenuIds()",
+    "com.ruoyi.system.domain.SysRoleMenu#setRoleId(Long)",
+    "com.ruoyi.system.domain.SysRoleMenu#setMenuId(Long)",
+    "com.ruoyi.common.core.domain.entity.SysRole#isAdmin()",
+    "com.ruoyi.common.core.domain.entity.SysRole#getDeptIds()",
+    "com.ruoyi.system.domain.SysRoleDept#setRoleId(Long)",
+    "com.ruoyi.system.domain.SysRoleDept#setDeptId(Long)",
+    "com.ruoyi.system.domain.SysUserRole#setUserId(Long)",
+    "com.ruoyi.system.domain.SysUserRole#setRoleId(Long)",
+    "com.ruoyi.common.core.domain.entity.SysRole#isDeptCheckStrictly()",
+    "com.ruoyi.common.core.domain.entity.SysDept#setChildren(List)",
+    "com.ruoyi.common.utils.poi.ExcelUtil#importExcel(InputStream)",
+    "com.ruoyi.common.core.domain.entity.SysUser#setUserId(Long)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getDeptId()",
+    "com.ruoyi.common.utils.poi.ExcelUtil#importTemplateExcel(String,String)",
+    "com.ruoyi.web.controller.system.SysUserController#getInfo(Long)",
+    "com.ruoyi.web.controller.system.SysUserController#getInfo(Long)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getRoleIds()",
+    "com.ruoyi.common.core.domain.entity.SysUser#getPostIds()",
+    "com.ruoyi.system.domain.SysUserPost#setUserId(Long)",
+    "com.ruoyi.system.domain.SysUserPost#setPostId(Long)",
+    "com.ruoyi.common.core.domain.entity.SysUser#getStatus()",
+    "com.ruoyi.web.controller.tool.TestController#getUser(Integer)",
+    "com.ruoyi.web.controller.tool.UserEntity#getUserId()",
+    "com.ruoyi.generator.controller.GenController#getInfo(Long)",
+    "com.ruoyi.generator.domain.GenTable#getOptions()",
+    "com.ruoyi.generator.domain.GenTable#setTreeCode(String)",
+    "com.ruoyi.generator.domain.GenTable#setTreeParentCode(String)",
+    "com.ruoyi.generator.domain.GenTable#setTreeName(String)",
+    "com.ruoyi.generator.domain.GenTable#setParentMenuId(Long)",
+    "com.ruoyi.generator.domain.GenTable#setParentMenuName(String)",
+    "com.ruoyi.generator.domain.GenTable#setView(boolean)",
+    "com.ruoyi.generator.controller.GenController#getInfo(Long)",
+    "com.ruoyi.generator.domain.GenTable#getTplCategory()",
+    "com.ruoyi.generator.domain.GenTable#getSubTableName()",
+    "com.ruoyi.generator.domain.GenTable#getSubTableFkName()",
+    "com.ruoyi.generator.domain.GenTable#setOptions(String)",
+    "com.ruoyi.generator.domain.GenTable#getColumns()",
+    "com.ruoyi.generator.domain.GenTable#setSubTable(GenTable)",
+    "com.ruoyi.generator.domain.GenTable#setPkColumn(GenTableColumn)",
+    "com.ruoyi.generator.domain.GenTable#getPkColumn()",
+    "com.ruoyi.generator.domain.GenTable#getSubTable()",
+    "com.ruoyi.generator.domain.GenTable#getGenPath()",
+    "com.ruoyi.generator.domain.GenTable#getTableName()",
+    "com.ruoyi.generator.domain.GenTableColumn#getColumnId()",
+    "com.ruoyi.generator.domain.GenTableColumn#getDictType()",
+    "com.ruoyi.generator.domain.GenTableColumn#getQueryType()",
+    "com.ruoyi.generator.domain.GenTableColumn#getIsRequired()",
+    "com.ruoyi.generator.domain.GenTableColumn#getHtmlType()",
+    "com.ruoyi.quartz.controller.SysJobController#getInfo(Long)",
+    "com.ruoyi.quartz.controller.SysJobController#getInfo(Long)",
+    "com.ruoyi.quartz.domain.SysJob#getCronExpression()",
+    "com.ruoyi.quartz.domain.SysJob#getJobName()",
+    "com.ruoyi.quartz.domain.SysJob#getInvokeTarget()",
+    "com.ruoyi.quartz.domain.SysJob#setStatus(String)",
+    "com.ruoyi.quartz.domain.SysJob#getJobId()",
+    "com.ruoyi.quartz.domain.SysJob#getJobGroup()",
+    "com.ruoyi.quartz.domain.SysJob#getStatus()",
+    "com.ruoyi.quartz.controller.SysJobLogController#getInfo(Long)",
+    "com.ruoyi.quartz.controller.SysJobLogController#getInfo(Long)"
+  ],
+  "classLayers": {
+    "com.ruoyi.common.filter.RepeatableFilter": [
+      "filter"
+    ],
+    "com.ruoyi.common.filter.XssFilter": [
+      "filter"
+    ],
+    "com.ruoyi.framework.aspectj.DataScopeAspect": [
+      "aspect"
+    ],
+    "com.ruoyi.framework.aspectj.LogAspect": [
+      "aspect"
+    ],
+    "com.ruoyi.framework.interceptor.RepeatSubmitInterceptor": [
+      "interceptor"
+    ],
+    "com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter": [
+      "filter"
+    ],
+    "com.ruoyi.framework.web.service.SysLoginService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.SysPasswordService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.SysRegisterService": [
+      "service"
+    ],
+    "com.ruoyi.framework.web.service.TokenService": [
+      "service"
+    ],
+    "com.ruoyi.generator.controller.GenController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.generator.mapper.GenTableColumnMapper": [
+      "repository"
+    ],
+    "com.ruoyi.generator.mapper.GenTableMapper": [
+      "repository"
+    ],
+    "com.ruoyi.generator.service.GenTableColumnServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.generator.service.GenTableServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.quartz.controller.SysJobController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.quartz.controller.SysJobLogController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.quartz.mapper.SysJobLogMapper": [
+      "repository"
+    ],
+    "com.ruoyi.quartz.mapper.SysJobMapper": [
+      "repository"
+    ],
+    "com.ruoyi.quartz.service.impl.SysJobLogServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.quartz.service.impl.SysJobServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.mapper.SysConfigMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysDeptMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysDictDataMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysDictTypeMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysLogininforMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysMenuMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysNoticeMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysNoticeReadMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysOperLogMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysPostMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysRoleDeptMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysRoleMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysRoleMenuMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysUserMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysUserPostMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.mapper.SysUserRoleMapper": [
+      "repository"
+    ],
+    "com.ruoyi.system.service.impl.SysConfigServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysDeptServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysDictDataServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysDictTypeServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysLogininforServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysMenuServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysNoticeReadServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysNoticeServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysOperLogServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysPostServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysRoleServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysUserOnlineServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.system.service.impl.SysUserServiceImpl": [
+      "service"
+    ],
+    "com.ruoyi.web.controller.common.CommonController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.monitor.CacheController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.SysLogininforController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.SysOperlogController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.monitor.SysUserOnlineController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysConfigController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysDeptController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysDictDataController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysDictTypeController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysIndexController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysLoginController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysMenuController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysNoticeController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysPostController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysProfileController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysRegisterController": [
+      "controller"
+    ],
+    "com.ruoyi.web.controller.system.SysRoleController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.system.SysUserController": [
+      "controller",
+      "interceptor"
+    ],
+    "com.ruoyi.web.controller.tool.TestController": [
+      "controller"
+    ]
+  }
+}

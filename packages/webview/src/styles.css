@@ -1100,3 +1100,124 @@ body.vscode-high-contrast-light .tab[aria-selected="true"] {
   color: var(--vscode-descriptionForeground);
   text-decoration: none;
 }
+
+/* ── v0.2 runtime overlay & Trace tab ─────────────────────────────────────── */
+.badge-observed {
+  margin-left: auto;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vscode-charts-green);
+  border: 1px solid var(--vscode-charts-green);
+  white-space: nowrap;
+}
+.badge-observed.badge-error,
+.badge-error {
+  color: var(--vscode-errorForeground);
+  border-color: var(--vscode-errorForeground);
+}
+.lane-node.observed {
+  box-shadow: inset 3px 0 0 var(--vscode-charts-green);
+}
+.lane-node.dim,
+.edge-label.dim {
+  opacity: 0.4;
+}
+.observed-summary {
+  margin-left: 8px;
+  font-size: 0.85em;
+  font-weight: normal;
+  color: var(--vscode-charts-green);
+}
+.trace-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.trace-status .warn {
+  color: var(--vscode-editorWarning-foreground);
+}
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground);
+}
+.dot-receiving { background: var(--vscode-charts-green); }
+.dot-waiting,
+.dot-starting,
+.dot-downloading { background: var(--vscode-charts-yellow); }
+.dot-error { background: var(--vscode-errorForeground); }
+.trace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.trace-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+.trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.trace-table th,
+.trace-table td {
+  text-align: left;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.trace-table .num { text-align: right; }
+.trace-table tr { cursor: pointer; }
+.trace-table tr.selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.trace-table tr:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+.trace-table tr.error td:nth-child(2) { color: var(--vscode-errorForeground); }
+.waterfall { margin-top: 12px; }
+.waterfall-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.waterfall-rows { list-style: none; margin: 0; padding: 0; }
+.waterfall-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 45%) 1fr 72px;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+.waterfall-row.unmatched .waterfall-name { color: var(--vscode-descriptionForeground); }
+.waterfall-row.error .waterfall-bar { background: var(--vscode-errorForeground); }
+.waterfall-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waterfall-bar-track { position: relative; height: 10px; background: var(--vscode-editorWidget-background); }
+.waterfall-bar { position: absolute; top: 0; height: 10px; min-width: 2px; background: var(--vscode-charts-blue); }
+.waterfall-ms { text-align: right; font-variant-numeric: tabular-nums; }
+.layer-badge {
+  display: inline-block;
+  min-width: 64px;
+  padding: 0 4px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  font-size: 0.8em;
+  text-align: center;
+}
+.layer-badge.layer-none { border-style: dashed; }
+.trace-diff { margin-top: 16px; }
+.small { font-size: 0.85em; }
+@media (max-width: 600px) {
+  .waterfall-row { grid-template-columns: 1fr 56px; }
+  .waterfall-bar-track { display: none; }
+  .trace-table th:nth-child(3),
+  .trace-table td:nth-child(3) { display: none; }
+}
+.graph-node.pill {
+  border-radius: 999px;
+  border-style: dashed;
+}
+.graph-node.pill::before {
+  content: "✉";
+  margin-right: 4px;
+}

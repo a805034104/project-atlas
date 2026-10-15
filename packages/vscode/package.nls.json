@@ -31,5 +31,12 @@
   "cfg.exclude": "Extra paths to skip (gitignore syntax), added to `.atlasignore`.",
   "cfg.maxFileSizeKB": "Files larger than this are skipped.",
   "cfg.history": "Collect per-module git history.",
-  "cfg.codeLens": "Show a request-flow CodeLens above controller methods."
+  "cfg.codeLens": "Show a request-flow CodeLens above controller methods.",
+  "cmd.runtime.copyVmOptions": "Copy VM Options for Tracing (IDEA / Eclipse / java -jar)",
+  "cmd.runtime.launch": "Launch with Tracing",
+  "cmd.runtime.stop": "Stop Trace Receiver",
+  "cmd.runtime.clear": "Clear Recorded Traces",
+  "cfg.runtime.enabled": "Allow local runtime tracing: a receiver on 127.0.0.1 collects OpenTelemetry spans from services you start with tracing, and the flow view shows which steps really ran. Nothing leaves this machine; SQL text, request bodies and headers are never stored.",
+  "cfg.runtime.port": "Preferred port of the local trace receiver (the next free port is used when taken).",
+  "cfg.runtime.javaagentPath": "Path to a local `opentelemetry-javaagent-2.31.1.jar` (offline use). Its sha256 is checked; leave empty to download it (Maven Central, then Aliyun mirror)."
 }

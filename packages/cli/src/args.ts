@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import type { LlmProviderName } from "@project-atlas/core";
+import { JAVAAGENT_VERSION, type LlmProviderName } from "@project-atlas/core";
 import { usageError } from "./errors.js";
 
 /**
@@ -48,7 +48,22 @@ export interface ShowCommand {
   json: boolean;
 }
 
-export type Command = AnalyzeCommand | EstimateCommand | ShowCommand | { command: "help"; topic?: string } | { command: "version" };
+export interface TraceCommand {
+  command: "trace";
+  /** Command line after `--` (empty: print VM options and receive). */
+  run: string[];
+  dir?: string;
+  port?: number;
+  service?: string;
+  agent?: string;
+  allowAgentConflict: boolean;
+  printConfig: boolean;
+  json: boolean;
+  /** `trace import <file>` */
+  importFile?: string;
+}
+
+export type Command = AnalyzeCommand | EstimateCommand | ShowCommand | TraceCommand | { command: "help"; topic?: string } | { command: "version" };
 
 const OPTIONS = {
   out: { type: "string" },
@@ -66,11 +81,17 @@ const OPTIONS = {
   depth: { type: "string" },
   help: { type: "boolean", short: "h" },
   version: { type: "boolean", short: "v" },
+  port: { type: "string" },
+  service: { type: "string" },
+  agent: { type: "string" },
+  "allow-agent-conflict": { type: "boolean" },
+  "print-config": { type: "boolean" },
 } as const;
 
 type OptionName = keyof typeof OPTIONS;
 
-const ALLOWED: Record<"analyze" | "estimate" | "show", readonly OptionName[]> = {
+const ALLOWED: Record<"analyze" | "estimate" | "show" | "trace", readonly OptionName[]> = {
+  trace: ["dir", "json", "port", "service", "agent", "allow-agent-conflict", "print-config"],
   analyze: ["out", "json", "no-ai", "no-history", "markdown", "provider", "model", "base-url", "lang", "yes", "max-input-tokens"],
   estimate: ["out", "json", "no-history", "provider", "model", "base-url", "max-input-tokens"],
   show: ["dir", "depth", "json"],
@@ -83,6 +104,10 @@ export const USAGE = `Usage:
                         [--max-input-tokens <n>]
   project-atlas show <entrypoint label or id> [--dir .atlas] [--depth <n>] [--json]
   project-atlas estimate [paths...] [--provider …] [--model …] [--base-url …] [--json]
+  project-atlas trace [--dir <workspace>] [--service <name>] [--port <n>] [--agent <jar>]
+                      [--allow-agent-conflict] [--json] [-- <command to start the service>]
+  project-atlas trace --print-config [--dir <workspace>] [--service <name>]
+  project-atlas trace import <otlp-file.pb|.json> [--dir <workspace>] [--json]
 
 Analyze runs the deterministic map with no network access. AI enrichment runs
 only when a provider is configured (--provider or ATLAS_PROVIDER, keys from
@@ -93,7 +118,16 @@ is sent.
 Examples:
   project-atlas analyze --no-ai --markdown ATLAS.md
   project-atlas show "GET /system/user/list"
-  ATLAS_PROVIDER=ollama project-atlas estimate`;
+  ATLAS_PROVIDER=ollama project-atlas estimate
+  project-atlas trace -- mvn -pl ruoyi-admin spring-boot:run
+  project-atlas trace -- java -jar ruoyi-admin/target/ruoyi-admin.jar
+  project-atlas trace --print-config     (VM options for IDEA / Eclipse, then keeps receiving)
+  project-atlas trace -- mvn test        (record the test suite)
+
+trace starts a local receiver (127.0.0.1 only), downloads the pinned OpenTelemetry
+javaagent ${JAVAAGENT_VERSION} (sha256-checked; ATLAS_JAVAAGENT_PATH for offline use), starts the
+command with the agent and prints which request flows were observed. Spans stay in
+.atlas/traces/; SQL text, request bodies and headers are never stored.`;
 
 function positiveInt(name: string, raw: string | undefined): number | undefined {
   if (raw === undefined) return undefined;
@@ -114,7 +148,11 @@ function language(raw: string | undefined): Language | undefined {
   return lower as Language;
 }
 
-export function parseCliArgs(argv: readonly string[]): Command {
+export function parseCliArgs(argvIn: readonly string[]): Command {
+  // Everything after `--` belongs to the traced command, untouched.
+  const dash = argvIn.indexOf("--");
+  const argv = dash >= 0 ? argvIn.slice(0, dash) : argvIn;
+  const tail = dash >= 0 ? argvIn.slice(dash + 1) : [];
   let parsed: ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true; strict: true }>>;
   try {
     parsed = parseArgs({ args: [...argv], options: OPTIONS, allowPositionals: true, strict: true });
@@ -127,7 +165,8 @@ export function parseCliArgs(argv: readonly string[]): Command {
   const [command, ...rest] = positionals;
   if (values.version) return { command: "version" };
   if (!command || command === "help") return rest[0] ? { command: "help", topic: rest[0] } : { command: "help" };
-  if (command !== "analyze" && command !== "estimate" && command !== "show") throw usageError(`Unknown command "${command}".`);
+  if (command !== "analyze" && command !== "estimate" && command !== "show" && command !== "trace") throw usageError(`Unknown command "${command}".`);
+  if (tail.length > 0 && command !== "trace") throw usageError(`"--" is only valid for "trace".`);
   if (values.help) return { command: "help", topic: command };
 
   const given = (Object.keys(values) as OptionName[]).filter((k) => values[k] !== undefined && k !== "help" && k !== "version");
@@ -162,6 +201,30 @@ export function parseCliArgs(argv: readonly string[]): Command {
     case "estimate": {
       const cmd: EstimateCommand = { command, paths: rest, json: values.json ?? false, noHistory: values["no-history"] ?? false, ...ai };
       if (values.out !== undefined) cmd.out = values.out;
+      return cmd;
+    }
+    case "trace": {
+      const cmd: TraceCommand = {
+        command,
+        run: tail,
+        allowAgentConflict: values["allow-agent-conflict"] ?? false,
+        printConfig: values["print-config"] ?? false,
+        json: values.json ?? false,
+      };
+      if (rest[0] === "import") {
+        if (!rest[1] || tail.length > 0) throw usageError('"trace import" needs one OTLP file, e.g. project-atlas trace import traces.pb.');
+        cmd.importFile = rest[1];
+      } else if (rest.length > 0) {
+        throw usageError(`Put the command to trace after "--": project-atlas trace -- ${rest.join(" ")}`);
+      }
+      if (values.dir !== undefined) cmd.dir = values.dir;
+      if (values.service !== undefined) cmd.service = values.service;
+      if (values.agent !== undefined) cmd.agent = values.agent;
+      const port = positiveInt("port", values.port);
+      if (port !== undefined) {
+        if (port > 65535) throw usageError(`--port must be at most 65535 (got ${port}).`);
+        cmd.port = port;
+      }
       return cmd;
     }
     case "show": {

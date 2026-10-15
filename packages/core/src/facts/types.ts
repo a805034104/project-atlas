@@ -48,6 +48,24 @@ export interface JavaField {
   annotations: JavaAnnotation[];
   /** String literal initializer, for constants such as topic names. */
   stringValue?: string;
+  /** Declared with an initializer (any expression). */
+  initialized?: boolean;
+  line: number;
+}
+
+/** `new Queue("orders", true)` inside a method body. */
+export interface JavaCreation {
+  type: string;
+  argLiterals: (string | null)[];
+  argTexts: string[];
+  line: number;
+}
+
+/** `ORDER_CANCEL("mall.order.direct", "mall.order.cancel")` in an enum body. */
+export interface JavaEnumConstant {
+  name: string;
+  argLiterals: (string | null)[];
+  argTexts: string[];
   line: number;
 }
 
@@ -57,10 +75,16 @@ export interface JavaMethod {
   params: JavaParam[];
   modifiers: string[];
   annotations: JavaAnnotation[];
+  /** Object creations in the body (`new X(...)`), in source order. */
+  creations: JavaCreation[];
   isConstructor: boolean;
   /** Local variable declarations: name → declared type text. */
   locals: Record<string, string>;
   calls: JavaCall[];
+  /** The body is exactly `return field;` / `return this.field;` (plain getter). */
+  returnsField?: string;
+  /** Constructors: `this.field = param;` assignments, field → parameter name. */
+  fieldAssigns?: Record<string, string>;
   line: number;
   endLine: number;
 }
@@ -76,6 +100,8 @@ export interface JavaType {
   interfaces: string[];
   fields: JavaField[];
   methods: JavaMethod[];
+  /** Enum constants with their constructor arguments (enums only). */
+  enumConstants: JavaEnumConstant[];
   line: number;
 }
 

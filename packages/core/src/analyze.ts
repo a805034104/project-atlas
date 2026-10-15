@@ -10,6 +10,7 @@ import { emptyOverrides, mergeOverrides, parseAtlasYaml, type AtlasOverrides } f
 import { createParsePool, type ParsePool } from "./parse/pool.js";
 import type { AnalysisPhase } from "./protocol.js";
 import { JavaIndex } from "./rules/java-index.js";
+import { linkMq, mergeTopology, type MqServiceResult } from "./rules/mq.js";
 import { indexMapperXml } from "./rules/mybatis.js";
 import { runSpringRules, type FeignCallSite, type HttpChain, type RestCallSite } from "./rules/spring.js";
 import { frontendStartup, javaStartup } from "./rules/startup.js";
@@ -27,7 +28,7 @@ import { loadWorkspace, type LoadedFile, type Workspace } from "./workspace/load
  *     ─▶ git history ─▶ startup guides ─▶ AtlasGraph
  */
 
-export const ANALYZER_VERSION = "0.1.0";
+export const ANALYZER_VERSION = "0.2.0-r1";
 
 export interface RootInput {
   path: string;
@@ -166,7 +167,15 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   const scheduled: { entrypointId: string; handlerStepId: string }[] = [];
   const feignCalls: FeignCallSite[] = [];
   const restCalls: RestCallSite[] = [];
-  const wrappers = overrides.wrappers.map((w) => ({ symbol: w.symbol, kind: w.kind, ...(w.urlArg !== undefined ? { urlArg: w.urlArg } : {}), ...(w.methodLiteral ? { methodLiteral: w.methodLiteral } : {}) }));
+  const mqResults: MqServiceResult[] = [];
+  const wrappers = overrides.wrappers.map((w) => ({
+    symbol: w.symbol,
+    kind: w.kind,
+    ...(w.urlArg !== undefined ? { urlArg: w.urlArg } : {}),
+    ...(w.methodLiteral ? { methodLiteral: w.methodLiteral } : {}),
+    ...(w.broker ? { broker: w.broker } : {}),
+    ...(w.topicArg !== undefined ? { topicArg: w.topicArg } : {}),
+  }));
   const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
   for (const [i, svc] of project.java.entries()) {
     // Let cancellation and progress callbacks run between services (extension host stays responsive).
@@ -180,6 +189,7 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
     scheduled.push(...result.scheduled.map((s) => ({ entrypointId: s.entrypoint.id, handlerStepId: s.handlerStepId })));
     feignCalls.push(...result.feignCalls);
     restCalls.push(...result.restCalls);
+    mqResults.push(result.mq);
     diagnostics.push(...result.diagnostics);
     phase("rules", (i + 1) / Math.max(1, project.java.length + project.frontends.length));
   }
@@ -197,6 +207,8 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   phase("cross-service", 0);
   const handlers = new Map(chains.map((c) => [c.entrypoint.id, c.handlerStepId]));
   const linked = linkServices({ java: project.java, frontends: project.frontends, indexes, frontendCalls, feignCalls, restCalls, handlers }, graph);
+  const mqConsumers = mqResults.flatMap((r) => r.consumers);
+  linked.links.push(...linkMq(mqResults.flatMap((r) => r.sends), mqConsumers, mergeTopology(mqResults.map((r) => r.topology)), graph));
   diagnostics.push(...applyEdgeOverrides(graph, overrides.edges));
   // Overrides may have removed cross-service hops: drop links and upstream chains that no longer exist.
   const hasCallEdge = (from: string, to?: string) => graph.outgoing(from).some((e) => to === undefined || e.to === to);
@@ -223,6 +235,7 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
     graph.projectFlow(chain.entrypoint.id, chainStepIds, chainEdgeIds, chain.handlerStepId);
   }
   for (const s of scheduled) if (!ignored.has(s.entrypointId)) graph.projectFlow(s.entrypointId, [], [], s.handlerStepId);
+  for (const c of mqConsumers) if (!ignored.has(c.entrypoint.id)) graph.projectFlow(c.entrypoint.id, [], [], c.handlerStepId);
   for (const r of routes) if (!ignored.has(r.entrypointId)) graph.projectFlow(r.entrypointId, [], [], r.pageStepId);
   phase("cross-service", 1);
 

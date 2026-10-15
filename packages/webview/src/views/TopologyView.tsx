@@ -27,9 +27,23 @@ function TopologyBody({ data }: { data: TopologyData }) {
   const links = useMemo(() => data.links.filter((l) => showAi || l.provenance !== "ai-inferred"), [data.links, showAi]);
   const names = useMemo(() => new Map(data.services.map((s) => [s.id, s.name])), [data.services]);
 
+  // Message channels (topic / queue / stream) are nodes of their own: producers → channel → consumers.
+  const channels = useMemo(() => {
+    const out = new Map<string, { broker: string; name: string; producers: Set<string>; consumers: Set<string> }>();
+    for (const l of links) {
+      if (l.kind !== "mq") continue;
+      const colon = l.channel.indexOf(":");
+      const entry = out.get(l.channel) ?? { broker: l.channel.slice(0, colon), name: l.channel.slice(colon + 1), producers: new Set(), consumers: new Set() };
+      entry.producers.add(l.fromServiceId);
+      entry.consumers.add(l.toServiceId);
+      out.set(l.channel, entry);
+    }
+    return out;
+  }, [links]);
+
   const nodes = useMemo<GNode[]>(
-    () =>
-      data.services.map((s) => {
+    () => [
+      ...data.services.map((s) => {
         const outCount = links.filter((l) => l.fromServiceId === s.id).length;
         return {
           id: s.id,
@@ -39,19 +53,34 @@ function TopologyBody({ data }: { data: TopologyData }) {
           ariaLabel: t("graph.nodeLabel", { name: s.name, kind: t(`service.${s.kind}`), n: outCount }),
         };
       }),
-    [data.services, links, t],
+      ...[...channels].map(([channel, c]) => ({
+        id: `mq:${channel}`,
+        label: c.name,
+        sublabel: c.broker,
+        tone: "orange" as Tone,
+        shape: "pill" as const,
+        ariaLabel: t("topology.channel", { broker: c.broker, name: c.name, producers: c.producers.size, consumers: c.consumers.size }),
+      })),
+    ],
+    [data.services, links, channels, t],
   );
-  const edges = useMemo<GEdge[]>(
-    () =>
-      links.map((l) => ({
+  const edges = useMemo<GEdge[]>(() => {
+    const out: GEdge[] = links
+      .filter((l) => l.kind !== "mq")
+      .map((l) => ({
         id: l.id,
         from: l.fromServiceId,
         to: l.toServiceId,
-        label: `${PROVENANCE_MARK[l.provenance]} ${l.kind} ${l.channel}`,
-        className: `edge-${l.provenance} tone-${KIND_TONE[l.kind]}`,
-      })),
-    [links],
-  );
+        label: `${PROVENANCE_MARK[l.provenance]} ${l.kind} ${l.channel}${l.observed ? ` · ${l.observed.count}×` : ""}`,
+        className: `edge-${l.provenance} tone-${KIND_TONE[l.kind]}${l.observed ? " observed" : ""}`,
+      }));
+    const observedChannel = new Set(links.filter((l) => l.kind === "mq" && l.observed).map((l) => l.channel));
+    for (const [channel, c] of channels) {
+      for (const p of c.producers) out.push({ id: `mq-in:${p}:${channel}`, from: p, to: `mq:${channel}`, label: `${PROVENANCE_MARK["framework-rule"]} ${t("topology.produce")}`, className: "edge-framework-rule tone-orange" });
+      for (const s of c.consumers) out.push({ id: `mq-out:${channel}:${s}`, from: `mq:${channel}`, to: s, label: `⇢ ${t("topology.consume")}`, className: `edge-framework-rule tone-orange async${observedChannel.has(channel) ? " observed" : ""}` });
+    }
+    return out;
+  }, [links, channels, t]);
 
   if (data.links.length === 0) {
     return <EmptyState title={t("topology.empty.title")} body={t("topology.empty.body")} />;

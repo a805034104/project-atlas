@@ -1,9 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { ANALYZER_VERSION, MAX_FLOW_DEPTH, type GraphView } from "@project-atlas/core";
+import { ANALYZER_VERSION, emptyAggregates, MAX_FLOW_DEPTH, type GraphView } from "@project-atlas/core";
 import { z } from "zod";
 import { GraphSource, StoreUnavailableError } from "./store.js";
-import { findSymbol, getFlow, getModuleHistory, listEntrypoints, listServices, ToolInputError, type ToolOutput } from "./tools.js";
+import { findSymbol, getFlow, getModuleHistory, listEntrypoints, listServices, listTraces, ToolInputError, type ToolOutput } from "./tools.js";
 
 /**
  * Read-only MCP server over stdio (spec T2, child #20).
@@ -19,7 +19,7 @@ import { findSymbol, getFlow, getModuleHistory, listEntrypoints, listServices, T
 export { GraphSource, StoreUnavailableError } from "./store.js";
 export * from "./tools.js";
 
-export const TOOL_NAMES = ["list_services", "list_entrypoints", "get_flow", "find_symbol", "get_module_history"] as const;
+export const TOOL_NAMES = ["list_services", "list_entrypoints", "get_flow", "find_symbol", "get_module_history", "list_traces"] as const;
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const ENTRYPOINT_KINDS = ["http", "mq-consumer", "scheduled", "cli-main", "frontend-route", "websocket"] as const;
@@ -58,7 +58,7 @@ export function createAtlasServer(atlasDir: string): McpServer {
     "list_entrypoints",
     {
       title: "List entrypoints",
-      description: 'HTTP endpoints, scheduled jobs and frontend routes with their handler and file:line. Labels such as "GET /system/user/list" can be passed to get_flow.',
+      description: 'HTTP endpoints, message consumers (Kafka/RabbitMQ/RocketMQ/Redis Stream/Spring Cloud Stream), scheduled jobs and frontend routes with their handler and file:line. Labels such as "GET /system/user/list" or "KAFKA order-created" can be passed to get_flow.',
       inputSchema: {
         service: z.string().optional().describe("Service name or id."),
         kind: z.enum(ENTRYPOINT_KINDS).optional(),
@@ -118,6 +118,27 @@ export function createAtlasServer(atlasDir: string): McpServer {
       annotations: READ_ONLY,
     },
     (args) => respond(source, (view) => getModuleHistory(view, args)),
+  );
+
+  server.registerTool(
+    "list_traces",
+    {
+      title: "List traced requests",
+      description:
+        "Recent requests recorded at runtime by `project-atlas trace` (newest first): root route, duration, error flag, span count, services. Only aggregates are returned, never span attributes. get_flow shows per-step observed counts and latencies for the same data.",
+      inputSchema: {
+        entrypoint: z.string().optional().describe('Only traces of this entrypoint (label such as "GET /system/user/list" or id).'),
+        since: z.string().optional().describe("ISO-8601 time; only traces that started after it."),
+        limit: limit(200, 20),
+        errorsOnly: z.boolean().optional().describe("Only traces that recorded an error."),
+      },
+      outputSchema: { total: z.number(), returned: z.number(), traces: anyRecords },
+      annotations: READ_ONLY,
+    },
+    async (args) => {
+      const aggregates = await source.aggregates().catch(() => undefined);
+      return respond(source, (view) => listTraces(view, aggregates ?? emptyAggregates(), args));
+    },
   );
 
   return server;

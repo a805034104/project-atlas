@@ -187,13 +187,18 @@ export class JavaIndex {
    * Fold a constant expression to a string: literals, `CONST`, `Type.CONST`,
    * `pkg.Type.CONST`, and `+` concatenations of those.
    */
-  resolveConstant(expr: string, ctx: TypeRef, depth = 0): string | undefined {
+  /**
+   * Fold an expression to a string: literals, `+` concatenation and **final** fields (a mutable
+   * field's initializer says nothing about its value at the call). `shadow` = parameter and local
+   * names of the calling method: a bare identifier that names one of them is not the field.
+   */
+  resolveConstant(expr: string, ctx: TypeRef, depth = 0, shadow?: ReadonlySet<string>): string | undefined {
     if (depth > 8) return undefined;
     const literal = javaStringLiteralText(expr);
     if (literal !== undefined) return literal;
     const parts = splitTopLevelPlus(expr);
     if (parts.length > 1) {
-      const folded = parts.map((p) => this.resolveConstant(p, ctx, depth + 1));
+      const folded = parts.map((p) => this.resolveConstant(p, ctx, depth + 1, shadow));
       return folded.every((p): p is string => p !== undefined) ? folded.join("") : undefined;
     }
     const text = expr.trim();
@@ -201,10 +206,12 @@ export class JavaIndex {
     const dot = text.lastIndexOf(".");
     const owner = dot < 0 ? ctx : this.resolveType(text.slice(0, dot), ctx);
     const fieldName = dot < 0 ? text : text.slice(dot + 1);
-    if (!owner) return undefined;
+    if (!owner || (dot < 0 && shadow?.has(text))) return undefined;
     for (const t of [owner, ...this.ancestors(owner)]) {
       const field = t.type.fields.find((f) => f.name === fieldName);
-      if (field?.stringValue !== undefined) return field.stringValue;
+      if (!field) continue;
+      const constant = field.modifiers.includes("final") || t.type.kind === "interface" || t.type.kind === "annotation";
+      return constant ? field.stringValue : undefined;
     }
     return undefined;
   }

@@ -3,6 +3,7 @@ import type {
   AnnotationValue,
   JavaAnnotation,
   JavaCall,
+  JavaCreation,
   JavaField,
   JavaFileFacts,
   JavaMethod,
@@ -145,10 +146,21 @@ function params(node: Node | null): JavaParam[] {
   return out;
 }
 
-function collectBody(body: Node | null): { calls: JavaCall[]; locals: Record<string, string> } {
+function argumentsOf(argsNode: Node | null): { argLiterals: (string | null)[]; argTexts: string[] } {
+  const argNodes = argsNode ? argsNode.namedChildren.filter((c) => !c.type.includes("comment")) : [];
+  return { argLiterals: argNodes.map((a) => javaStringLiteral(a)), argTexts: argNodes.map((a) => a.text.slice(0, MAX_ARG_TEXT)) };
+}
+
+function collectBody(body: Node | null): { calls: JavaCall[]; locals: Record<string, string>; creations: JavaCreation[] } {
   const calls: JavaCall[] = [];
   const locals: Record<string, string> = {};
-  if (!body) return { calls, locals };
+  const creations: JavaCreation[] = [];
+  if (!body) return { calls, locals, creations };
+  for (const created of body.descendantsOfType("object_creation_expression")) {
+    const type = created.childForFieldName("type")?.text;
+    if (type) creations.push({ type, ...argumentsOf(created.childForFieldName("arguments")), line: line(created) });
+  }
+  creations.sort((a, b) => a.line - b.line);
   for (const decl of body.descendantsOfType("local_variable_declaration")) {
     const type = decl.childForFieldName("type")?.text;
     if (!type) continue;
@@ -186,19 +198,45 @@ function collectBody(body: Node | null): { calls: JavaCall[]; locals: Record<str
     calls.push(entry);
   }
   calls.sort((a, b) => a.line - b.line);
-  return { calls, locals };
+  return { calls, locals, creations };
 }
 
 function method(node: Node, isConstructor: boolean): JavaMethod {
   const { modifiers, annotations } = modifiersOf(node);
   const body = node.childForFieldName("body");
-  const { calls, locals } = collectBody(body);
+  const { calls, locals, creations } = collectBody(body);
+  const paramList = params(node.childForFieldName("parameters"));
+  const statements = body ? body.namedChildren.filter((c) => !c.type.includes("comment")) : [];
+  const fieldRef = (n: Node | null | undefined): string | undefined => {
+    if (n?.type === "identifier") return n.text;
+    if (n?.type === "field_access" && n.childForFieldName("object")?.type === "this") return n.childForFieldName("field")?.text;
+    return undefined;
+  };
+  let returnsField: string | undefined;
+  if (!isConstructor && statements.length === 1 && statements[0]?.type === "return_statement") returnsField = fieldRef(statements[0].namedChildren[0]);
+  let fieldAssigns: Record<string, string> | undefined;
+  if (isConstructor) {
+    fieldAssigns = {};
+    for (const st of statements) {
+      const expr = st.type === "expression_statement" ? st.namedChildren[0] : undefined;
+      if (expr?.type !== "assignment_expression") continue;
+      const left = expr.childForFieldName("left");
+      const right = expr.childForFieldName("right");
+      if (left?.type === "field_access" && left.childForFieldName("object")?.type === "this" && right?.type === "identifier" && paramList.some((p) => p.name === right.text)) {
+        const field = left.childForFieldName("field")?.text;
+        if (field) fieldAssigns[field] = right.text;
+      }
+    }
+  }
   return {
+    ...(returnsField ? { returnsField } : {}),
+    ...(fieldAssigns ? { fieldAssigns } : {}),
     name: node.childForFieldName("name")?.text ?? "<init>",
     returnType: isConstructor ? "" : (node.childForFieldName("type")?.text ?? "void"),
-    params: params(node.childForFieldName("parameters")),
+    params: paramList,
     modifiers,
     annotations,
+    creations,
     isConstructor,
     locals,
     calls,
@@ -216,6 +254,7 @@ function fields(node: Node): JavaField[] {
     if (!name) continue;
     const field: JavaField = { name, type, modifiers, annotations, line: line(declarator) };
     const value = declarator.childForFieldName("value");
+    if (value) field.initialized = true;
     const literal = value ? javaStringLiteral(value) : null;
     if (literal !== null) field.stringValue = literal;
     out.push(field);
@@ -244,6 +283,7 @@ function collectTypes(node: Node, pkg: string, outerName: string | undefined, ou
     interfaces: [],
     fields: [],
     methods: [],
+    enumConstants: [],
     line: line(node),
   };
   const superclass = node.childForFieldName("superclass");
@@ -277,6 +317,9 @@ function collectTypes(node: Node, pkg: string, outerName: string | undefined, ou
       case "constructor_declaration":
       case "compact_constructor_declaration":
         type.methods.push(method(member, true));
+        break;
+      case "enum_constant":
+        type.enumConstants.push({ name: member.childForFieldName("name")?.text ?? "", ...argumentsOf(member.childForFieldName("arguments")), line: line(member) });
         break;
       default:
         if (TYPE_DECLARATIONS[member.type]) collectTypes(member, pkg, name, out);

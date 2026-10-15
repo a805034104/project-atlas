@@ -9,6 +9,8 @@ import type {
   AnalysisState,
   FlowDetailData,
   HostToWebview,
+  RuntimeState,
+  TraceDetailData,
   UserFacingError,
   ViewId,
   ViewPayload,
@@ -27,9 +29,10 @@ export const VIEW_PHASE: Record<ViewId, AnalysisPhase> = {
   startup: "parse",
   flow: "rules",
   history: "history",
+  trace: "rules",
 };
 
-export const TAB_ORDER: readonly ViewId[] = ["overview", "topology", "modules", "features", "startup", "flow", "history"];
+export const TAB_ORDER: readonly ViewId[] = ["overview", "topology", "modules", "features", "startup", "flow", "history", "trace"];
 
 export interface Crumb {
   view: ViewId;
@@ -53,6 +56,13 @@ export interface AppState {
   revealNodeId: string | undefined;
   selectedFeatureId: string | undefined;
   selectedServiceId: string | undefined;
+  /** Local runtime capture state (v0.2). */
+  runtime: RuntimeState | undefined;
+  /** Bumped whenever observed stats change; part of every data cache key. */
+  runtimeVersion: number;
+  traceDetails: Record<string, TraceDetailData>;
+  /** Flow view shows this one trace instead of aggregates (entered from the waterfall). */
+  singleTrace: { traceId: string; entrypointId: string } | undefined;
 }
 
 export type Action =
@@ -62,7 +72,8 @@ export type Action =
   | { type: "navigate"; view: ViewId; nodeId?: string | undefined; from?: Crumb }
   | { type: "back" }
   | { type: "selectFeature"; id: string | undefined }
-  | { type: "selectService"; id: string | undefined };
+  | { type: "selectService"; id: string | undefined }
+  | { type: "singleTrace"; trace: { traceId: string; entrypointId: string } | undefined };
 
 export function initialState(persisted: PersistedState): AppState {
   return {
@@ -79,11 +90,15 @@ export function initialState(persisted: PersistedState): AppState {
     revealNodeId: undefined,
     selectedFeatureId: undefined,
     selectedServiceId: undefined,
+    runtime: undefined,
+    runtimeVersion: 0,
+    traceDetails: {},
+    singleTrace: undefined,
   };
 }
 
-export function phasesKey(analysis: AnalysisState | undefined): string {
-  return analysis ? `${analysis.status}:${[...analysis.completedPhases].sort().join(",")}` : "";
+export function phasesKey(analysis: AnalysisState | undefined, runtimeVersion = 0): string {
+  return analysis ? `${analysis.status}:${[...analysis.completedPhases].sort().join(",")}#${runtimeVersion}` : "";
 }
 
 function visibleTab(state: AppState, tab: ViewId): ViewId {
@@ -129,7 +144,7 @@ export function reducer(state: AppState, action: Action): AppState {
           return {
             ...state,
             data: { ...state.data, [m.payload.view]: m.payload.data },
-            dataKey: { ...state.dataKey, [m.payload.view]: phasesKey(state.analysis) },
+            dataKey: { ...state.dataKey, [m.payload.view]: phasesKey(state.analysis, state.runtimeVersion) },
           };
         case "flowDetail":
           return { ...state, flowDetails: { ...state.flowDetails, [m.data.entrypoint.id]: m.data } };
@@ -147,6 +162,13 @@ export function reducer(state: AppState, action: Action): AppState {
         }
         case "error":
           return { ...state, hostError: m.error };
+        case "runtimeState":
+          return { ...state, runtime: m.state };
+        case "runtimeUpdated":
+          // Observed stats changed: cached views and flows are stale (keys include the version).
+          return { ...state, runtimeVersion: state.runtimeVersion + 1, flowDetails: {} };
+        case "traceDetail":
+          return { ...state, traceDetails: { ...state.traceDetails, [m.data.traceId]: m.data } };
         default:
           return state;
       }
@@ -180,6 +202,10 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, selectedFeatureId: action.id };
     case "selectService":
       return { ...state, selectedServiceId: action.id };
+    case "singleTrace":
+      return action.trace
+        ? { ...state, singleTrace: action.trace, persisted: { ...state.persisted, tab: "flow", selectedEntrypointId: action.trace.entrypointId } }
+        : { ...state, singleTrace: undefined };
     default:
       return state;
   }

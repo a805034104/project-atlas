@@ -32,6 +32,8 @@ export interface GNode {
   tone?: Tone;
   /** Short non-colour badge (e.g. heat number, ⚠ count). */
   badge?: string;
+  /** "pill" for message channels (topic / queue / stream) between services. */
+  shape?: "pill";
 }
 
 export interface GEdge {
@@ -67,7 +69,7 @@ function AtlasNode({ id, data }: NodeProps<Node<AtlasNodeData>>) {
       aria-label={g.ariaLabel}
       aria-pressed={ctx.selectedId === id}
       data-node-id={id}
-      className={`graph-node tone-${g.tone ?? "none"}${ctx.selectedId === id ? " selected" : ""}`}
+      className={`graph-node tone-${g.tone ?? "none"}${g.shape === "pill" ? " pill" : ""}${ctx.selectedId === id ? " selected" : ""}`}
       style={{ width: NODE_W, height: NODE_H }}
       onClick={() => ctx.onSelect(id)}
       {...props}

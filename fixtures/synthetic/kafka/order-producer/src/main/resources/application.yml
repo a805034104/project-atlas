@@ -1,0 +1,7 @@
+server:
+  port: 18091
+spring:
+  application:
+    name: order-producer
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
