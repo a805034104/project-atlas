@@ -46,3 +46,12 @@ describe.skipIf(!haveFixtures(FIXTURES.ruoyiCloud, FIXTURES.ruoyiCloudVue3))("an
     expect(ratio, unresolved.join("\n")).toBeGreaterThanOrEqual(0.95);
   }, 120_000);
 });
+
+describe.skipIf(!haveFixtures(FIXTURES.ruoyiCloud, FIXTURES.ruoyiCloudVue3))("RuoYi-Cloud aspects", () => {
+  it("applies the PreAuthorizeAspect declared through a constant pointcut", async () => {
+    const { graph } = await analyzeWorkspace({ roots: [{ path: FIXTURES.ruoyiCloud }, { path: FIXTURES.ruoyiCloudVue3 }], history: false });
+    expect(graph.diagnostics.filter((d) => d.code === "ATLAS-W010")).toEqual([]);
+    const flow = names(graph, "/user/list");
+    expect(flow.some((n) => n.includes("aspect:@Around PreAuthorizeAspect.around"))).toBe(true);
+  }, 120_000);
+});

@@ -23,16 +23,21 @@ export interface ParserSet {
   languages: Record<GrammarId, Language>;
 }
 
-const require = createRequire(import.meta.url);
+/** Lazy: inside a CJS bundle `import.meta.url` is undefined, and packaged builds always pass `wasmDir`. */
+let localRequire: NodeJS.Require | undefined;
+function req(): NodeJS.Require {
+  localRequire ??= createRequire(import.meta.url ?? `file://${process.cwd()}/`);
+  return localRequire;
+}
 
 function grammarPath(id: GrammarId, wasmDir: string | undefined): string {
   const { pkg, file } = GRAMMAR_FILES[id];
   if (wasmDir) return path.join(wasmDir, file);
-  return path.join(path.dirname(require.resolve(`${pkg}/package.json`)), file);
+  return path.join(path.dirname(req().resolve(`${pkg}/package.json`)), file);
 }
 
 function runtimePath(wasmDir: string | undefined): string {
-  return wasmDir ? path.join(wasmDir, "web-tree-sitter.wasm") : require.resolve("web-tree-sitter/web-tree-sitter.wasm");
+  return wasmDir ? path.join(wasmDir, "web-tree-sitter.wasm") : req().resolve("web-tree-sitter/web-tree-sitter.wasm");
 }
 
 let initialized: Promise<void> | undefined;
