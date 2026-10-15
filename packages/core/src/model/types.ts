@@ -151,6 +151,8 @@ export interface CallEdge {
   confidence: number;
   /** Required for ai-inferred edges and for multi-implementation branches. */
   rationale?: string;
+  /** Part of one entrypoint's explicit middleware chain (not a call edge; never traversed). */
+  chain?: boolean;
   observed?: RuntimeStats;
 }
 

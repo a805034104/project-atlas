@@ -49,6 +49,7 @@ export class GraphBuilder {
         confidence: options.confidence ?? (options.provenance === "ai-inferred" ? 0.5 : 1),
       };
       if (options.rationale) edge.rationale = options.rationale;
+      if (options.discriminator?.startsWith("chain:")) edge.chain = true;
       this.edges.set(id, edge);
       if (!options.discriminator?.startsWith("chain:")) {
         const list = this.callEdgesFrom.get(from) ?? [];
