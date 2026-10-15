@@ -32,7 +32,7 @@ jobs:
       - run: npx tsc -p packages/vscode/tsconfig.json
       - run: npx vitest run
       - run: npm run build -w @project-atlas/webview
-      - run: npm run build -w project-atlas
+      - run: npm run build -w projectatlas
       - name: Package VSIX (smoke)
         if: matrix.os == 'ubuntu-latest'
         working-directory: packages/vscode

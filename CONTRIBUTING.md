@@ -10,7 +10,7 @@ The most valuable contribution is a **framework rule**: teaching Atlas a framewo
 npm install
 npm run fixtures     # clones pinned RuoYi fixtures into fixtures/repos (gitignored)
 npx tsc -b && npx vitest run
-npm run build -w @project-atlas/webview && npm run build -w project-atlas   # extension bundle
+npm run build -w @project-atlas/webview && npm run build -w projectatlas   # extension bundle
 ```
 
 ## How analysis is layered
