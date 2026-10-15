@@ -85,7 +85,9 @@ export async function workspaceToken(workspaceDir: string, homeDir?: string): Pr
 export async function runtimeOwner(workspaceDir: string): Promise<LockFile | undefined> {
   try {
     const lock = JSON.parse(await readFile(path.join(workspaceDir, ".atlas", "receiver.json"), "utf8")) as LockFile;
-    return Number.isInteger(lock.pid) && alive(lock.pid) && lock.pid !== process.pid ? lock : undefined;
+    // The file lives in the workspace (repository content): accept only a well-formed lock.
+    const valid = Number.isInteger(lock.pid) && lock.pid > 4 && Number.isInteger(lock.port) && lock.port >= 1024 && lock.port <= 65535;
+    return valid && alive(lock.pid) && lock.pid !== process.pid ? lock : undefined;
   } catch {
     return undefined;
   }

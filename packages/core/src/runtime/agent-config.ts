@@ -78,7 +78,16 @@ export interface AgentConfigInput {
 
 /** Java properties file text; values are escaped for `\`, `:`, `=` and newlines. */
 export function buildAgentConfig(input: AgentConfigInput): string {
-  const esc = (v: string) => v.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/([:=])/g, "\\$1");
+  // Values come partly from repository content (service name): escape every line terminator
+  // (\n, \r, \f per java.util.Properties) and separators so nothing can start a new property.
+  const esc = (v: string) =>
+    v
+      .replace(/\\/g, "\\\\")
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/\f/g, "\\f")
+      .replace(/([:=#!])/g, "\\$1")
+      .replace(/^\s/, (s) => `\\${s}`);
   const props: [string, string][] = [
     ["otel.service.name", input.serviceName],
     ["otel.traces.exporter", "otlp"],

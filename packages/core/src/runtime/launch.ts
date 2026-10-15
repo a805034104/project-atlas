@@ -57,7 +57,10 @@ export function tracedLaunch(command: string, files: AgentFiles, env: Record<str
     return { launcher, command: `${command.slice(0, insertAt)} ${vmOptions(files)}${command.slice(insertAt)}`, env: {}, ...base };
   }
   if (launcher === "maven-spring-boot") {
-    const jvm = `-Dspring-boot.run.jvmArguments=-Dotel.javaagent.configuration-file=${files.configPath}`;
+    // The plugin splits jvmArguments on whitespace (honouring quotes): single-quote the
+    // property so a path with spaces stays one JVM argument; single quotes survive cmd and sh.
+    const prop = `-Dotel.javaagent.configuration-file=${files.configPath}`;
+    const jvm = `-Dspring-boot.run.jvmArguments=${/\s/.test(prop) ? `'${prop}'` : prop}`;
     return { launcher, command: `${command} ${quote(`-Dspring-boot.run.agents=${files.agentPath}`)} ${quote(jvm)}`, env: {}, ...base };
   }
   const existing = env["JAVA_TOOL_OPTIONS"]?.trim();

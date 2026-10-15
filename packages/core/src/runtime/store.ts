@@ -72,6 +72,8 @@ export class TraceStore {
     const segments: Segment[] = [];
     for (const name of names) {
       const text = await readFile(path.join(this.dir, name), "utf8").catch(() => "");
+      // A crash mid-write leaves a torn last line: terminate it so the next append starts clean.
+      if (text && !text.endsWith("\n")) await appendFile(path.join(this.dir, name), "\n");
       segments.push({ file: name, created: Number(SEGMENT.exec(name)?.[1] ?? 0), lines: countLines(text) });
     }
     this.segments = segments;
@@ -117,15 +119,21 @@ export class TraceStore {
     }
   }
 
+  private async segmentFiles(): Promise<string[]> {
+    const names = await readdir(this.dir).catch(() => [] as string[]);
+    return names.filter((n) => SEGMENT.test(n)).sort((a, b) => segmentOrder(a) - segmentOrder(b));
+  }
+
   async count(): Promise<number> {
     return (await this.load()).reduce((n, s) => n + s.lines, 0);
   }
 
   /** All stored records, oldest first. A torn last line (crash mid-write) is skipped. */
   async *records(): AsyncGenerator<SpanRecord> {
-    const segments = [...(await this.load())];
-    for (const s of segments) {
-      const text = await readFile(path.join(this.dir, s.file), "utf8").catch(() => "");
+    // Rescan: another TraceStore on the same directory (the session's writer) may have rotated.
+    const files = await this.segmentFiles();
+    for (const file of files) {
+      const text = await readFile(path.join(this.dir, file), "utf8").catch(() => "");
       for (const line of text.split("\n")) {
         if (!line) continue;
         try {
@@ -160,7 +168,7 @@ export class TraceStore {
   clear(): Promise<void> {
     return this.serial(async () => {
       const segments = await this.load();
-      for (const s of segments) await retry(() => rm(path.join(this.dir, s.file), { force: true }));
+      for (const file of await this.segmentFiles()) await retry(() => rm(path.join(this.dir, file), { force: true }));
       segments.length = 0;
       await retry(() => rm(path.join(this.dir, "aggregates.json"), { force: true }));
     });

@@ -4,7 +4,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { JAVAAGENT_FILE } from "../../src/runtime/agent-config.js";
-import { AgentDownloadError, AgentIntegrityError, ensureJavaAgent } from "../../src/runtime/agent-fetch.js";
+import { AgentDownloadError, AgentIntegrityError, ensureJavaAgent, privateAsciiDir, runtimeConfigDir } from "../../src/runtime/agent-fetch.js";
 import { detectLauncher, tracedLaunch, vmOptions } from "../../src/runtime/launch.js";
 
 const files = { agentPath: "C:/agents/otel.jar", configPath: "C:/Users/Jo Doe/.project-atlas/configs/app.properties" };
@@ -21,7 +21,8 @@ describe("tracedLaunch", () => {
     const l = tracedLaunch("mvn -pl ruoyi-admin -am spring-boot:run", files);
     expect(l.launcher).toBe("maven-spring-boot");
     expect(l.command).toContain("-Dspring-boot.run.agents=C:/agents/otel.jar");
-    expect(l.command).toContain('"-Dspring-boot.run.jvmArguments=-Dotel.javaagent.configuration-file=C:/Users/Jo Doe/.project-atlas/configs/app.properties"');
+    // A path with spaces stays one JVM argument (the plugin splits jvmArguments on whitespace).
+    expect(l.command).toContain(`"-Dspring-boot.run.jvmArguments='-Dotel.javaagent.configuration-file=C:/Users/Jo Doe/.project-atlas/configs/app.properties'"`);
     expect(detectLauncher("./mvnw.cmd spring-boot:run")).toBe("maven-spring-boot");
   });
 
@@ -106,5 +107,15 @@ describe.skipIf(!existsSync(realAgent))("ensureJavaAgent (with the real pinned j
     const usable = await ensureJavaAgent({ explicitPath: jar, asciiDir });
     expect(usable).toBe(path.join(asciiDir, JAVAAGENT_FILE));
     expect(/^[\x20-\x7e]*$/.test(usable)).toBe(true);
+  });
+
+  it("uses a private per-user ASCII directory for a non-ASCII home, stable across calls", async () => {
+    const base = await mkdtemp(path.join(tmpdir(), "atlas-"));
+    const home = path.join(base, "用户");
+    const dir = await privateAsciiDir(home);
+    expect(/^[ -~]*$/.test(dir)).toBe(true);
+    expect(dir).not.toMatch(/project-atlas[\/]agents$|^\/tmp\/project-atlas-agents$/); // never a fixed shared path
+    expect(await privateAsciiDir(home)).toBe(dir);
+    expect(await runtimeConfigDir(home)).toBe(path.join(dir, "configs"));
   });
 });

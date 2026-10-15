@@ -206,7 +206,7 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
         overlay.steps[target.id] = mergeStats(overlay.steps[target.id], rs);
         const viaMapper = p.layer !== "repository" ? (outgoing.get(p.id) ?? []).map((e) => stepById.get(e.to)).find((m) => m?.layer === "repository" && (outgoing.get(m.id) ?? []).some((x) => x.to === target.id)) : undefined;
         if (viaMapper) overlay.steps[viaMapper.id] = mergeStats(overlay.steps[viaMapper.id], rs);
-        for (const e of graph.edges) if (e.to === target.id && (e.from === p.id || e.from === viaMapper?.id)) overlay.edges[e.id] = mergeStats(overlay.edges[e.id], rs);
+        for (const e of incoming.get(target.id) ?? []) if (e.from === p.id || e.from === viaMapper?.id) overlay.edges[e.id] = mergeStats(overlay.edges[e.id], rs);
         if (viaMapper) for (const e of outgoing.get(p.id) ?? []) if (e.to === viaMapper.id) overlay.edges[e.id] = mergeStats(overlay.edges[e.id], rs);
       }
       continue;

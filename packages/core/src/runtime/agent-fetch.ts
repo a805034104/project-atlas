@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { docsUrlFor } from "../llm/errors.js";
 import type { UserFacingError } from "../protocol.js";
@@ -63,7 +65,7 @@ export interface EnsureAgentOptions {
   urls?: readonly string[];
   onProgress?(p: { url: string; received: number; total?: number }): void;
   signal?: AbortSignal;
-  /** Where to copy the jar when its path is not ASCII (default: %ProgramData% / /tmp). */
+  /** Where to copy the jar when its path is not ASCII (default: a private per-user ASCII directory). */
   asciiDir?: string;
 }
 
@@ -74,24 +76,57 @@ async function sha256File(file: string): Promise<{ hash: string; bytes: number }
 
 const isAscii = (p: string) => /^[\x20-\x7e]*$/.test(p);
 
-function defaultAsciiDir(): string {
-  if (process.platform === "win32") return path.join(process.env["ProgramData"] && isAscii(process.env["ProgramData"]) ? process.env["ProgramData"] : "C:\\ProgramData", "project-atlas", "agents");
-  return "/tmp/project-atlas-agents";
+/** Windows 8.3 short name of an existing directory (ASCII even for a Chinese user name), if enabled. */
+function shortPath(dir: string): Promise<string | undefined> {
+  if (process.platform !== "win32" || /["%^&|<>]/.test(dir)) return Promise.resolve(undefined);
+  return new Promise((resolve) => {
+    execFile("cmd.exe", ["/d", "/c", `for %I in ("${dir}") do @echo %~sI`], { windowsVerbatimArguments: true, timeout: 5000 }, (error, stdout) => {
+      const out = stdout.trim();
+      resolve(!error && out && isAscii(out) ? out : undefined);
+    });
+  });
 }
 
 /**
- * Directory for generated agent configuration files: `~/.project-atlas/configs` when that
- * path is ASCII, else an ASCII fallback (the JVM reads `-Dotel.javaagent.configuration-file`).
+ * A private, per-user directory whose path is ASCII (the JVM is given the jar and the
+ * token-bearing config from here). Never a fixed shared path: another local user could
+ * create it first and swap the files after verification.
+ *
+ *   ~/.project-atlas (ASCII) ─▶ its 8.3 short name (Windows) ─▶ mkdtemp under %ProgramData% / tmpdir,
+ *                                                                 remembered in ~/.project-atlas/ascii-dir
  */
-export function runtimeConfigDir(homeDir?: string): string {
-  const preferred = path.join(atlasHome(homeDir), "configs");
-  return isAscii(preferred) ? preferred : path.join(defaultAsciiDir(), "..", "configs");
+export async function privateAsciiDir(homeDir?: string): Promise<string> {
+  const home = atlasHome(homeDir);
+  if (isAscii(home)) return home;
+  await mkdir(home, { recursive: true });
+  const short = await shortPath(home);
+  if (short) return short;
+  const pointer = path.join(home, "ascii-dir");
+  const remembered = (await readFile(pointer, "utf8").catch(() => "")).trim();
+  if (remembered && isAscii(remembered) && (await stat(remembered).then((s) => s.isDirectory(), () => false))) return remembered;
+  const programData = process.env["ProgramData"];
+  const base = process.platform === "win32" ? path.join(programData && isAscii(programData) ? programData : "C:\\ProgramData", "project-atlas") : tmpdir();
+  await mkdir(base, { recursive: true });
+  // mkdtemp creates a new directory atomically (fails rather than reusing someone else's);
+  // POSIX mode 700, on Windows files created inside are owned by this user (CREATOR OWNER).
+  const dir = await mkdtemp(path.join(base, "atlas-"));
+  if (process.platform !== "win32") await import("node:fs/promises").then((fs) => fs.chmod(dir, 0o700));
+  await writeFile(pointer, dir, { mode: 0o600 });
+  return dir;
+}
+
+/**
+ * Directory for generated agent configuration files (the JVM reads
+ * `-Dotel.javaagent.configuration-file`): `configs` under {@link privateAsciiDir}.
+ */
+export async function runtimeConfigDir(homeDir?: string): Promise<string> {
+  return path.join(await privateAsciiDir(homeDir), "configs");
 }
 
 /** Copy to an ASCII-only directory when needed; the copy is verified too. */
 async function asciiSafe(file: string, options: EnsureAgentOptions): Promise<string> {
   if (isAscii(file)) return file;
-  const dir = options.asciiDir ?? defaultAsciiDir();
+  const dir = options.asciiDir ?? path.join(await privateAsciiDir(options.homeDir), "agents");
   const target = path.join(dir, JAVAAGENT_FILE);
   const existing = await sha256File(target).catch(() => undefined);
   if (existing?.hash !== JAVAAGENT_SHA256) {
@@ -99,6 +134,7 @@ async function asciiSafe(file: string, options: EnsureAgentOptions): Promise<str
     const tmp = `${target}.${process.pid}.tmp`;
     await copyFile(file, tmp);
     await rename(tmp, target);
+    await verified(target); // the copy is what the JVM loads
   }
   return target;
 }
