@@ -10,3 +10,4 @@ out/
 fixtures/repos/
 
 .vscode-test/
+.atlas-acceptance/
