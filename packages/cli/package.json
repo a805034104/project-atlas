@@ -1,0 +1,27 @@
+{
+  "name": "project-atlas",
+  "version": "0.0.0",
+  "description": "ProjectAtlas command line: analyze a Spring/Vue workspace into .atlas/graph, print flows, export ATLAS.md",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "project-atlas": "dist/bin.js"
+  },
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "exports": {
+    ".": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@project-atlas/core": "0.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
