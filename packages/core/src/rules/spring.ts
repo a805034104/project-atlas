@@ -119,13 +119,26 @@ const DATA_PACKAGE = /\.(domain|entity|entities|vo|dto|po|bo|do|model|pojo|bean|
 const ACCESSOR = /^(get|set|is|has)[A-Z]/;
 
 /**
- * A call on a non-bean object that only reads or writes data: methods of classes in
- * data packages, and accessor-named methods that call nothing else.
+ * A call on a non-bean object that only reads or writes data: accessor-named methods that call
+ * nothing else, and methods of enums / records / classes in data packages unless they call into
+ * a Spring bean (a strategy enum or `model.PricingEngine` calling a service does real work).
  */
-function isDataCall(type: TypeRef, method: JavaMethod): boolean {
-  if (type.type.kind === "enum" || type.type.kind === "record" || type.type.kind === "annotation") return true;
-  if (DATA_PACKAGE.test(type.facts.package)) return true;
-  return ACCESSOR.test(method.name) && method.calls.every((c) => c.receiver === undefined || c.receiver === "this" || c.receiver === "super");
+function isDataCall(index: JavaIndex, type: TypeRef, method: JavaMethod): boolean {
+  if (type.type.kind === "annotation") return true;
+  if (ACCESSOR.test(method.name) && method.calls.every((c) => c.receiver === undefined || c.receiver === "this" || c.receiver === "super")) return true;
+  const dataLike = type.type.kind === "enum" || type.type.kind === "record" || DATA_PACKAGE.test(type.facts.package);
+  return dataLike && !callsBean(index, type, method);
+}
+
+function callsBean(index: JavaIndex, type: TypeRef, method: JavaMethod): boolean {
+  for (const c of method.calls) {
+    const receiver = c.receiver?.replace(/^this\./, "");
+    if (!receiver || !/^\w+$/.test(receiver)) continue;
+    const typeText = method.locals[receiver] ?? method.params.find((p) => p.name === receiver)?.type ?? type.type.fields.find((f) => f.name === receiver)?.type;
+    const target = typeText ? index.resolveType(rawTypeName(typeText), type) : undefined;
+    if (target && (index.isBean(target) || index.implementations(target).some((i) => index.isBean(i)))) return true;
+  }
+  return false;
 }
 
 function simpleTypeName(ref: TypeRef): string {
@@ -301,8 +314,15 @@ export function runSpringRules(
 
   const wrapperFor = (typeFqcn: string, method: string): Wrapper | undefined => wrappers.find((w) => w.symbol === `${typeFqcn}.${method}`);
   const mqWrapper = (fromStep: string, w: Wrapper, call: JavaCall, ctx: MethodRef, at: SymbolRef): void => {
-    const broker = (["kafka", "rabbitmq", "rocketmq", "redis-stream", "stream"].includes(w.broker ?? "") ? w.broker : "kafka") as MqBroker;
-    mq.recordSend(fromStep, broker, call, ctx.owner, at, { ...(w.topicArg !== undefined ? { topicArg: w.topicArg } : {}) });
+    // atlas.yaml wrapper broker: case-insensitive with common aliases; anything else is reported,
+    // never silently treated as Kafka.
+    const aliases: Record<string, MqBroker> = { kafka: "kafka", rabbitmq: "rabbitmq", rabbit: "rabbitmq", amqp: "rabbitmq", rocketmq: "rocketmq", rocket: "rocketmq", "redis-stream": "redis-stream", redis: "redis-stream", stream: "stream", "spring-cloud-stream": "stream", scs: "stream" };
+    const broker = aliases[(w.broker ?? "").trim().toLowerCase()];
+    if (!broker) {
+      graph.unresolved.push({ fromStepId: fromStep, expression: `${call.receiver ?? ""}.${call.method}(${call.argTexts.join(", ")}) — atlas.yaml wrapper broker "${w.broker ?? ""}"`, reason: "unknown-wrapper", at });
+      return;
+    }
+    mq.recordSend(fromStep, broker, call, ctx.owner, at, { ...(w.topicArg !== undefined ? { topicArg: w.topicArg } : {}) }, ctx.method);
   };
 
   /** Declared type of a receiver identifier: local, parameter, then field (with its declaring type). */
@@ -327,7 +347,7 @@ export function runSpringRules(
       const streamOps = /^([A-Za-z_$][\w$]*)\.opsForStream\(\)$/.exec(receiver);
       if (streamOps) {
         const head = receiverType(streamOps[1] as string, ctx);
-        if (head.typeText && REDIS_TEMPLATE_TYPES.has(rawTypeName(head.typeText).replace(/^.*\./, ""))) mq.recordSend(fromStep, "redis-stream", call, ctx.owner, at);
+        if (head.typeText && REDIS_TEMPLATE_TYPES.has(rawTypeName(head.typeText).replace(/^.*\./, ""))) mq.recordSend(fromStep, "redis-stream", call, ctx.owner, at, undefined, ctx.method);
         continue;
       }
       if (!/^[A-Za-z_$][\w$]*$/.test(receiver)) continue; // chained / computed receivers: not a bean reference
@@ -349,7 +369,7 @@ export function runSpringRules(
           continue;
         }
         const broker = MQ_CLIENT_TYPES[raw.slice(raw.lastIndexOf(".") + 1)];
-        if (broker && mq.recordSend(fromStep, broker, call, ctx.owner, at)) continue;
+        if (broker && mq.recordSend(fromStep, broker, call, ctx.owner, at, undefined, ctx.method)) continue;
         // Interface from a jar, implementation in the project (`AIChatHandler implements IAIChatHandler`).
         const simple = raw.slice(raw.lastIndexOf(".") + 1);
         const implementors = JDK_TYPES.has(simple) ? [] : index.beansImplementing(simple);
@@ -395,7 +415,7 @@ export function runSpringRules(
       const methods = index.findMethods(type, call.method, call.argCount);
       const target = methods[0];
       // Data objects (entities, DTOs, AjaxResult…) and plain accessors are not flow steps.
-      if (target && (index.isBean(type) || (target.owner === type && !isDataCall(type, target.method)))) connect(fromStep, target, type, order, "static");
+      if (target && (index.isBean(type) || (target.owner === type && !isDataCall(index, type, target.method)))) connect(fromStep, target, type, order, "static");
       return;
     }
 

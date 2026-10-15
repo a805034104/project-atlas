@@ -1,12 +1,13 @@
 import { normalizeHttpPath, stableId } from "../model/ids.js";
 import type { AtlasGraph, CallEdge, FlowLayer, FlowStep, RuntimeStats } from "../model/types.js";
 import { parseMethodKey } from "./agent-config.js";
-import { statsQuantile, type AggregateState, type Stats } from "./aggregate.js";
+import { parseMethodSpanKey, statsQuantile, type AggregateState, type Stats } from "./aggregate.js";
 
 /**
  * Reconcile runtime aggregates with the static graph (R2).
  *
- *   key m:Class#method ─▶ method steps (overloads with several matches → ambiguous, not guessed)
+ *   key m:svc:Class#method ─▶ method steps of that service (overloads with several matches, or an
+ *                         unknown service name with candidates in several services → ambiguous)
  *       aspect advice  ─▶ the aspect steps whose target step was observed
  *   key r:svc:GET /p   ─▶ entrypoint (path variables normalised, context-path included)
  *   key d:svc:OP table ─▶ sql step under the observed mapper (or the only mapper of the
@@ -45,7 +46,9 @@ export interface RuntimeOverlay {
   runtimeLinks: { fromService: string; toService: string; kind: "http" | "mq"; channel: string; count: number }[];
 }
 
-const METHOD_LAYERS = new Set<FlowLayer>(["filter", "interceptor", "controller", "service", "repository", "cache", "external-http", "mq"]);
+// Not "mq" / "external-http": those steps carry the enclosing method's symbol (a send inside
+// OrderService.create), so a method span says nothing about whether the send ran.
+const METHOD_LAYERS = new Set<FlowLayer>(["filter", "interceptor", "controller", "service", "repository", "cache"]);
 /** Layers that produce a span when instrumented (V4); used for the V7 "every caller instrumented" test. */
 const SPAN_LAYERS = new Set<FlowLayer>(["filter", "interceptor", "aspect", "controller", "service", "repository"]);
 const COVERAGE_LAYERS = new Set<FlowLayer>(["filter", "interceptor", "aspect", "controller", "service", "repository", "sql"]);
@@ -116,11 +119,13 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
   const resolveKey = (key: string): FlowStep[] | undefined => {
     if (resolved.has(key)) return resolved.get(key);
     let out: FlowStep[] | undefined = [];
-    if (key.startsWith("m:")) {
-      const mk = key.slice(2);
-      const candidates = methodSteps.get(mk) ?? [];
-      const distinct = new Set(candidates.map((c) => c.symbol.fqn));
-      if (distinct.size > 1) out = undefined;
+    const parsed = parseMethodSpanKey(key);
+    if (parsed) {
+      const all = methodSteps.get(parsed.method) ?? [];
+      const serviceId = serviceIdByName.get(parsed.svc.toLowerCase());
+      // Unknown service name (OTEL_SERVICE_NAME override): only an answer confined to one service counts.
+      const candidates = serviceId ? all.filter((c) => c.serviceId === serviceId) : new Set(all.map((c) => c.serviceId)).size > 1 ? undefined : all;
+      if (!candidates || new Set(candidates.map((c) => c.symbol.fqn)).size > 1) out = undefined;
       else out = candidates;
     }
     resolved.set(key, out);
@@ -130,27 +135,25 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
   // ── Nodes ──────────────────────────────────────────────────────────────────
   for (const [key, stats] of Object.entries(state.nodes)) {
     const rs = toRuntimeStats(stats);
-    if (key.startsWith("m:")) {
+    const parsedKey = parseMethodSpanKey(key);
+    if (parsedKey) {
       const steps = resolveKey(key);
-      const mk = key.slice(2);
+      const mk = parsedKey.method;
       if (steps === undefined) unmatched(key, stats.count, "ambiguous");
       else if (steps.length > 0) for (const s of steps) overlay.steps[s.id] = mergeStats(overlay.steps[s.id], rs);
       else if (!aspectSteps.has(mk)) unmatched(key, stats.count, knownClasses.has(mk.split("#")[0] as string) ? "no-step" : "stale");
     } else if (key.startsWith("r:")) {
-      const m = /^r:([^:]*):(\S+) (.*)$/.exec(key);
-      if (!m) continue;
-      const serviceId = serviceIdByName.get((m[1] as string).toLowerCase());
-      const method = m[2] as string;
-      const path = normalizeHttpPath(m[3] as string);
-      const eps = graph.entrypoints.filter((e) => e.kind === "http" && (!serviceId || e.serviceId === serviceId) && e.path === path && (e.method === method || e.method === "ANY"));
-      if (eps.length === 0) unmatched(key, stats.count, "no-step");
-      for (const e of eps) overlay.entrypoints[e.id] = mergeStats(overlay.entrypoints[e.id], rs);
+      const eps = entrypointsForRouteKey(graph, key);
+      if (eps === undefined) unmatched(key, stats.count, "ambiguous");
+      else if (eps.length === 0) unmatched(key, stats.count, "no-step");
+      for (const e of eps ?? []) overlay.entrypoints[e.id] = mergeStats(overlay.entrypoints[e.id], rs);
     }
   }
   // Aspect advice: credit the aspect steps whose target (next hop) ran.
-  for (const [mk, steps] of aspectSteps) {
-    const stats = state.nodes[`m:${mk}`];
-    if (!stats) continue;
+  for (const [key, stats] of Object.entries(state.nodes)) {
+    const parsedKey = parseMethodSpanKey(key);
+    const serviceId = parsedKey && serviceIdByName.get(parsedKey.svc.toLowerCase());
+    const steps = parsedKey ? (aspectSteps.get(parsedKey.method) ?? []).filter((s) => !serviceId || s.serviceId === serviceId) : [];
     for (const s of steps) {
       const targets = (outgoing.get(s.id) ?? []).map((e) => e.to);
       if (targets.some((t) => overlay.steps[t])) overlay.steps[s.id] = mergeStats(overlay.steps[s.id], toRuntimeStats(stats));
@@ -231,7 +234,7 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
         // S0: SysLoginService.login ⇝ selectUserByUserName runs through Spring Security and an
         // unreached UserDetailsService; only a same-class call is certain to be direct.
         const sameClass = parseMethodKey(p.symbol.fqn)?.cls === parseMethodKey(c.symbol.fqn)?.cls;
-        if (!viaGap && p.layer !== "aspect" && sameClass && SPAN_LAYERS.has(c.layer)) {
+        if (!viaGap && p.layer !== "aspect" && sameClass && p.serviceId === c.serviceId && SPAN_LAYERS.has(p.layer) && SPAN_LAYERS.has(c.layer)) {
           overlay.runtimeEdges.push({ id: stableId("edge", "", `runtime|${p.id}|${c.id}`), from: p.id, to: c.id, async: !!stats.async, observed: rs });
         } else {
           const k = `${p.id}|${c.id}`;
@@ -295,26 +298,29 @@ function reconcileLinks(graph: AtlasGraph, state: AggregateState, overlay: Runti
     const from = parent.split(":")[1]?.toLowerCase() ?? "";
     const to = child.split(":")[1]?.toLowerCase() ?? "";
     if (!from || from === to) continue;
-    const eps = new Set(entrypointsForRoute(graph, child).map((e) => e.id));
+    const eps = new Set((entrypointsForRouteKey(graph, child) ?? []).map((e) => e.id));
     const links = graph.serviceLinks.filter((l) => l.toEntrypointId && eps.has(l.toEntrypointId) && serviceName.get(l.fromServiceId) === from);
     for (const l of links) mark(l.id, stats);
     if (links.length === 0) runtimeOnly(from, to, "http", child.slice(child.indexOf(":", 2) + 1), stats.count);
   }
 
-  // Message queues with context propagation: the consumer side confirms the channel.
-  const consumed = new Map<string, { stats: Stats; services: Set<string> }>();
+  // Message queues: a consumer service seen on the channel, and the link's producer service seen
+  // sending on it (a second producer of the same topic is not confirmed by the first one's traffic).
+  const consumed = new Map<string, Map<string, Stats>>();
   const produced = new Map<string, Set<string>>();
+  const consume = (channelKey: string, svc: string, stats: Stats) => {
+    const bySvc = consumed.get(channelKey) ?? new Map<string, Stats>();
+    bySvc.set(svc, stats);
+    consumed.set(channelKey, bySvc);
+  };
   for (const [key, stats] of Object.entries(state.nodes)) {
     const q = /^q:([^:]+):(consumer|producer|client|server|internal|unspecified):([^:]*):(.*)$/.exec(key);
     if (q) {
       const system = (q[1] as string).toLowerCase();
       const svc = (q[3] as string).toLowerCase();
       const channelKey = `${system}:${q[4] as string}`;
-      if (q[2] === "consumer") {
-        const c = consumed.get(channelKey) ?? { stats, services: new Set<string>() };
-        c.services.add(svc);
-        consumed.set(channelKey, c);
-      } else if (q[2] === "producer") produced.set(channelKey, (produced.get(channelKey) ?? new Set<string>()).add(svc));
+      if (q[2] === "consumer") consume(channelKey, svc, stats);
+      else if (q[2] === "producer") produced.set(channelKey, (produced.get(channelKey) ?? new Set<string>()).add(svc));
       continue;
     }
     // Redis streams: XADD / XREAD(GROUP) on the same key.
@@ -323,37 +329,49 @@ function reconcileLinks(graph: AtlasGraph, state: AggregateState, overlay: Runti
       const channelKey = `redis-stream:${d[3] as string}`;
       const svc = (d[1] as string).toLowerCase();
       if (d[2] === "XADD") produced.set(channelKey, (produced.get(channelKey) ?? new Set<string>()).add(svc));
-      else {
-        const c = consumed.get(channelKey) ?? { stats, services: new Set<string>() };
-        c.services.add(svc);
-        consumed.set(channelKey, c);
-      }
+      else consume(channelKey, svc, stats);
     }
   }
-  for (const [channelKey, c] of consumed) {
+  const flowByEntrypoint = new Map(graph.flows.map((f) => [f.entrypointId, f]));
+  const stepById = new Map(graph.steps.map((s) => [s.id, s]));
+  /** The consumer's handler step was observed. */
+  const consumerRan = (entrypointId: string | undefined): boolean => {
+    const flow = entrypointId ? flowByEntrypoint.get(entrypointId) : undefined;
+    return (flow?.stepIds ?? []).some((id) => SPAN_LAYERS.has(stepById.get(id)?.layer as FlowLayer) && overlay.steps[id] !== undefined);
+  };
+  for (const [channelKey, bySvc] of consumed) {
     const colon = channelKey.indexOf(":");
     const system = channelKey.slice(0, colon);
     const dest = channelKey.slice(colon + 1);
-    const producers = produced.get(channelKey);
-    // Redis streams carry no trace context: both sides must have been seen on the key.
-    if (system === "redis-stream" && !producers) continue;
-    const links = graph.serviceLinks.filter((l) => {
-      if (l.kind !== "mq" || !c.services.has(serviceName.get(l.toServiceId) ?? "")) return false;
-      if (system === "redis-stream" && !producers?.has(serviceName.get(l.fromServiceId) ?? "")) return false;
-      return l.channel === `${system}:${dest}` || l.channel === `stream:${dest}`;
-    });
-    for (const l of links) mark(l.id, c.stats);
-    if (links.length === 0) for (const to of c.services) for (const from of producers ?? new Set(["?"])) runtimeOnly(from, to, "mq", `${system}:${dest}`, c.stats.count);
+    const producers = produced.get(channelKey) ?? new Set<string>();
+    for (const [svc, stats] of bySvc) {
+      const onChannel = graph.serviceLinks.filter((l) => l.kind === "mq" && serviceName.get(l.toServiceId) === svc && (l.channel === `${system}:${dest}` || l.channel === `stream:${dest}`));
+      const fromSeen = onChannel.filter((l) => producers.has(serviceName.get(l.fromServiceId) ?? ""));
+      // Several links between the same services on one channel (RocketMQ tags, @KafkaHandler by
+      // payload type): the consumer span cannot tell them apart, only the handler that ran can.
+      const siblings = (l: (typeof onChannel)[number]) => fromSeen.filter((o) => o.fromServiceId === l.fromServiceId).length;
+      const confirmed = fromSeen.filter((l) => siblings(l) === 1 || consumerRan(l.toEntrypointId));
+      for (const l of confirmed) mark(l.id, stats);
+      // Redis streams carry no trace context: without a producer seen, nothing is claimed.
+      if (onChannel.length === 0 && (system !== "redis-stream" || producers.size > 0)) {
+        for (const from of producers.size > 0 ? producers : new Set(["?"])) runtimeOnly(from, svc, "mq", `${system}:${dest}`, stats.count);
+      }
+    }
   }
   overlay.runtimeLinks = [...extra.values()];
 }
 
-function entrypointsForRoute(graph: AtlasGraph, key: string): AtlasGraph["entrypoints"] {
-  const m = /^r:([^:]*):(\S+) (.*)$/.exec(key);
+/**
+ * Entrypoints a route key `r:svc:METHOD /path` stands for; undefined when the service name is
+ * unknown (OTEL_SERVICE_NAME override, unknown_service:java) and the route exists in several services.
+ */
+export function entrypointsForRouteKey(graph: AtlasGraph, key: string): AtlasGraph["entrypoints"] | undefined {
+  const m = /^r:(.*):([A-Z]+) (.*)$/.exec(key);
   if (!m) return [];
   const service = graph.services.find((s) => s.name.toLowerCase() === (m[1] as string).toLowerCase());
   const path = normalizeHttpPath(m[3] as string);
-  return graph.entrypoints.filter((e) => e.kind === "http" && (!service || e.serviceId === service.id) && e.path === path && (e.method === m[2] || e.method === "ANY"));
+  const eps = graph.entrypoints.filter((e) => e.kind === "http" && (!service || e.serviceId === service.id) && e.path === path && (e.method === m[2] || e.method === "ANY"));
+  return !service && new Set(eps.map((e) => e.serviceId)).size > 1 ? undefined : eps;
 }
 
 /** Graph with the overlay folded in (observed fields + runtime-observed edges); the input is not modified. */

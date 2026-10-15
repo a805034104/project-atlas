@@ -128,4 +128,25 @@ import app.util.Page;
     });
     expect(calleesOf(graph, "GET", "/u").map((c) => c.name)).toEqual(["UserService.find", "Page.compute"]);
   });
+
+  it("a class in a data package that calls a bean does real work and stays a step", async () => {
+    const graph = await analyzeTree({
+      "pom.xml": "<project><groupId>d</groupId><artifactId>app</artifactId></project>",
+      "src/main/java/app/App.java": `package app;
+@SpringBootApplication public class App {}`,
+      "src/main/java/app/CouponService.java": `package app;
+@Service public class CouponService { public int apply(int p) { return p; } }`,
+      "src/main/java/app/model/PricingEngine.java": `package app.model;
+import app.CouponService;
+public class PricingEngine { private final CouponService couponService; public PricingEngine(CouponService c) { this.couponService = c; } public int calculate(int p) { return couponService.apply(p); } }`,
+      "src/main/java/app/PriceController.java": `package app;
+import app.model.PricingEngine;
+@RestController public class PriceController {
+  @Autowired private CouponService couponService;
+  @GetMapping("/p") public int price() { PricingEngine e = new PricingEngine(couponService); return e.calculate(1); }
+}`,
+    });
+    expect(calleesOf(graph, "GET", "/p").map((c) => c.name)).toEqual(["PricingEngine.calculate"]);
+  });
 });
+

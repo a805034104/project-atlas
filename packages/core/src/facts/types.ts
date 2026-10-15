@@ -48,6 +48,8 @@ export interface JavaField {
   annotations: JavaAnnotation[];
   /** String literal initializer, for constants such as topic names. */
   stringValue?: string;
+  /** Declared with an initializer (any expression). */
+  initialized?: boolean;
   line: number;
 }
 
@@ -79,6 +81,10 @@ export interface JavaMethod {
   /** Local variable declarations: name → declared type text. */
   locals: Record<string, string>;
   calls: JavaCall[];
+  /** The body is exactly `return field;` / `return this.field;` (plain getter). */
+  returnsField?: string;
+  /** Constructors: `this.field = param;` assignments, field → parameter name. */
+  fieldAssigns?: Record<string, string>;
   line: number;
   endLine: number;
 }

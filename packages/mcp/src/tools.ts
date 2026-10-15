@@ -306,7 +306,7 @@ export function listTraces(view: GraphView, aggregates: AggregateState, args: Li
   const rows = aggregates.traces
     .filter((t) => (since === undefined || t.start >= since) && (!args.errorsOnly || t.err))
     // Match through the root's route key (service + method + normalized route), never by label text.
-    .filter((t) => !wanted || (t.root !== undefined && entrypointsForRouteKey(view.graph, t.root.key).some((e) => wanted.has(e.id))))
+    .filter((t) => !wanted || (t.root !== undefined && (entrypointsForRouteKey(view.graph, t.root.key) ?? []).some((e) => wanted.has(e.id))))
     .slice(0, limit)
     .map((t) => ({ traceId: t.t, start: new Date(t.start).toISOString(), durationMs: Math.round(t.dur * 100) / 100, error: t.err, spans: t.spans, services: t.services, root: t.root?.name ?? null }));
   const text =

@@ -319,7 +319,7 @@ export class RuntimeManager implements vscode.Disposable {
     const graph = this.controller.graph;
     for (const r of fresh) {
       if (r.p || r.kind !== "server" || !graph) continue;
-      const ep = entrypointsForRouteKey(graph, `r:${r.svc}:${r.a.method ?? "ANY"} ${r.a.route ?? ""}`)[0];
+      const ep = entrypointsForRouteKey(graph, `r:${r.svc}:${r.a.method ?? "ANY"} ${r.a.route ?? ""}`)?.[0];
       if (!ep || this.announced.has(ep.id)) continue;
       this.announced.add(ep.id);
       if (this.announced.size > 3) continue;

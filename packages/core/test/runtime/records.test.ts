@@ -40,11 +40,11 @@ describe("SpanRecord normalisation (golden S0 payloads)", () => {
     expect(trace.map(spanKey).sort()).toEqual(
       expect.arrayContaining([
         "r:ruoyi-admin:GET /system/user/list",
-        "m:com.ruoyi.web.controller.system.SysUserController#list",
-        "m:com.ruoyi.system.service.impl.SysUserServiceImpl#selectUserList",
-        "m:com.ruoyi.framework.aspectj.DataScopeAspect#doBefore",
-        "m:com.ruoyi.framework.interceptor.RepeatSubmitInterceptor#preHandle",
-        "m:com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter#doFilterInternal",
+        "m:ruoyi-admin:com.ruoyi.web.controller.system.SysUserController#list",
+        "m:ruoyi-admin:com.ruoyi.system.service.impl.SysUserServiceImpl#selectUserList",
+        "m:ruoyi-admin:com.ruoyi.framework.aspectj.DataScopeAspect#doBefore",
+        "m:ruoyi-admin:com.ruoyi.framework.interceptor.RepeatSubmitInterceptor#preHandle",
+        "m:ruoyi-admin:com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter#doFilterInternal",
         "d:ruoyi-admin:SELECT sys_user",
       ]),
     );
@@ -60,8 +60,8 @@ describe("SpanRecord normalisation (golden S0 payloads)", () => {
     reversed.add([...records].reverse());
     expect(Object.keys(reversed.state.edges).sort()).toEqual(Object.keys(forward.state.edges).sort());
     const edges = forward.state.edges;
-    expect(edges["m:com.ruoyi.web.controller.system.SysUserController#list>m:com.ruoyi.system.service.impl.SysUserServiceImpl#selectUserList"]?.count).toBeGreaterThan(0);
-    expect(edges["m:com.ruoyi.system.service.impl.SysUserServiceImpl#selectUserList>d:ruoyi-admin:SELECT sys_user"]?.count).toBeGreaterThanOrEqual(2);
+    expect(edges["m:ruoyi-admin:com.ruoyi.web.controller.system.SysUserController#list>m:ruoyi-admin:com.ruoyi.system.service.impl.SysUserServiceImpl#selectUserList"]?.count).toBeGreaterThan(0);
+    expect(edges["m:ruoyi-admin:com.ruoyi.system.service.impl.SysUserServiceImpl#selectUserList>d:ruoyi-admin:SELECT sys_user"]?.count).toBeGreaterThanOrEqual(2);
     const asyncEdges = Object.entries(edges).filter(([, e]) => e.async).map(([k]) => k);
     expect(asyncEdges.some((k) => /LogAspect.*>.*INSERT sys_oper_log/.test(k))).toBe(true);
     // the redis call runs on a lettuce event-loop thread but inside the request: not async (ends before parent)
@@ -100,7 +100,7 @@ describe("normalisation helpers", () => {
   it("keeps quantiles within the sketch's relative error", () => {
     const agg = new Aggregator();
     agg.add(Array.from({ length: 1000 }, (_, i) => record({ s: `s${i}`.padStart(16, "0"), dur: i + 1, a: { cls: "C", fn: "m" } })));
-    const stats = agg.state.nodes["m:C#m"];
+    const stats = agg.state.nodes["m:app:C#m"];
     expect(statsQuantile(stats, 0.5)).toBeGreaterThan(500 * 0.95);
     expect(statsQuantile(stats, 0.5)).toBeLessThan(500 * 1.05);
     expect(statsQuantile(stats, 0.95)).toBeGreaterThan(950 * 0.95);
@@ -125,7 +125,7 @@ describe("TraceStore", () => {
     expect(segments.length).toBeLessThanOrEqual(3);
     await store.saveAggregates(agg.state);
     const reloaded = await new TraceStore(dir).loadAggregates();
-    expect(reloaded.nodes["m:C#m"]?.count).toBe(50); // statistics outlive raw-span eviction
+    expect(reloaded.nodes["m:app:C#m"]?.count).toBe(50); // statistics outlive raw-span eviction
   });
 
   it("skips a torn last line", async () => {

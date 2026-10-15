@@ -2,8 +2,8 @@ import { normalizeHttpPath } from "../model/ids.js";
 import type { AtlasGraph, Entrypoint, FlowStep } from "../model/types.js";
 import type { RuntimeState, TraceData, TraceDetailData, TraceRow, TraceSpanView } from "../protocol.js";
 import { parseMethodKey } from "./agent-config.js";
-import { spanKey, type AggregateState } from "./aggregate.js";
-import type { RuntimeOverlay } from "./match.js";
+import { parseMethodSpanKey, spanKey, type AggregateState } from "./aggregate.js";
+import { entrypointsForRouteKey, type RuntimeOverlay } from "./match.js";
 import type { SpanRecord } from "./span-record.js";
 
 /**
@@ -15,15 +15,6 @@ import type { SpanRecord } from "./span-record.js";
  */
 
 const OFF: RuntimeState = { status: "off", spans: 0, duplicates: 0, rejected: 0, trusted: true };
-
-/** Entrypoints a route key `r:svc:METHOD /path` stands for. */
-export function entrypointsForRouteKey(graph: AtlasGraph, key: string): Entrypoint[] {
-  const m = /^r:([^:]*):(\S+) (.*)$/.exec(key);
-  if (!m) return [];
-  const service = graph.services.find((s) => s.name.toLowerCase() === (m[1] as string).toLowerCase());
-  const path = normalizeHttpPath(m[3] as string);
-  return graph.entrypoints.filter((e) => e.kind === "http" && (!service || e.serviceId === service.id) && e.path === path && (e.method === m[2] || e.method === "ANY"));
-}
 
 function suggestedRequest(graph: AtlasGraph): TraceData["suggestedRequest"] {
   const gets = graph.entrypoints.filter((e) => e.kind === "http" && (e.method === "GET" || e.method === "ANY") && e.path && !e.path.includes("{}"));
@@ -54,7 +45,7 @@ export function buildTraceData(graph: AtlasGraph, state: AggregateState, overlay
     const row: TraceRow = { traceId: t.t, start: t.start, durationMs: Math.round(t.dur * 100) / 100, error: t.err, spans: t.spans, services: t.services };
     if (t.root) {
       row.rootName = t.root.name;
-      const ep = entrypointsForRouteKey(graph, t.root.key)[0];
+      const ep = entrypointsForRouteKey(graph, t.root.key)?.[0];
       if (ep) {
         row.entrypointId = ep.id;
         const cov = overlay.coverage[ep.id];
@@ -83,10 +74,12 @@ export function buildTraceDetail(graph: AtlasGraph, records: readonly SpanRecord
   const byMethod = new Map<string, FlowStep[]>();
   for (const s of graph.steps) {
     const parsed = parseMethodKey(s.symbol.fqn);
-    if (!parsed || (s.layer === "interceptor" && s.symbol.name.startsWith("@"))) continue;
+    // mq / external-http steps carry the enclosing method's symbol: never a method span's step.
+    if (!parsed || s.layer === "mq" || s.layer === "external-http" || (s.layer === "interceptor" && s.symbol.name.startsWith("@"))) continue;
     const key = `${parsed.cls}#${parsed.method}`;
-    byMethod.set(key, [...(byMethod.get(key) ?? []), s]);
+    (byMethod.get(key) ?? byMethod.set(key, []).get(key))?.push(s);
   }
+  const serviceIdByName = new Map(graph.services.map((s) => [s.name.toLowerCase(), s.id]));
   const sorted = [...records].sort((a, b) => a.start - b.start);
   const t0 = sorted[0]?.start ?? 0;
   const ends = new Map(sorted.map((r) => [r.s, r.start + r.dur]));
@@ -103,8 +96,11 @@ export function buildTraceDetail(graph: AtlasGraph, records: readonly SpanRecord
       async: !!r.p && r.start >= (ends.get(r.p) ?? Number.POSITIVE_INFINITY),
     };
     if (r.p) view.parentSpanId = r.p;
-    if (key.startsWith("m:")) {
-      const candidates = byMethod.get(key.slice(2)) ?? [];
+    const methodKey = parseMethodSpanKey(key);
+    if (methodKey) {
+      const serviceId = serviceIdByName.get(methodKey.svc.toLowerCase());
+      const all = byMethod.get(methodKey.method) ?? [];
+      const candidates = serviceId ? all.filter((c) => c.serviceId === serviceId) : new Set(all.map((c) => c.serviceId)).size > 1 ? [] : all;
       const plain = candidates.filter((c) => c.layer !== "aspect");
       const chosen = plain.length > 0 ? (new Set(plain.map((c) => c.symbol.fqn)).size === 1 ? plain[0] : undefined) : candidates[0];
       if (chosen) {
@@ -114,7 +110,7 @@ export function buildTraceDetail(graph: AtlasGraph, records: readonly SpanRecord
     } else if (key.startsWith("d:")) view.layer = /redis|memcached|mongo|elasticsearch|cassandra/i.test(r.a.dbSystem ?? "") ? "cache" : "sql";
     else if (key.startsWith("r:")) {
       view.layer = "entrypoint";
-      entrypointId ??= entrypointsForRouteKey(graph, key)[0]?.id;
+      entrypointId ??= entrypointsForRouteKey(graph, key)?.[0]?.id;
     } else if (key.startsWith("q:")) view.layer = "mq";
     return view;
   });

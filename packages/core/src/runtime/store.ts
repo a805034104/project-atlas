@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { emptyAggregates, type AggregateState } from "./aggregate.js";
+import { AGGREGATES_VERSION, emptyAggregates, type AggregateState } from "./aggregate.js";
 import type { SpanRecord } from "./span-record.js";
 
 /**
@@ -148,7 +148,7 @@ export class TraceStore {
   async loadAggregates(): Promise<AggregateState> {
     try {
       const parsed = JSON.parse(await readFile(path.join(this.dir, "aggregates.json"), "utf8")) as AggregateState;
-      return parsed.version === 1 ? parsed : emptyAggregates();
+      return parsed.version === AGGREGATES_VERSION ? parsed : emptyAggregates();
     } catch {
       return emptyAggregates();
     }
