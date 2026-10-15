@@ -6,3 +6,4 @@ dist/
 fixtures/local.yaml
 node_modules/
 out/
+.claude/
