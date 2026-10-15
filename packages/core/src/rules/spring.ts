@@ -486,13 +486,29 @@ export function runSpringRules(
   }
 
   // ── Mapping helpers ───────────────────────────────────────────────────────
+  /**
+   * Mapping paths with constants and `${}` resolved. Anything unresolved becomes the
+   * marker segment `⟨unresolved⟩`, which never matches a call (precision over recall),
+   * instead of silently turning into a path variable.
+   */
   function mappingPaths(a: JavaAnnotation | undefined, ctx: TypeRef): string[] {
     if (!a) return [];
+    const resolvePlaceholders = (p: string): string => {
+      const resolved = svc.config.resolve(p);
+      if (resolved.unresolved.length === 0) return resolved.value;
+      diagnostics.push({ code: "ATLAS-W011", severity: "warning", message: `Unresolved placeholder in mapping ${p} (${resolved.unresolved.join(", ")})`, at: { rootId: ctx.file.rootId, file: ctx.file.relPath, line: a.line } });
+      return resolved.value.replace(/\$\{[^}]*\}/g, "⟨unresolved⟩");
+    };
     const literal = annotationStrings(a, "value", "path");
-    if (literal) return literal.length > 0 ? literal.map((p) => svc.config.resolve(p).value) : [""];
+    if (literal) return literal.length > 0 ? literal.map(resolvePlaceholders) : [""];
     const expr = annotationExpr(a, "value", "path");
     if (!expr) return [""];
-    return splitArrayElements(expr).map((e) => index.resolveConstant(e, ctx) ?? e).map((p) => svc.config.resolve(p).value);
+    return splitArrayElements(expr).map((e) => {
+      const folded = index.resolveConstant(e, ctx);
+      if (folded !== undefined) return resolvePlaceholders(folded);
+      diagnostics.push({ code: "ATLAS-W011", severity: "warning", message: `Unresolved constant in mapping: ${e}`, at: { rootId: ctx.file.rootId, file: ctx.file.relPath, line: a.line } });
+      return "⟨unresolved⟩";
+    });
   }
 
   function httpMethods(a: JavaAnnotation): string[] {
@@ -641,8 +657,17 @@ export function runSpringRules(
         for (const cp of classPaths.length > 0 ? classPaths : [""]) {
           for (const mp of methodPaths) {
             const path = normalizeHttpPath(`${svc.contextPath}/${cp}/${mp}`);
+            // Handlers differing only by params/headers/consumes share METHOD+path: keep both, distinct ids.
+            let entrypointId = stableId("entrypoint", service.name, httpKey(httpMethod, path));
+            const existing = graph.entrypoints.get(entrypointId);
+            if (existing && existing.handler.fqn !== symbol.fqn) {
+              entrypointId = stableId("entrypoint", service.name, `${httpKey(httpMethod, path)}#${symbol.fqn}`);
+              diagnostics.push({ code: "ATLAS-I005", severity: "info", message: `${httpMethod} ${path} is mapped by several handlers (request conditions such as params/headers): ${existing.handler.name}, ${symbol.name}`, at: symbol });
+            } else if (existing) {
+              continue;
+            }
             const entrypoint: Entrypoint = {
-              id: stableId("entrypoint", service.name, httpKey(httpMethod, path)),
+              id: entrypointId,
               serviceId: service.id,
               kind: "http",
               method: httpMethod,

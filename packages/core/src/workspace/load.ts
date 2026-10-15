@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FileFacts } from "../facts/types.js";
 import { decodeSource, looksBinary } from "../ingest/decode.js";
@@ -84,9 +84,12 @@ async function writeCachedFacts(cacheDir: string | undefined, key: string, facts
   const dir = path.join(cacheDir, "facts", key.slice(0, 2));
   await mkdir(dir, { recursive: true });
   const target = path.join(dir, `${key}.json`);
-  const tmp = `${target}.${process.pid}.tmp`;
+  const tmp = `${target}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   await writeFile(tmp, JSON.stringify(facts));
-  await rename(tmp, target);
+  await rename(tmp, target).catch(async () => {
+    // Same content written concurrently (identical hash): the other writer won; drop our temp file.
+    await rm(tmp, { force: true });
+  });
 }
 
 export async function loadWorkspace(options: LoadOptions): Promise<Workspace> {
@@ -127,7 +130,8 @@ export async function loadWorkspace(options: LoadOptions): Promise<Workspace> {
         if (!facts) {
           try {
             facts = await pool.parse(entry.kind, text, entry.relPath);
-            if (facts) await writeCachedFacts(options.cacheDir, cacheKey, facts);
+            // Best effort: a failed cache write must never look like a parse failure.
+            if (facts) await writeCachedFacts(options.cacheDir, cacheKey, facts).catch(() => undefined);
           } catch (error) {
             parseErrors++;
             diagnostics.push({

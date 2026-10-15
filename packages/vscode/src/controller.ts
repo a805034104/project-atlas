@@ -55,7 +55,7 @@ export class AtlasController implements vscode.Disposable {
   ) {
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(workspaceRoot, "**/*.{java,vue,js,ts,xml,yml,yaml,properties,json}"));
     const mark = (uri: vscode.Uri) => {
-      if (/[\\/](\.atlas|node_modules|target|dist|\.git)[\\/]/.test(uri.fsPath) || this.state.status !== "done") return;
+      if (/[\\/](\.atlas|node_modules|target|dist|\.git)[\\/]/.test(uri.fsPath) || this.state.status === "never") return;
       this.staleFiles.add(uri.fsPath);
       this.setState({ staleFiles: this.staleFiles.size });
     };
@@ -97,6 +97,8 @@ export class AtlasController implements vscode.Disposable {
   /** Load a previous analysis from .atlas/graph (no re-analysis on startup). */
   async restore(): Promise<void> {
     const stored = await loadStoredGraph(this.atlasDir);
+    // An analysis started (or finished) while the stored map was loading: never overwrite it.
+    if (this.running || this.graphValue) return;
     if (stored.status === "ok") {
       this.setGraph(stored.graph);
       this.setState({ status: "done", completedPhases: [...PHASES], ai: stored.graph.llmUsage.length > 0 ? "done" : "none" });
@@ -135,7 +137,7 @@ export class AtlasController implements vscode.Disposable {
 
     try {
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Window, title: "Atlas", cancellable: true },
+        { location: vscode.ProgressLocation.Notification, title: "Atlas", cancellable: true },
         async (progress, token) => {
           token.onCancellationRequested(() => cancel.abort());
           let last: AnalysisPhase | undefined;
@@ -169,7 +171,8 @@ export class AtlasController implements vscode.Disposable {
       );
     } catch (error) {
       if (cancel.signal.aborted) {
-        this.setState({ status: this.graphValue ? "done" : "cancelled", currentPhase: undefined });
+        const ai = this.state.ai === "running" || this.state.ai === "pending-confirmation" ? (this.graphValue?.llmUsage.length ? "partial" : "none") : this.state.ai;
+        this.setState({ status: this.graphValue ? "done" : "cancelled", currentPhase: undefined, progress: undefined, ai });
         log("Analysis cancelled");
         return;
       }
@@ -187,7 +190,10 @@ export class AtlasController implements vscode.Disposable {
     progress: vscode.Progress<{ message?: string }>,
   ): Promise<void> {
     const config = await providerConfig(this.context.secrets, settings);
-    if (!config) return;
+    if (!config) {
+      this.setState({ ai: "none" });
+      return;
+    }
     if (!vscode.workspace.isTrusted) {
       this.setState({ ai: "none" });
       log("AI analysis skipped: workspace is not trusted (Restricted Mode)");

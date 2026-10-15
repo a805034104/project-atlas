@@ -198,6 +198,14 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   const handlers = new Map(chains.map((c) => [c.entrypoint.id, c.handlerStepId]));
   const linked = linkServices({ java: project.java, frontends: project.frontends, indexes, frontendCalls, feignCalls, restCalls, handlers }, graph);
   diagnostics.push(...applyEdgeOverrides(graph, overrides.edges));
+  // Overrides may have removed cross-service hops: drop links and upstream chains that no longer exist.
+  const hasCallEdge = (from: string, to?: string) => graph.outgoing(from).some((e) => to === undefined || e.to === to);
+  linked.links = linked.links.filter((l) => !l.toEntrypointId || hasCallEdge(l.fromStepId));
+  for (const [entrypointId, hop] of linked.upstream) {
+    const handler = handlers.get(entrypointId);
+    const chain = [...hop.stepIds, handler];
+    if (!chain.every((stepId, i) => i === chain.length - 1 || (stepId !== undefined && hasCallEdge(stepId, chain[i + 1])))) linked.upstream.delete(entrypointId);
+  }
 
   // ── Flows ─────────────────────────────────────────────────────────────────
   const ignored = new Set([...graph.entrypoints.values()].filter((e) => isIgnoredEntrypoint(e, overrides.ignoreEntrypoints)).map((e) => e.id));
@@ -207,7 +215,7 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
     const upstream = linked.upstream.get(chain.entrypoint.id)?.stepIds ?? [];
     const discriminator = GraphBuilder.chainDiscriminator(chain.entrypoint.id);
     const chainStepIds = [...upstream, ...chain.chainStepIds];
-    const chainEdgeIds = [...chain.chainEdgeIds];
+    const chainEdgeIds = chain.chainEdgeIds.filter((id) => graph.edges.has(id)); // edges.remove may have dropped some
     const first = chain.chainStepIds[0] ?? chain.handlerStepId;
     upstream.forEach((stepId, i) => {
       chainEdgeIds.unshift(graph.edge(stepId, upstream[i + 1] ?? first, { provenance: "framework-rule", discriminator }));

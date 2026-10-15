@@ -32,6 +32,14 @@ export function canonicalKey(key: string): string {
 
 const MAX_DEPTH = 16;
 
+/** `a.b[0].c[2].d` → ["a.b", "a.b[0].c"]: every list the key lives in. */
+function listBases(canonical: string): string[] {
+  const out: string[] = [];
+  const re = /\[\d+\]/g;
+  for (let m = re.exec(canonical); m; m = re.exec(canonical)) out.push(canonical.slice(0, m.index));
+  return out;
+}
+
 export class ConfigView {
   private readonly index = new Map<string, ConfigEntry>();
   private readonly ordered: ConfigEntry[] = [];
@@ -42,17 +50,25 @@ export class ConfigView {
     /** Maven resource-filtering tokens substituted for `@name@` before placeholder resolution. */
     private readonly mavenTokens: Readonly<Record<string, string>> = {},
   ) {
+    // Spring replaces lists wholesale: once a higher-priority document defines any `a.b[i]…`,
+    // lower-priority documents contribute nothing under `a.b[`.
+    const claimedLists = new Set<string>();
     for (const layer of layers) {
       // Within a file, later documents override earlier ones.
       const active = layer.documents.filter((d) => !d.profiles || d.profiles.some((p) => profiles.includes(p)));
       for (const doc of [...active].reverse()) {
+        const listsHere = new Set<string>();
         for (const entry of doc.entries) {
           const canonical = canonicalKey(entry.key);
+          const bases = listBases(canonical);
+          if (bases.some((b) => claimedLists.has(b))) continue;
+          for (const b of bases) listsHere.add(b);
           if (!this.index.has(canonical)) {
             this.index.set(canonical, entry);
             this.ordered.push(entry);
           }
         }
+        for (const b of listsHere) claimedLists.add(b);
       }
     }
   }

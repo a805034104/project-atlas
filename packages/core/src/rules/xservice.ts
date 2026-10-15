@@ -54,19 +54,18 @@ export interface XServiceInput {
 }
 
 export function parseGatewayRoutes(svc: JavaService): GatewayRoute[] {
-  const entries = GATEWAY_ROUTE_PREFIXES.flatMap((p) => svc.config.list(p));
-  const byIndex = new Map<number, typeof entries>();
-  for (const e of entries) {
-    const m = /routes\[(\d+)\]/i.exec(e.key);
-    if (!m) continue;
-    const i = Number(m[1]);
-    pushTo(byIndex, i, e);
-  }
+  const byIndex = new Map<string, ReturnType<typeof svc.config.list>>();
+  GATEWAY_ROUTE_PREFIXES.forEach((prefix, p) => {
+    for (const e of svc.config.list(prefix)) {
+      const m = /routes\[(\d+)\]/i.exec(e.key);
+      if (m) pushTo(byIndex, `${p}:${m[1]?.padStart(6, "0")}`, e);
+    }
+  });
   const defaultFilters = ["spring.cloud.gateway.default-filters", "spring.cloud.gateway.server.webflux.default-filters", "spring.cloud.gateway.server.webmvc.default-filters"]
     .flatMap((p) => svc.config.list(p))
     .map((e) => svc.config.resolve(e.value).value);
   const routes: GatewayRoute[] = [];
-  for (const [, group] of [...byIndex.entries()].sort((a, b) => a[0] - b[0])) {
+  for (const [, group] of [...byIndex.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
     const value = (suffix: RegExp) => group.find((e) => suffix.test(e.key.replace(/^.*routes\[\d+\]\./i, "")));
     const resolved = (s: string) => svc.config.resolve(s).value;
     const id = resolved(value(/^id$/i)?.value ?? "");
@@ -79,7 +78,10 @@ export function parseGatewayRoutes(svc: JavaService): GatewayRoute[] {
       const [name = "", args = ""] = f.split(/=(.*)/s).map((s) => s.trim());
       if (/^StripPrefix$/i.test(name)) route.stripPrefix = Number.parseInt(args, 10) || 0;
       else if (/^RewritePath$/i.test(name)) {
-        const [regex = "", replacement = ""] = args.split(/,\s*/);
+        // The replacement never contains a comma; the regex may (`{1,2}`): split on the LAST comma.
+        const cut = args.lastIndexOf(",");
+        const regex = cut < 0 ? args : args.slice(0, cut).trim();
+        const replacement = cut < 0 ? "" : args.slice(cut + 1).trim();
         try {
           route.rewrite = { pattern: new RegExp(regex.replace(/\(\?<(\w+)>/g, "(?<$1>")), replacement: replacement.replace(/\$\\\{(\w+)\}/g, "$<$1>").replace(/\$\{(\w+)\}/g, "$<$1>") };
         } catch {
@@ -124,20 +126,21 @@ export function matchEntrypoint(entries: readonly Entrypoint[] | EntrypointIndex
   let bestScore = -1;
   for (const { e, segs } of index.candidates(serviceId, callSegments.length)) {
     if (e.method !== "ANY" && method !== "ANY" && e.method !== method) continue;
-    let score = 0;
+    // Spring precedence: path specificity (literal segments) first, then the exact method; ties break on id.
+    let literals = 0;
     let ok = true;
     for (let i = 0; i < segs.length; i++) {
       const pattern = segs[i] as string;
       const actual = callSegments[i] as string;
-      if (pattern === actual) score += 2;
-      else if (pattern === "{}") score += 1;
-      else {
+      if (pattern === actual && !pattern.includes("⟨")) literals++;
+      else if (pattern !== "{}") {
         ok = false;
         break;
       }
     }
-    if (ok && e.method === method) score += 1;
-    if (ok && score > bestScore) {
+    if (!ok) continue;
+    const score = literals * 4 + (e.method === method ? 2 : 0);
+    if (score > bestScore || (score === bestScore && best !== undefined && e.id < best.id)) {
       best = e;
       bestScore = score;
     }
@@ -238,7 +241,7 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
         if (!route.paths.some((p) => antMatch(p, path))) continue;
         const uri = parseUrl(route.uri);
         const backend = uri ? serviceFor(uri.host, uri.port) : undefined;
-        if (!backend) return {};
+        if (!backend) continue; // target outside the workspace: a later route may still match
         const downstream = applyRoute(route, path);
         const via = { gateway: svc, route, downstream, backend };
         const target = matchEntrypoint(entries, backend.service.id, method, downstream);
@@ -268,9 +271,18 @@ export function linkServices(input: XServiceInput, graph: GraphBuilder): XServic
         continue;
       }
       const url = parseUrl(proxy.target);
-      const stripped = proxy.stripPrefix && !proxy.prefix.startsWith("^") ? call.browserPath.slice(proxy.prefix.replace(/\/$/, "").length) : call.browserPath;
+      const stripped = !proxy.stripPrefix
+        ? call.browserPath
+        : proxy.prefix.startsWith("^")
+          ? call.browserPath.replace(safeRegex(proxy.prefix) ?? /^$/, "")
+          : call.browserPath.slice(proxy.prefix.replace(/\/$/, "").length);
       const upstream = normalizeHttpPath(`${url && url.path !== "/" ? url.path : ""}/${stripped}`);
-      const first = url ? serviceFor(url.host, url.port) : undefined;
+      let first = url ? serviceFor(url.host, url.port) : undefined;
+      if (first && url && first.service.kind !== "gateway") {
+        // Several apps can share a (possibly defaulted) port: prefer the one that serves the path.
+        const samePort = input.java.filter((j) => j.port === (url.port ?? 80));
+        if (samePort.length > 1) first = samePort.find((j) => matchEntrypoint(entries, j.service.id, call.method, upstream)) ?? first;
+      }
       if (!first) {
         graph.unresolved.push({ fromStepId: call.stepId, expression: `${call.method} ${call.browserPath} → ${proxy.target}`, reason: "unresolved-config", at: call.at });
         continue;
