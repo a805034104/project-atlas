@@ -7,7 +7,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { analyzeWorkspace, emptyGraph, saveGraph, type AtlasGraph, type GraphView } from "@project-atlas/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GraphSource, StoreUnavailableError } from "../src/store.js";
-import { findSymbol, getFlow, getModuleHistory, listEntrypoints, listServices, ToolInputError } from "../src/tools.js";
+import { findSymbol, getFlow, getModuleHistory, listEntrypoints, listServices, listTraces, ToolInputError } from "../src/tools.js";
 import { TOOL_NAMES } from "../src/server.js";
 
 const RUOYI_VUE = path.resolve("fixtures/repos/ruoyi-vue");
@@ -162,4 +162,38 @@ describe.skipIf(!haveFixtures)("tools on RuoYi-Vue + RuoYi-Vue3", () => {
       await client.close();
     }
   }, 60_000);
+});
+
+describe("runtime data over MCP", () => {
+  it("list_traces returns aggregates only and folds observed stats into get_flow", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "atlas-mcp-rt-"));
+    try {
+      const graph = emptyGraph("0.2.0", "rt", new Date("2026-10-15T00:00:00Z"));
+      await saveGraph(dir, graph);
+      const source = new GraphSource(dir);
+      const empty = listTraces(await source.view(), await source.aggregates());
+      expect(empty.text).toMatch(/project-atlas trace/);
+
+      const { TraceStore, Aggregator } = await import("@project-atlas/core");
+      const agg = new Aggregator();
+      agg.add([
+        { t: "1".repeat(32), s: "a".repeat(16), svc: "app", scope: "s", name: "GET /x", kind: "server", start: Date.parse("2026-10-15T01:00:00Z"), dur: 12, err: false, a: { route: "/x", method: "GET" } },
+        { t: "2".repeat(32), s: "b".repeat(16), svc: "app", scope: "s", name: "GET /y", kind: "server", start: Date.parse("2026-10-15T02:00:00Z"), dur: 30, err: true, a: { route: "/y", method: "GET", status: 500 } },
+      ]);
+      await new TraceStore(path.join(dir, "traces")).saveAggregates(agg.state);
+      const view = await source.view();
+      const all = listTraces(view, await source.aggregates());
+      expect((all.data as { returned: number }).returned).toBe(2);
+      expect(all.text.split("\n")[0]).toContain("GET /y");
+      const errors = listTraces(view, await source.aggregates(), { errorsOnly: true });
+      expect((errors.data as { traces: { root: string }[] }).traces.map((t) => t.root)).toEqual(["GET /y"]);
+      const since = listTraces(view, await source.aggregates(), { since: "2026-10-15T01:30:00Z" });
+      expect((since.data as { returned: number }).returned).toBe(1);
+      expect(() => listTraces(view, agg.state, { since: "yesterday" })).toThrow(ToolInputError);
+      // aggregates only: keys of a trace row
+      expect(Object.keys((all.data as { traces: Record<string, unknown>[] }).traces[0] ?? {}).sort()).toEqual(["durationMs", "error", "root", "services", "spans", "start", "traceId"]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

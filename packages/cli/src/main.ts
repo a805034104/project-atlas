@@ -3,6 +3,7 @@ import { parseCliArgs, USAGE } from "./args.js";
 import { analyzeCommand } from "./commands/analyze.js";
 import { estimateCommand } from "./commands/estimate.js";
 import { showCommand } from "./commands/show.js";
+import { traceCommand } from "./commands/trace.js";
 import { CliError, EXIT_OK, formatError } from "./errors.js";
 import { processIo, type CliIo } from "./io.js";
 
@@ -35,6 +36,8 @@ export async function run(argv: readonly string[], io: CliIo = processIo()): Pro
         return await estimateCommand(cmd, io);
       case "show":
         return await showCommand(cmd, io);
+      case "trace":
+        return await traceCommand(cmd, io);
     }
   } catch (error) {
     if (!(error instanceof CliError)) throw error;

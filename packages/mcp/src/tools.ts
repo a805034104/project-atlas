@@ -1,4 +1,5 @@
 import {
+  type AggregateState,
   cmp,
   compareEntrypoints,
   createRefFormatter,
@@ -176,6 +177,7 @@ export function getFlow(view: GraphView, args: GetFlowArgs): ToolOutput {
         fqn: s.symbol.fqn,
         location: fmt(s.symbol),
         service: names.get(s.serviceId) ?? s.serviceId,
+        ...(s.observed ? { observed: { count: s.observed.count, p50Ms: s.observed.p50Ms, p95Ms: s.observed.p95Ms, errors: s.observed.errorCount, lastSeen: s.observed.lastSeen } } : {}),
       })),
       unresolvedCalls: detail.unresolvedCalls.map((u) => ({ expression: u.expression, reason: u.reason, location: fmt(u.at) })),
     },
@@ -284,4 +286,32 @@ export function getModuleHistory(view: GraphView, args: GetModuleHistoryArgs): T
       commits: shown,
     },
   };
+}
+
+export interface ListTracesArgs {
+  entrypoint?: string | undefined;
+  since?: string | undefined;
+  limit?: number | undefined;
+  errorsOnly?: boolean | undefined;
+}
+
+/** Recent traced requests: aggregate facts only (route, duration, status, span count), never span attributes (AC#24). */
+export function listTraces(view: GraphView, aggregates: AggregateState, args: ListTracesArgs = {}): ToolOutput {
+  const since = args.since ? Date.parse(args.since) : undefined;
+  if (args.since && Number.isNaN(since)) throw new ToolInputError(`"since" must be an ISO-8601 time, got "${args.since}".`);
+  const wanted = args.entrypoint ? findEntrypoints(view.graph, args.entrypoint).map((e) => entrypointLabel(e)) : undefined;
+  if (wanted && wanted.length === 0) throw new ToolInputError(`No entrypoint matches "${args.entrypoint}".`);
+  const limit = Math.min(Math.max(1, args.limit ?? 20), 200);
+  const rows = aggregates.traces
+    .filter((t) => (since === undefined || t.start >= since) && (!args.errorsOnly || t.err))
+    .filter((t) => !wanted || (t.root && wanted.some((w) => t.root?.name === w || t.root?.name.endsWith(w.split(" ").slice(1).join(" ")))))
+    .slice(0, limit)
+    .map((t) => ({ traceId: t.t, start: new Date(t.start).toISOString(), durationMs: Math.round(t.dur * 100) / 100, error: t.err, spans: t.spans, services: t.services, root: t.root?.name ?? null }));
+  const text =
+    rows.length === 0
+      ? aggregates.total === 0
+        ? "No runtime traces recorded. Run `project-atlas trace -- <start command>` (or Atlas: Launch with Tracing in VS Code) and send a request."
+        : "No traces match."
+      : rows.map((r) => `${r.start} ${r.root ?? "(no root span)"} ${r.durationMs} ms${r.error ? " ERROR" : ""} · ${r.spans} spans · ${r.services.join(",")} · ${r.traceId}`).join("\n");
+  return { text, data: { total: aggregates.traces.length, returned: rows.length, traces: rows } };
 }
