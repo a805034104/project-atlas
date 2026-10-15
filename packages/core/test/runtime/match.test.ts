@@ -148,3 +148,24 @@ describe("reconcile — synthetic edge cases", () => {
     expect(text).toContain("otel.instrumentation.methods.include=a.B[c,d];e.F[g]");
   });
 });
+
+describe.skipIf(!haveFixtures(FIXTURES.ruoyiVue))("AC#25 — merge throughput", () => {
+  it("folds 10 000 spans in and reconciles them against RuoYi-Vue in under 2 s", async () => {
+    const { graph } = await analyzeWorkspace({ roots: [{ path: FIXTURES.ruoyiVue }], history: false });
+    const base = golden();
+    const records: SpanRecord[] = [];
+    for (let i = 0; records.length < 10_000; i++) {
+      const suffix = i.toString(16).padStart(6, "0");
+      for (const r of base) records.push({ ...r, t: `${r.t.slice(0, 26)}${suffix}`, start: r.start + i, ...(r.p ? { p: r.p } : {}) });
+    }
+    const started = performance.now();
+    const agg = new Aggregator();
+    agg.add(records.slice(0, 10_000));
+    const overlay = reconcile(graph, agg.state);
+    applyOverlay(graph, overlay);
+    const ms = performance.now() - started;
+    expect(agg.state.total).toBe(10_000);
+    expect(Object.keys(overlay.entrypoints).length).toBeGreaterThan(3);
+    expect(ms).toBeLessThan(2000);
+  });
+});
