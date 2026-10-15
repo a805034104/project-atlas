@@ -58,7 +58,7 @@ export function createAtlasServer(atlasDir: string): McpServer {
     "list_entrypoints",
     {
       title: "List entrypoints",
-      description: 'HTTP endpoints, scheduled jobs and frontend routes with their handler and file:line. Labels such as "GET /system/user/list" can be passed to get_flow.',
+      description: 'HTTP endpoints, message consumers (Kafka/RabbitMQ/RocketMQ/Redis Stream/Spring Cloud Stream), scheduled jobs and frontend routes with their handler and file:line. Labels such as "GET /system/user/list" or "KAFKA order-created" can be passed to get_flow.',
       inputSchema: {
         service: z.string().optional().describe("Service name or id."),
         kind: z.enum(ENTRYPOINT_KINDS).optional(),

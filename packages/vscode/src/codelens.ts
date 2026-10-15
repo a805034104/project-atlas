@@ -37,7 +37,7 @@ export class AtlasCodeLens implements vscode.CodeLensProvider {
     for (const [line, eps] of byLine) {
       const range = new vscode.Range(line, 0, line, 0);
       for (const e of eps) {
-        const label = e.kind === "http" ? `${e.method} ${e.path}` : e.handler.name;
+        const label = e.kind === "http" || e.kind === "mq-consumer" ? `${e.method} ${e.path}` : e.handler.name;
         lenses.push(new vscode.CodeLens(range, { title: `⟶ ${t("查看请求流转", "Request flow")} · ${label}`, command: "atlas.showFlowForSymbol", arguments: [e.id] }));
       }
     }
