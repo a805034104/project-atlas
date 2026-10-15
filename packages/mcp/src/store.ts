@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import { applyOverlay, GraphView, loadStoredGraph, reconcile, TraceStore, type AggregateState } from "@project-atlas/core";
+import { applyOverlay, emptyAggregates, GraphView, loadStoredGraph, reconcile, TraceStore, type AggregateState } from "@project-atlas/core";
 
 /**
  * Read-only access to `.atlas/graph/` for the MCP tools. Never analyzes and
@@ -69,6 +69,6 @@ export class GraphSource {
   /** Runtime aggregates of the last loaded view (empty when nothing was traced). */
   async aggregates(): Promise<AggregateState> {
     await this.view();
-    return this.cached?.aggregates ?? { version: 1, nodes: {}, edges: {}, traces: [], total: 0, duplicates: 0 };
+    return this.cached?.aggregates ?? emptyAggregates();
   }
 }

@@ -8,7 +8,7 @@ import type { SpanRecord } from "./span-record.js";
  *                               h: http client | n: name)
  *              ─▶ node stats            count / errors / sketch / last seen / sample traces
  *   parent ⨝ child (window, either order) ─▶ edge stats "parentKey>childKey" (+ async when the
- *              child starts after the parent ended or on another thread)
+ *              child on another thread that starts after the parent ended)
  *   roots ─▶ recent trace summaries (trace list)
  *
  * Keys never contain step ids: they are re-resolved against the current graph
@@ -40,7 +40,7 @@ export interface TraceSummary {
 }
 
 export interface AggregateState {
-  version: 1;
+  version: number;
   nodes: Record<string, Stats>;
   edges: Record<string, EdgeStats>;
   /** Newest first. */
@@ -57,7 +57,9 @@ const MAX_WAITING = 10_000;
 
 export function spanKey(r: SpanRecord): string {
   const a = r.a;
-  if (a.cls && a.fn) return `m:${a.cls}#${a.fn}`;
+  // The service is part of the key: a class shared by several services (common modules) is a
+  // different step in each of them.
+  if (a.cls && a.fn) return `m:${r.svc}:${a.cls}#${a.fn}`;
   if (r.kind === "server" && a.route) return `r:${r.svc}:${a.method ?? "ANY"} ${a.route}`;
   if (a.dbSystem) return `d:${r.svc}:${a.dbOp ?? "?"} ${a.dbTable ?? "?"}`;
   if (a.msgSystem && a.msgDest) return `q:${a.msgSystem}:${r.kind}:${r.svc}:${a.msgDest}`;
@@ -66,7 +68,18 @@ export function spanKey(r: SpanRecord): string {
 }
 
 export function emptyAggregates(): AggregateState {
-  return { version: 1, nodes: {}, edges: {}, traces: [], total: 0, duplicates: 0 };
+  return { version: AGGREGATES_VERSION, nodes: {}, edges: {}, traces: [], total: 0, duplicates: 0 };
+}
+
+/** v2: method keys carry the service (`m:svc:Class#method`). Older files are discarded. */
+export const AGGREGATES_VERSION = 2;
+
+/** `m:svc:Class#method` → service + `Class#method` (service names may contain ':'). */
+export function parseMethodSpanKey(key: string): { svc: string; method: string } | undefined {
+  if (!key.startsWith("m:")) return undefined;
+  const at = key.lastIndexOf(":");
+  if (at < 2) return undefined;
+  return { svc: key.slice(2, at), method: key.slice(at + 1) };
 }
 
 export function statsQuantile(stats: Stats | undefined, q: number): number {
@@ -177,7 +190,8 @@ export class Aggregator {
     const stats = (this.state.edges[key] ??= { count: 0, err: 0, lastSeen: 0, sketch: {}, samples: [] });
     touch(stats, r, r.dur, r.err);
     const otherThread = parent.thread !== undefined && child.thread !== undefined && parent.thread !== child.thread;
-    if (otherThread || child.start >= parent.end) stats.async = true;
+    // V7: async = handed to another thread AND not awaited (submit(..).get() stays synchronous).
+    if (otherThread && child.start >= parent.end) stats.async = true;
   }
 
   private trace(r: SpanRecord, key: string): void {

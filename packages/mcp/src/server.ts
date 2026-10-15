@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { ANALYZER_VERSION, MAX_FLOW_DEPTH, type GraphView } from "@project-atlas/core";
+import { ANALYZER_VERSION, emptyAggregates, MAX_FLOW_DEPTH, type GraphView } from "@project-atlas/core";
 import { z } from "zod";
 import { GraphSource, StoreUnavailableError } from "./store.js";
 import { findSymbol, getFlow, getModuleHistory, listEntrypoints, listServices, listTraces, ToolInputError, type ToolOutput } from "./tools.js";
@@ -137,7 +137,7 @@ export function createAtlasServer(atlasDir: string): McpServer {
     },
     async (args) => {
       const aggregates = await source.aggregates().catch(() => undefined);
-      return respond(source, (view) => listTraces(view, aggregates ?? { version: 1, nodes: {}, edges: {}, traces: [], total: 0, duplicates: 0 }, args));
+      return respond(source, (view) => listTraces(view, aggregates ?? emptyAggregates(), args));
     },
   );
 

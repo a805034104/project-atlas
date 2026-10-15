@@ -93,6 +93,36 @@ describe("AC#22 — runtime confirms cross-service links", () => {
     expect(decorated.serviceLinks.filter((l) => l.observed).length).toBe(3);
   });
 
+  it("a second producer of the same topic is not confirmed by the first one's traffic", async () => {
+    const g = await graph();
+    const order = g.services.find((s) => s.name === "order-service");
+    const kafka = g.serviceLinks.find((l) => l.channel === "kafka:order-created");
+    // refund-service also sends to order-created (same consumer, same channel)
+    const refund = { ...order!, id: "refund-svc", name: "refund-service" };
+    const refundLink = { ...kafka!, id: "refund-link", fromServiceId: refund.id };
+    const g2 = { ...g, services: [...g.services, refund], serviceLinks: [...g.serviceLinks, refundLink] };
+    const agg = new Aggregator();
+    agg.add([
+      rec("order-service", "producer", { msgSystem: "kafka", msgDest: "order-created" }, "7", "1"),
+      rec("stock-service", "consumer", { msgSystem: "kafka", msgDest: "order-created" }, "7", "2", "1"),
+    ]);
+    const links = Object.keys(reconcile(g2, agg.state).links);
+    expect(links).toContain(kafka!.id);
+    expect(links).not.toContain("refund-link");
+  });
+
+  it("an unknown service name with the route in several services credits nothing", async () => {
+    const g = await graph();
+    const stockEp = g.entrypoints.find((e) => e.path === "/stock/{}");
+    const twin = { ...stockEp!, id: "twin-ep", serviceId: g.services.find((s) => s.name === "order-service")!.id };
+    const g2 = { ...g, entrypoints: [...g.entrypoints, twin] };
+    const agg = new Aggregator();
+    agg.add([rec("unknown_service:java", "server", { method: "GET", route: "/stock/{id}" }, "8", "1")]);
+    const overlay = reconcile(g2, agg.state);
+    expect(overlay.entrypoints).toEqual({});
+    expect(overlay.unmatched.map((u) => u.reason)).toEqual(["ambiguous"]);
+  });
+
   it("reports traffic no static link covers as runtime-only links", async () => {
     const g = await graph();
     const agg = new Aggregator();

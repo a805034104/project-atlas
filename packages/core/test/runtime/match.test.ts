@@ -137,7 +137,42 @@ describe("reconcile — synthetic edge cases", () => {
     };
     const agg2 = new Aggregator();
     agg2.add([span("3", "1", "Svc", "a")]);
-    expect(reconcile(ambiguous, agg2.state).unmatched).toEqual([{ key: "m:app.Svc#a", count: 1, reason: "ambiguous" }]);
+    expect(reconcile(ambiguous, agg2.state).unmatched).toEqual([{ key: "m:app:app.Svc#a", count: 1, reason: "ambiguous" }]);
+  });
+
+  it("a method span only credits the step of its own service (classes shared by several services)", async () => {
+    const graph = await analyzeTree(springApp(sources));
+    const run = graph.steps.find((s) => s.symbol.name === "Svc.run")!;
+    const other = { ...run, id: "run-in-other", serviceId: "other-service" };
+    const shared: AtlasGraph = { ...graph, steps: [...graph.steps, other] };
+    const agg = new Aggregator();
+    agg.add([span("4", "1", "Svc", "run")]); // svc "app" = the analysed service
+    const overlay = reconcile(shared, agg.state);
+    expect(overlay.steps[run.id]?.count).toBe(1);
+    expect(overlay.steps["run-in-other"]).toBeUndefined();
+  });
+
+  it("an mq send step (enclosing method's symbol) is never credited or made a runtime-edge parent", async () => {
+    const graph = await analyzeTree(springApp(sources));
+    const run = graph.steps.find((s) => s.symbol.name === "Svc.run")!;
+    const send = { ...run, id: "send-step", layer: "mq" as const, symbol: { ...run.symbol, name: "send kafka:orders" } };
+    const inner = { ...run, id: "inner-step", symbol: { ...run.symbol, name: "Svc.inner", fqn: "app.Svc#inner()" } };
+    const g: AtlasGraph = { ...graph, steps: [...graph.steps, send, inner] };
+    const agg = new Aggregator();
+    agg.add([span("5", "1", "Svc", "run"), span("5", "2", "Svc", "inner", "1")]);
+    const overlay = reconcile(g, agg.state);
+    expect(overlay.steps["send-step"]).toBeUndefined();
+    expect(overlay.runtimeEdges.map((e) => e.from)).toEqual([run.id]);
+  });
+
+  it("a child on another thread that finishes inside its parent is not async (submit().get())", () => {
+    const agg = new Aggregator();
+    agg.add([span("6", "1", "Svc", "run", undefined, { dur: 50, a: { cls: "app.Svc", fn: "run", thread: "main" } }), span("6", "2", "Svc", "inner", "1", { a: { cls: "app.Svc", fn: "inner", thread: "pool-1" } })]);
+    expect(Object.values(agg.state.edges)).toHaveLength(1);
+    expect(Object.values(agg.state.edges)[0]?.async).toBeFalsy();
+    // ...and one that outlives its parent on another thread is
+    agg.add([span("7", "1", "Svc", "run", undefined, { dur: 1, a: { cls: "app.Svc", fn: "run", thread: "main" } }), span("7", "2", "Svc", "inner", "1", { start: 99_999, a: { cls: "app.Svc", fn: "inner", thread: "pool-1" } })]);
+    expect(Object.values(agg.state.edges)[0]?.async).toBe(true);
   });
 
   it("writes a properties file with escaped values and mybatis on", () => {

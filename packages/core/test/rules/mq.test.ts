@@ -274,3 +274,69 @@ public class Handlers {
     expect(graph.entrypoints.some((e) => e.handler.name === "Handlers.notBound")).toBe(false);
   });
 });
+
+describe("MQ precision (red-team regressions)", () => {
+  const kafkaConsumer = { "OrderListener.java": '@Component public class OrderListener { @KafkaListener(topics = "audit-log") public void onAudit(String m) {} @KafkaListener(topics = "orders") public void onOrder(String m) {} }' };
+
+  it("a parameter that shadows a field, or a mutable field, is not folded to a topic", async () => {
+    const graph = await analyzeTree(
+      twoServices(
+        {
+          "MqSender.java": '@Service public class MqSender { @Autowired private KafkaTemplate<String, String> kafkaTemplate; private String topic = "audit-log"; public void send(String topic, String p) { kafkaTemplate.send(topic, p); } public void field(String p) { kafkaTemplate.send(topic, p); } }',
+          "OrderController.java": controller("MqSender sender", 'sender.send("orders", id); sender.field(id);'),
+        },
+        kafkaConsumer,
+      ),
+    );
+    expect(mqLinks(graph)).toEqual([]);
+    expect(graph.unresolvedCalls.filter((u) => u.reason === "unresolved-config").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a final field constant still folds", async () => {
+    const graph = await analyzeTree(twoServices({ "OrderController.java": controller("KafkaTemplate<String, String> kafkaTemplate", "kafkaTemplate.send(TOPIC, id);").replace("public class OrderController {", 'public class OrderController { private static final String TOPIC = "orders";') }, kafkaConsumer));
+    expect(mqLinks(graph)).toEqual([{ channel: "kafka:orders", handler: "OrderListener.onOrder" }]);
+  });
+
+  it("enum name(), custom getters and Lombok enums with initialized fields are not folded", async () => {
+    const enums = {
+      "Q.java": 'public enum Q { X("ex.x", "orders"); private final String exchange; private final String name; Q(String exchange, String name) { this.exchange = exchange; this.name = name; } public String getExchange() { return "prefix." + exchange; } public String getName() { return name; } }',
+      "L.java": '@Getter @AllArgsConstructor public enum L { A("audit-log", "orders"); private final String prefix = "p."; private final String exchange; private final String queue; }',
+    };
+    const graph = await analyzeTree(
+      twoServices(
+        {
+          ...enums,
+          "OrderController.java": controller("KafkaTemplate<String, String> kafkaTemplate", "kafkaTemplate.send(Q.X.name(), id); kafkaTemplate.send(Q.X.getExchange(), id); kafkaTemplate.send(L.A.getExchange(), id); kafkaTemplate.send(Q.X.getName(), id);"),
+        },
+        kafkaConsumer,
+      ),
+    );
+    // Only Q.X.getName() (plain getter, constructor assigns this.name = name) folds.
+    expect(mqLinks(graph)).toEqual([{ channel: "kafka:orders", handler: "OrderListener.onOrder" }]);
+  });
+
+  it("a class-level listener with several handlers links only the handler of the payload type", async () => {
+    const graph = await analyzeTree(
+      twoServices(
+        { "OrderCreated.java": "public class OrderCreated {}", "OrderController.java": controller("KafkaTemplate<String, Object> kafkaTemplate", 'kafkaTemplate.send("orders", new OrderCreated()); kafkaTemplate.send("orders", id);') },
+        { "OrderEvents.java": '@Component @KafkaListener(topics = "orders") public class OrderEvents { @KafkaHandler public void created(OrderCreated e) {} @KafkaHandler public void cancelled(OrderCancelled e) {} }' },
+      ),
+    );
+    expect(mqLinks(graph)).toEqual([{ channel: "kafka:orders", handler: "OrderEvents.created" }]);
+    expect(graph.unresolvedCalls.some((u) => u.reason === "dynamic-dispatch" && u.expression.includes("OrderEvents"))).toBe(true);
+  });
+
+  it("a RabbitTemplate configured in code makes the 2-argument convertAndSend unresolved", async () => {
+    const graph = await analyzeTree(
+      twoServices(
+        {
+          "MqConfig.java": '@Configuration public class MqConfig { @Bean public RabbitTemplate rabbitTemplate(ConnectionFactory cf) { RabbitTemplate t = new RabbitTemplate(cf); t.setExchange("biz.topic"); return t; } }',
+          "OrderController.java": controller("RabbitTemplate rabbitTemplate", 'rabbitTemplate.convertAndSend("order.paid", id);'),
+        },
+        { "PaidListener.java": '@Component public class PaidListener { @RabbitListener(queues = "order.paid") public void onPaid(String m) {} }' },
+      ),
+    );
+    expect(mqLinks(graph)).toEqual([]);
+  });
+});
+

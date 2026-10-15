@@ -36,6 +36,8 @@ export interface MqSendSite {
   destination: string;
   /** rabbit routing key / rocketmq tag. */
   key?: string;
+  /** Simple type name of the payload argument, when statically known (`new X(..)`, typed variable). */
+  payloadType?: string;
   at: SymbolRef;
 }
 
@@ -48,6 +50,11 @@ export interface MqConsumerSite {
   pattern?: RegExp;
   /** RocketMQ tag filter; undefined = every tag. */
   tags?: string[];
+  /**
+   * Class-level @KafkaListener / @RabbitListener with several @KafkaHandler / @RabbitHandler
+   * methods: the broker message goes to the handler whose parameter type matches the payload.
+   */
+  dispatch?: { group: string; payloadType: string };
   at: SymbolRef;
 }
 
@@ -198,6 +205,12 @@ export class MqCollector {
 
   constructor(private readonly ctx: MqCollectorContext) {}
 
+  /** Set while collecting a handler of a multi-handler listener class. */
+  private dispatch: MqConsumerSite["dispatch"];
+
+  /** Parameter and local names of the method whose send is being resolved (they shadow fields). */
+  private shadow: ReadonlySet<string> | undefined;
+
   private get service() {
     return this.ctx.svc.service;
   }
@@ -206,7 +219,7 @@ export class MqCollector {
   resolve(expr: string | undefined, owner: TypeRef): string | undefined {
     if (expr === undefined) return undefined;
     const text = expr.trim();
-    const folded = this.ctx.index.resolveConstant(text, owner) ?? this.enumGetter(text, owner);
+    const folded = this.ctx.index.resolveConstant(text, owner, 0, this.shadow) ?? this.enumGetter(text, owner);
     return folded === undefined ? undefined : this.placeholders(folded);
   }
 
@@ -216,18 +229,40 @@ export class MqCollector {
     return resolved.unresolved.length === 0 && !/#\{/.test(resolved.value) ? resolved.value : undefined;
   }
 
-  /** `QueueEnum.ORDER_CANCEL.getExchange()` → constructor argument bound to field `exchange`. */
+  /**
+   * `QueueEnum.ORDER_CANCEL.getExchange()` → the constant's constructor argument for field `exchange`.
+   * Only when every link is certain: a plain getter (`return field;`, or Lombok @Getter with no
+   * explicit method), one constructor of that arity assigning `this.field = param` (or Lombok
+   * @AllArgsConstructor with no field initializers). name() / toString() are never folded.
+   */
   private enumGetter(text: string, owner: TypeRef): string | undefined {
-    const m = /^([\w.]+)\.([A-Z][A-Z0-9_]*)\.(?:get|is)?(\w+)\(\)$/.exec(text);
+    const m = /^([\w.]+)\.([A-Z][A-Z0-9_]*)\.(\w+)\(\)$/.exec(text);
     if (!m) return undefined;
+    const getter = m[3] as string;
+    if (["name", "toString", "ordinal", "hashCode", "getClass", "getDeclaringClass"].includes(getter)) return undefined;
     const enumType = this.ctx.index.resolveType(m[1] as string, owner);
     const constant = enumType?.type.enumConstants.find((c) => c.name === m[2]);
     if (!enumType || !constant) return undefined;
-    const fieldName = (m[3] as string).charAt(0).toLowerCase() + (m[3] as string).slice(1);
-    const instanceFields = enumType.type.fields.filter((f) => !f.modifiers.includes("static"));
-    const ctor = enumType.type.methods.find((x) => x.isConstructor && x.params.length === constant.argTexts.length);
-    let position = ctor ? ctor.params.findIndex((p) => p.name === fieldName) : -1;
-    if (position < 0 && !ctor && hasAnnotation(enumType.type.annotations, "AllArgsConstructor")) position = instanceFields.findIndex((f) => f.name === fieldName);
+    const type = enumType.type;
+    const instanceFields = type.fields.filter((f) => !f.modifiers.includes("static"));
+    const explicit = type.methods.find((x) => !x.isConstructor && x.name === getter && x.params.length === 0);
+    let fieldName: string | undefined;
+    if (explicit) fieldName = explicit.returnsField;
+    else {
+      const bare = /^(?:get|is)([A-Z]\w*)$/.exec(getter)?.[1];
+      const candidate = bare ? bare.charAt(0).toLowerCase() + bare.slice(1) : undefined;
+      const field = instanceFields.find((f) => f.name === candidate);
+      if (field && (hasAnnotation(type.annotations, "Getter") || hasAnnotation(type.annotations, "Data") || hasAnnotation(field.annotations, "Getter"))) fieldName = field.name;
+    }
+    if (!fieldName || !instanceFields.some((f) => f.name === fieldName)) return undefined;
+    const ctors = type.methods.filter((x) => x.isConstructor && x.params.length === constant.argTexts.length);
+    let position = -1;
+    if (ctors.length === 1) {
+      const param = ctors[0]?.fieldAssigns?.[fieldName];
+      position = param ? (ctors[0]?.params.findIndex((p) => p.name === param) ?? -1) : -1;
+    } else if (ctors.length === 0 && !type.methods.some((x) => x.isConstructor) && hasAnnotation(type.annotations, "AllArgsConstructor") && !instanceFields.some((f) => f.initialized)) {
+      if (instanceFields.length === constant.argTexts.length) position = instanceFields.findIndex((f) => f.name === fieldName);
+    }
     if (position < 0) return undefined;
     const arg = constant.argTexts[position];
     return arg === undefined ? undefined : this.ctx.index.resolveConstant(arg, enumType);
@@ -258,9 +293,15 @@ export class MqCollector {
    * A call on an MQ client (`kafkaTemplate.send(..)`, `redisTemplate.opsForStream().add(..)`,
    * declared mq wrappers). Returns true when the call was recognised as a send.
    */
-  recordSend(fromStep: string, broker: MqBroker, call: JavaCall, owner: TypeRef, at: SymbolRef, wrapper?: { topicArg?: number }): boolean {
+  recordSend(fromStep: string, broker: MqBroker, call: JavaCall, owner: TypeRef, at: SymbolRef, wrapper?: { topicArg?: number }, method?: JavaMethod): boolean {
     if (!wrapper && !SEND_METHODS[broker].has(call.method)) return false;
-    const parsed = wrapper ? this.wrapperDestination(broker, call, owner, wrapper.topicArg ?? 0) : this.destinationOf(broker, call, owner);
+    this.shadow = method ? new Set([...method.params.map((p) => p.name), ...Object.keys(method.locals)]) : undefined;
+    let parsed: { destination: string; key?: string } | undefined;
+    try {
+      parsed = wrapper ? this.wrapperDestination(broker, call, owner, wrapper.topicArg ?? 0) : this.destinationOf(broker, call, owner);
+    } finally {
+      this.shadow = undefined;
+    }
     const label = parsed ? `${broker}:${parsed.destination || "(default)"}${parsed.key ? ` / ${parsed.key}` : ""}` : `${broker}:?`;
     const stepId = this.ctx.graph.step(this.service.id, this.service.name, "mq", `mq-send:${broker}:${at.fqn}:${at.line}`, { ...at, name: `send ${label}` });
     this.ctx.graph.edge(fromStep, stepId, { provenance: wrapper ? "framework-rule" : "static", rationale: `${call.receiver ?? ""}.${call.method}` });
@@ -268,7 +309,8 @@ export class MqCollector {
       this.unresolved(stepId, `${call.receiver ?? ""}.${call.method}(${call.argTexts.join(", ")})`, at, `${broker} destination`);
       return true;
     }
-    this.result.sends.push({ stepId, serviceId: this.service.id, broker, destination: parsed.destination, ...(parsed.key !== undefined ? { key: parsed.key } : {}), at });
+    const payloadType = payloadArgType(broker, call, method);
+    this.result.sends.push({ stepId, serviceId: this.service.id, broker, destination: parsed.destination, ...(parsed.key !== undefined ? { key: parsed.key } : {}), ...(payloadType ? { payloadType } : {}), at });
     return true;
   }
 
@@ -285,6 +327,7 @@ export class MqCollector {
     switch (broker) {
       case "kafka": {
         if (call.method === "sendDefault") {
+          if (this.templateCustomized(["setDefaultTopic"])) return undefined;
           const def = config("spring.kafka.template.default-topic");
           return def && def.unresolved.length === 0 ? { destination: def.value } : undefined;
         }
@@ -312,9 +355,16 @@ export class MqCollector {
         return key === undefined ? undefined : { destination: key };
       }
       case "rabbitmq": {
-        const defaultExchange = config("spring.rabbitmq.template.exchange")?.value ?? "";
-        const defaultKey = config("spring.rabbitmq.template.routing-key")?.value ?? "";
-        const trailingCallback = (t: string | undefined) => !!t && (/->/.test(t) || /^new\s+(MessagePostProcessor|CorrelationData)\b/.test(t) || /(postProcessor|correlation)/i.test(t));
+        // Template defaults: Boot config only, and only when no bean sets them in code.
+        const customized = this.templateCustomized(["setExchange", "setRoutingKey"]);
+        const exchangeConfig = config("spring.rabbitmq.template.exchange");
+        const keyConfig = config("spring.rabbitmq.template.routing-key");
+        if (customized || (exchangeConfig?.unresolved.length ?? 0) > 0 || (keyConfig?.unresolved.length ?? 0) > 0) {
+          if (args.length < 3 || (args.length === 3 && trailingCallbackText(args[2]))) return undefined;
+        }
+        const defaultExchange = exchangeConfig?.value ?? "";
+        const defaultKey = keyConfig?.value ?? "";
+        const trailingCallback = trailingCallbackText;
         let exchangeExpr: string | undefined;
         let keyExpr: string | undefined;
         if (args.length >= 4 || (args.length === 3 && !trailingCallback(args[2]))) {
@@ -330,6 +380,18 @@ export class MqCollector {
         return exchange === undefined || key === undefined ? undefined : { destination: exchange, key };
       }
     }
+  }
+
+  private customizedCache = new Map<string, boolean>();
+  /** Some method in the service calls one of these setters (a template bean configured in code). */
+  private templateCustomized(setters: string[]): boolean {
+    const key = setters.join(",");
+    let hit = this.customizedCache.get(key);
+    if (hit === undefined) {
+      hit = this.ctx.index.types.some((t) => t.type.methods.some((m) => m.calls.some((c) => setters.includes(c.method) && /template/i.test(`${c.receiver ?? ""} ${m.returnType}`))));
+      this.customizedCache.set(key, hit);
+    }
+    return hit;
   }
 
   private streamDestination(binding: string): string {
@@ -348,12 +410,16 @@ export class MqCollector {
       const classKafka = hasAnnotation(ref.type.annotations, "KafkaListener");
       const classRabbit = hasAnnotation(ref.type.annotations, "RabbitListener");
       const rocket = hasAnnotation(ref.type.annotations, "RocketMQMessageListener");
+      const handlers = ref.type.methods.filter((x) => (classKafka && hasAnnotation(x.annotations, "KafkaHandler")) || (classRabbit && hasAnnotation(x.annotations, "RabbitHandler")));
       for (const method of ref.type.methods) {
         const m: MethodRef = { owner: ref, method };
+        const byClass = handlers.length > 1 && handlers.includes(method);
+        this.dispatch = byClass ? { group: `${ref.facts.package}.${ref.type.name}`, payloadType: payloadParamType(method) } : undefined;
         const kafka = hasAnnotation(method.annotations, "KafkaListener") ?? (classKafka && hasAnnotation(method.annotations, "KafkaHandler") ? classKafka : undefined);
         if (kafka) this.kafkaConsumer(m, kafka);
         const rabbit = hasAnnotation(method.annotations, "RabbitListener") ?? (classRabbit && hasAnnotation(method.annotations, "RabbitHandler") ? classRabbit : undefined);
         if (rabbit) this.rabbitConsumer(m, rabbit);
+        this.dispatch = undefined;
         if (rocket && method.name === "onMessage" && !method.modifiers.includes("static")) this.rocketConsumer(m, rocket);
         if (hasAnnotation(method.annotations, "Bean")) {
           this.rabbitDeclarations(m);
@@ -399,7 +465,7 @@ export class MqCollector {
     if (this.ctx.graph.entrypoints.has(entrypoint.id)) return;
     this.ctx.graph.addEntrypoint(entrypoint);
     const handlerStepId = this.ctx.handlerStep(m);
-    this.result.consumers.push({ entrypoint, handlerStepId, broker, destinations, ...extra, at: symbol });
+    this.result.consumers.push({ entrypoint, handlerStepId, broker, destinations, ...extra, ...(this.dispatch ? { dispatch: this.dispatch } : {}), at: symbol });
   }
 
   private consumerUnresolved(m: MethodRef, a: JavaAnnotation, what: string): void {
@@ -524,11 +590,15 @@ export class MqCollector {
 
   private beanQueues = new Map<string, string>();
   private beanExchanges = new Map<string, string>();
+  /** Every @Bean of that kind, resolved or not (a by-type injection is unique only among all of them). */
+  private beanCounts = { queue: 0, exchange: 0 };
   private pendingBindings: { m: MethodRef; call?: JavaCall; creation?: { argTexts: string[] } }[] = [];
 
   private rabbitDeclarations(m: MethodRef): void {
     const ret = simpleName(rawTypeName(m.method.returnType));
     const declared = this.declaredInBody(m);
+    if (ret === "Queue") this.beanCounts.queue++;
+    if (ret in EXCHANGE_CLASSES || ret === "Exchange" || ret === "CustomExchange") this.beanCounts.exchange++;
     if (ret === "Queue" && declared.queues[0]) this.beanQueues.set(m.method.name, declared.queues[0]);
     if (declared.queues.length === 1 && declared.deadLetter) this.result.topology.deadLetters.set(declared.queues[0] as string, declared.deadLetter);
     if ((ret in EXCHANGE_CLASSES || ret === "Exchange" || ret === "CustomExchange") && declared.exchanges[0]) this.beanExchanges.set(m.method.name, declared.exchanges[0].name);
@@ -615,7 +685,7 @@ export class MqCollector {
     const param = ctx.method.params.find((p) => p.name === name);
     const qualifier = param ? annotationStrings(hasAnnotation(param.annotations, "Qualifier"), "value")?.[0] : undefined;
     if (qualifier && beans.has(qualifier)) return beans.get(qualifier);
-    if (param && beans.size === 1) return [...beans.values()][0];
+    if (param && beans.size === 1 && this.beanCounts[kind] === 1) return [...beans.values()][0];
     return undefined;
   }
 }
@@ -652,6 +722,30 @@ export function rabbitRoute(topology: RabbitTopology, exchange: string, key: str
   return [...new Set(queues)];
 }
 
+function trailingCallbackText(t: string | undefined): boolean {
+  return !!t && (/->/.test(t) || /^new\s+(MessagePostProcessor|CorrelationData)\b/.test(t) || /(postProcessor|correlation)/i.test(t));
+}
+
+/** Simple type name of a handler's payload parameter (first parameter not annotated @Header(s)). */
+function payloadParamType(method: JavaMethod): string {
+  const p = method.params.find((x) => !x.annotations?.some((a) => a.name === "Header" || a.name === "Headers")) ?? method.params[0];
+  return simpleName(rawTypeName(p?.type ?? ""));
+}
+
+/** Simple type of the payload argument of a send, when statically evident. */
+function payloadArgType(broker: MqBroker, call: JavaCall, method: JavaMethod | undefined): string | undefined {
+  const args = [...call.argTexts];
+  if (broker === "rabbitmq" && args.length >= 3 && /->|MessagePostProcessor|CorrelationData|postProcessor|correlation/i.test(args[args.length - 1] ?? "")) args.pop();
+  const text = (args[args.length - 1] ?? "").trim();
+  const created = /^new\s+([\w.]+)\s*(?:<[^>]*>)?\s*\(/.exec(text)?.[1];
+  if (created) return simpleName(created);
+  if (/^\w+$/.test(text) && method) {
+    const declared = method.locals[text] ?? method.params.find((p) => p.name === text)?.type;
+    if (declared) return simpleName(rawTypeName(declared));
+  }
+  return undefined;
+}
+
 export function linkMq(sends: readonly MqSendSite[], consumers: readonly MqConsumerSite[], topology: RabbitTopology, graph: GraphBuilder): ServiceLink[] {
   const links: ServiceLink[] = [];
   for (const send of sends) {
@@ -677,6 +771,14 @@ export function linkMq(sends: readonly MqSendSite[], consumers: readonly MqConsu
         .filter((c) => (c.pattern ? c.pattern.test(send.destination) : c.destinations.includes(send.destination)))
         .filter((c) => send.broker !== "rocketmq" || !c.tags || (send.key !== undefined && c.tags.includes(send.key)))
         .map((c) => ({ c, channel: `${send.broker}:${send.destination}`, rationale: `${send.broker} ${send.broker === "redis-stream" ? "stream" : "topic"} ${send.destination}${send.key ? ` tag ${send.key}` : ""}` }));
+    }
+    // Multi-handler listener classes: only the handler whose parameter type is the payload's type.
+    const groups = new Set(targets.flatMap((t) => (t.c.dispatch ? [t.c.dispatch.group] : [])));
+    for (const group of groups) {
+      const members = targets.filter((t) => t.c.dispatch?.group === group);
+      const match = members.filter((t) => send.payloadType !== undefined && t.c.dispatch?.payloadType === send.payloadType);
+      targets = targets.filter((t) => t.c.dispatch?.group !== group || (match.length === 1 && t === match[0]));
+      if (match.length !== 1) graph.unresolved.push({ fromStepId: send.stepId, expression: `${send.broker}:${send.destination} → ${group} (handler chosen by payload type${send.payloadType ? ` ${send.payloadType}` : ""})`, reason: "dynamic-dispatch", at: send.at });
     }
     for (const { c, channel, rationale } of targets) {
       graph.edge(send.stepId, c.handlerStepId, { provenance: "framework-rule", rationale });
