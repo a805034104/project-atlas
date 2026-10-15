@@ -257,6 +257,26 @@ describe("runAiPipeline — error handling", () => {
     expect(userOf(fetch.calls[1]!)).toContain("not valid JSON");
   });
 
+  it("output cut off at max_tokens is retried once with a larger limit", async () => {
+    let cut = true;
+    const fetch = fakeFetch((req) => {
+      if (systemOf(req).includes("user-facing features") && cut) {
+        cut = false;
+        return new Response(
+          JSON.stringify({ content: [{ type: "text", text: '{"features": [{"title": "User man' }], stop_reason: "max_tokens", usage: { input_tokens: 100, output_tokens: 8000 } }),
+          { status: 200 },
+        );
+      }
+      return goodModel(req);
+    });
+    const result = await runAiPipeline(baseInput({ provider: createProvider({ provider: "anthropic", apiKey: KEY }, fetch) }));
+    expect(result.failures).toEqual([]);
+    expect(result.features.map((f) => f.title)).toEqual(["User management"]);
+    const featureCalls = fetch.calls.filter((c) => systemOf(c).includes("user-facing features"));
+    expect(featureCalls.map((c) => (c.body as { max_tokens: number }).max_tokens)).toEqual([8000, 16000]);
+    expect(result.usage.find((u) => u.phase === "features")?.outputTokens).toBe(8020);
+  });
+
   it("malformed twice: records ATLAS-E025 and continues", async () => {
     const fetch = fakeFetch((req) => (systemOf(req).includes("one source file") ? anthropicText('{"summary": 42}') : goodModel(req)));
     const input = baseInput({ provider: createProvider({ provider: "anthropic", apiKey: KEY }, fetch) });

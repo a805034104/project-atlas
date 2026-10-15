@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { analyzeWorkspace } from "../src/analyze.js";
-import { buildAiInput, enrichWithAi, estimateAiCost, HUBS_PER_MODULE } from "../src/enrich.js";
+import { buildAiInput, enrichWithAi, estimateAiCost, HUBS_PER_MODULE, mergeAiResult } from "../src/enrich.js";
+import type { AiPipelineResult } from "../src/llm/pipeline.js";
+import type { AtlasGraph } from "../src/model/types.js";
 import type { LlmProvider } from "../src/llm/providers.js";
 import { FIXTURES, haveFixtures } from "./helpers/fixtures.js";
 
@@ -47,4 +49,41 @@ describe.skipIf(!haveFixtures(FIXTURES.ruoyiVue, FIXTURES.ruoyiVue3))("AI enrich
     // application-druid.yml carries the datasource password: never sent verbatim
     expect(provider.prompts.some((p) => /password:\s*password\b/.test(p))).toBe(false);
   }, 120_000);
+});
+
+describe("mergeAiResult — startup", () => {
+  const ref = (file: string, line?: number) => (line === undefined ? { file } : { file, line });
+  it("folds AI guides into the deterministic guide they describe instead of duplicating it", () => {
+    const graph = {
+      modules: [],
+      features: [],
+      history: [],
+      diagnostics: [],
+      startup: [
+        { target: "ruoyi-admin", prerequisites: [{ name: "JDK", evidence: ref("pom.xml") }], steps: [{ command: "sh ry.sh start", cwd: ".", evidence: ref("ry.sh", 2) }], ports: [], configFiles: [] },
+        { target: "ruoyi", prerequisites: [], steps: [{ command: "npm run dev", cwd: ".", evidence: ref("package.json", 9) }], ports: [], configFiles: [] },
+      ],
+    } as unknown as AtlasGraph;
+    const result = {
+      moduleSummaries: {},
+      historySummaries: {},
+      features: [],
+      usage: [],
+      failures: [],
+      excludedFiles: [],
+      evidenceRejected: { features: 0, startup: 0 },
+      startup: [
+        // Named freely, but mentions the deterministic target.
+        { target: "后端（ruoyi-admin，Spring Boot）", prerequisites: [{ name: "jdk", evidence: ref("pom.xml") }, { name: "Redis", evidence: ref("application.yml") }], steps: [{ command: "./ry.sh start", cwd: ".", evidence: ref("ry.sh", 2) }], ports: [], configFiles: [] },
+        // Different name, same evidence file.
+        { target: "前端（Vue3 + Vite）", prerequisites: [], steps: [{ command: "npm install", cwd: ".", evidence: ref("package.json", 18) }], ports: [], configFiles: [] },
+        { target: "docs", prerequisites: [], steps: [{ command: "npm run docs", cwd: "docs", evidence: ref("docs/package.json", 3) }], ports: [], configFiles: [] },
+      ],
+    } as unknown as AiPipelineResult;
+    const merged = mergeAiResult(graph, result).startup;
+    expect(merged.map((g) => g.target)).toEqual(["ruoyi-admin", "ruoyi", "docs"]);
+    expect(merged[0]!.steps.map((s) => s.command)).toEqual(["sh ry.sh start"]);
+    expect(merged[0]!.prerequisites.map((p) => p.name)).toEqual(["JDK", "Redis"]);
+    expect(merged[1]!.steps.map((s) => s.command)).toEqual(["npm run dev", "npm install"]);
+  });
 });

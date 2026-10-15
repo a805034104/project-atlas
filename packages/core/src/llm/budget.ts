@@ -18,7 +18,8 @@ export function estimateTokens(text: string): number {
     if (CJK.test(ch)) cjk++;
     else other++;
   }
-  return cjk + Math.ceil(other / 3.5);
+  // Code tokenizes densely: chars/3.5 underestimated a real RuoYi run by 28%; err on the high side.
+  return cjk + Math.ceil(other / 2.75);
 }
 
 export interface ModelPrice {
