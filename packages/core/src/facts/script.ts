@@ -45,6 +45,8 @@ function propertyKey(node: Node): string | undefined {
   if (node.type === "property_identifier" || node.type === "identifier") return node.text;
   if (node.type === "string") return stringValue(node);
   if (node.type === "number") return node.text;
+  // `[process.env.VUE_APP_BASE_API]` / `['^' + x]`: keep the expression text in brackets for the resolvers.
+  if (node.type === "computed_property_name") return `[${node.namedChildren[0]?.text.replace(/\s+/g, "") ?? ""}]`;
   return undefined;
 }
 
