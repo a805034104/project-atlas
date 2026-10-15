@@ -52,38 +52,46 @@ describe.skipIf(!haveFixtures(FIXTURES.ruoyiVue, FIXTURES.ruoyiVue3))("AI enrich
 });
 
 describe("mergeAiResult — startup", () => {
-  const ref = (file: string, line?: number) => (line === undefined ? { file } : { file, line });
+  const ref = (rootId: string, file: string, line?: number) => (line === undefined ? { rootId, file } : { rootId, file, line });
+  const guide = (target: string, steps: [string, ReturnType<typeof ref>][], prerequisites: [string, ReturnType<typeof ref>][] = []) => ({
+    target,
+    prerequisites: prerequisites.map(([name, evidence]) => ({ name, evidence })),
+    steps: steps.map(([command, evidence]) => ({ command, cwd: ".", evidence })),
+    ports: [],
+    configFiles: [],
+  });
+  const merge = (base: ReturnType<typeof guide>[], ai: ReturnType<typeof guide>[]) =>
+    mergeAiResult(
+      { modules: [], features: [], history: [], diagnostics: [], startup: base } as unknown as AtlasGraph,
+      { moduleSummaries: {}, historySummaries: {}, features: [], usage: [], failures: [], excludedFiles: [], evidenceRejected: { features: 0, startup: 0 }, startup: ai } as unknown as AiPipelineResult,
+    ).startup;
+
   it("folds AI guides into the deterministic guide they describe instead of duplicating it", () => {
-    const graph = {
-      modules: [],
-      features: [],
-      history: [],
-      diagnostics: [],
-      startup: [
-        { target: "ruoyi-admin", prerequisites: [{ name: "JDK", evidence: ref("pom.xml") }], steps: [{ command: "sh ry.sh start", cwd: ".", evidence: ref("ry.sh", 2) }], ports: [], configFiles: [] },
-        { target: "ruoyi", prerequisites: [], steps: [{ command: "npm run dev", cwd: ".", evidence: ref("package.json", 9) }], ports: [], configFiles: [] },
+    const merged = merge(
+      [
+        guide("ruoyi-admin", [["sh ry.sh start", ref("vue", "ry.sh", 2)]], [["JDK", ref("vue", "pom.xml")]]),
+        guide("ruoyi", [["npm run dev", ref("vue3", "package.json", 9)]]),
       ],
-    } as unknown as AtlasGraph;
-    const result = {
-      moduleSummaries: {},
-      historySummaries: {},
-      features: [],
-      usage: [],
-      failures: [],
-      excludedFiles: [],
-      evidenceRejected: { features: 0, startup: 0 },
-      startup: [
-        // Named freely, but mentions the deterministic target.
-        { target: "后端（ruoyi-admin，Spring Boot）", prerequisites: [{ name: "jdk", evidence: ref("pom.xml") }, { name: "Redis", evidence: ref("application.yml") }], steps: [{ command: "./ry.sh start", cwd: ".", evidence: ref("ry.sh", 2) }], ports: [], configFiles: [] },
-        // Different name, same evidence file.
-        { target: "前端（Vue3 + Vite）", prerequisites: [], steps: [{ command: "npm install", cwd: ".", evidence: ref("package.json", 18) }], ports: [], configFiles: [] },
-        { target: "docs", prerequisites: [], steps: [{ command: "npm run docs", cwd: "docs", evidence: ref("docs/package.json", 3) }], ports: [], configFiles: [] },
+      [
+        // Named freely; mentions the deterministic target (and also contains "ruoyi").
+        guide("后端（ruoyi-admin，Spring Boot）", [["./ry.sh start", ref("vue", "ry.sh", 2)]], [["JDK（Java 版本 1.8）", ref("vue", "pom.xml")], ["Redis（默认 6379）", ref("vue", "application.yml")]]),
+        // Different name and file, but the only deterministic guide in that root.
+        guide("前端（Vue3 + Vite）", [["yarn dev", ref("vue3", "README.md", 46)]], [["Node.js 与 yarn", ref("vue3", "README.md")]]),
+        // Same file name in another root is not the same guide.
+        guide("docs", [["npm run docs", ref("docs", "package.json", 3)]]),
       ],
-    } as unknown as AiPipelineResult;
-    const merged = mergeAiResult(graph, result).startup;
+    );
     expect(merged.map((g) => g.target)).toEqual(["ruoyi-admin", "ruoyi", "docs"]);
     expect(merged[0]!.steps.map((s) => s.command)).toEqual(["sh ry.sh start"]);
-    expect(merged[0]!.prerequisites.map((p) => p.name)).toEqual(["JDK", "Redis"]);
-    expect(merged[1]!.steps.map((s) => s.command)).toEqual(["npm run dev", "npm install"]);
+    expect(merged[0]!.prerequisites.map((p) => p.name)).toEqual(["JDK", "Redis（默认 6379）"]);
+    expect(merged[1]!.steps.map((s) => s.command)).toEqual(["npm run dev", "yarn dev"]);
+  });
+
+  it("keeps an AI guide separate when its root holds several deterministic guides", () => {
+    const merged = merge(
+      [guide("api", [["mvn spring-boot:run", ref("r", "api/pom.xml")]]), guide("web", [["npm run dev", ref("r", "web/package.json")]])],
+      [guide("Admin console", [["yarn serve", ref("r", "README.md")]])],
+    );
+    expect(merged.map((g) => g.target)).toEqual(["api", "web", "Admin console"]);
   });
 });

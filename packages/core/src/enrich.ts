@@ -171,26 +171,43 @@ export async function enrichWithAi(options: EnrichOptions): Promise<{ graph: Atl
 /** Deterministic startup guides stay; AI guides only add steps/prerequisites/ports not already present. */
 function mergeStartup(base: readonly StartupGuide[], ai: readonly StartupGuide[]): StartupGuide[] {
   const out = base.map((g) => ({ ...g, prerequisites: [...g.prerequisites], steps: [...g.steps], ports: [...g.ports] }));
-  const files = (g: StartupGuide): Set<string> =>
-    new Set([...g.steps, ...g.ports, ...g.prerequisites].map((x) => x.evidence.file));
-  // The model names targets freely ("后端（ruoyi-admin）"), so match on the exact name, a name
-  // mention, or shared evidence files before treating a guide as new.
-  const sameTarget = (g: StartupGuide, guide: StartupGuide): boolean => {
-    if (g.target === guide.target || guide.target.toLowerCase().includes(g.target.toLowerCase())) return true;
+  const refs = (g: StartupGuide) => [...g.steps, ...g.ports, ...g.prerequisites].map((x) => x.evidence);
+  const files = (g: StartupGuide): Set<string> => new Set(refs(g).map((r) => `${r.rootId}:${r.file}`));
+  const roots = (g: StartupGuide): Set<string> => new Set(refs(g).map((r) => r.rootId));
+  // The model names targets freely ("后端（ruoyi-admin）") and may cite README.md where the
+  // deterministic guide cites package.json, so try progressively looser matches.
+  const match = (guide: StartupGuide): StartupGuide | undefined => {
+    const exact = out.find((g) => g.target === guide.target);
+    if (exact) return exact;
     const cited = files(guide);
-    return [...files(g)].some((f) => cited.has(f));
+    const shared = out.find((g) => [...files(g)].some((f) => cited.has(f)));
+    if (shared) return shared;
+    const name = guide.target.toLowerCase();
+    const mentioned = out.filter((g) => name.includes(g.target.toLowerCase())).sort((a, b) => b.target.length - a.target.length)[0];
+    if (mentioned) return mentioned;
+    const guideRoots = roots(guide);
+    if (guideRoots.size !== 1) return undefined;
+    const [root] = guideRoots;
+    const inRoot = out.filter((g) => roots(g).has(root!));
+    return inRoot.length === 1 ? inRoot[0] : undefined;
   };
   for (const guide of ai) {
-    const target = out.find((g) => sameTarget(g, guide));
+    const target = match(guide);
     if (!target) {
       out.push(guide);
       continue;
     }
-    for (const p of guide.prerequisites) if (!target.prerequisites.some((x) => x.name.toLowerCase() === p.name.toLowerCase())) target.prerequisites.push(p);
+    for (const p of guide.prerequisites) if (!target.prerequisites.some((x) => prerequisiteKey(x.name) === prerequisiteKey(p.name))) target.prerequisites.push(p);
     for (const s of guide.steps) if (!target.steps.some((x) => normalizeCommand(x.command) === normalizeCommand(s.command))) target.steps.push(s);
     for (const p of guide.ports) if (!target.ports.some((x) => x.port === p.port)) target.ports.push(p);
   }
   return out;
+}
+
+/** "JDK（Java 版本 1.8）" and "MySQL 数据库" name the same tools as "JDK" and "MySQL". */
+function prerequisiteKey(name: string): string {
+  const lead = /^[A-Za-z][\w.+#-]*/.exec(name.trim());
+  return (lead ? lead[0] : name.trim()).toLowerCase();
 }
 
 /** `./ry.sh start` and `sh ry.sh start` are the same step. */
