@@ -9,3 +9,5 @@ export * from "./session.js";
 export * from "./match.js";
 export * from "./agent-fetch.js";
 export * from "./launch.js";
+export * from "./trace-view.js";
+export * from "./prepare.js";

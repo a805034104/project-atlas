@@ -39,7 +39,8 @@
         "atlas.llm.provider",
         "atlas.llm.baseUrl",
         "atlas.llm.model",
-        "atlas.analysis.history"
+        "atlas.analysis.history",
+        "atlas.runtime.port"
       ]
     },
     "virtualWorkspaces": false
@@ -111,6 +112,28 @@
       {
         "command": "atlas.clearCache",
         "title": "%cmd.clearCache%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.runtime.copyVmOptions",
+        "title": "%cmd.runtime.copyVmOptions%",
+        "category": "Atlas",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "atlas.runtime.launch",
+        "title": "%cmd.runtime.launch%",
+        "category": "Atlas",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "atlas.runtime.stop",
+        "title": "%cmd.runtime.stop%",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.runtime.clear",
+        "title": "%cmd.runtime.clear%",
         "category": "Atlas"
       }
     ],
@@ -280,6 +303,24 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "%cfg.codeLens%"
+        },
+        "atlas.runtime.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%cfg.runtime.enabled%"
+        },
+        "atlas.runtime.port": {
+          "type": "number",
+          "default": 43180,
+          "minimum": 1024,
+          "maximum": 65535,
+          "markdownDescription": "%cfg.runtime.port%"
+        },
+        "atlas.runtime.javaagentPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "%cfg.runtime.javaagentPath%"
         }
       }
     },

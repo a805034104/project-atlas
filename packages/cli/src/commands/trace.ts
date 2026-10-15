@@ -1,22 +1,18 @@
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   Aggregator,
   AgentDownloadError,
   AgentIntegrityError,
-  buildAgentConfig,
   decodeTraceRequest,
   decodeTraceRequestJson,
   ensureJavaAgent,
   entrypointLabel,
-  formatMethodsInclude,
-  instrumentedMethods,
   loadStoredGraph,
   OtlpDecodeError,
   reconcile,
-  runtimeConfigDir,
+  writeAgentConfigFile,
   runtimeOwner,
   RuntimeLockedError,
   RuntimeSession,
@@ -195,11 +191,7 @@ export async function traceCommand(cmd: TraceCommand, io: CliIo, deps: TraceDeps
     });
 
     const token = await workspaceToken(workspace);
-    const methods = formatMethodsInclude(instrumentedMethods(graph, { serviceIds: [service.id] }));
-    const configDir = runtimeConfigDir();
-    await mkdir(configDir, { recursive: true });
-    const configPath = path.join(configDir, `${service.name}-${createHash("sha1").update(workspace).digest("hex").slice(0, 8)}.properties`);
-    await writeFile(configPath, buildAgentConfig({ serviceName: service.name, endpoint, token, methodsInclude: methods }), { mode: 0o600 });
+    const { configPath } = await writeAgentConfigFile({ graph, service, workspace, endpoint, token });
     const files = { agentPath, configPath };
 
     if (cmd.printConfig || cmd.run.length === 0) {

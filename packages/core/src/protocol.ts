@@ -28,7 +28,7 @@ import type {
   UnresolvedCall,
 } from "./model/types.js";
 
-export type ViewId = "overview" | "topology" | "modules" | "features" | "startup" | "flow" | "history";
+export type ViewId = "overview" | "topology" | "modules" | "features" | "startup" | "flow" | "history" | "trace";
 
 export type AnalysisPhase = "parse" | "rules" | "cross-service" | "history" | "ai";
 
@@ -115,6 +115,78 @@ export interface HistoryData {
   history: ModuleHistory[];
 }
 
+/** Local runtime capture (v0.2): receiver + agent state for the status bar and the Trace tab. */
+export interface RuntimeState {
+  status: "off" | "starting" | "downloading" | "waiting" | "receiving" | "error";
+  port?: number;
+  spans: number;
+  duplicates: number;
+  rejected: number;
+  /** Agent download progress while status = downloading. */
+  agent?: { received: number; total?: number; source: string };
+  /** epoch ms of the last span received in this session */
+  lastSpanAt?: number;
+  /** Session start (epoch ms); traces older than this are history. */
+  since?: number;
+  error?: UserFacingError;
+  /** False in Restricted Mode (Workspace Trust): launching and receiving are disabled. */
+  trusted: boolean;
+}
+
+export interface TraceRow {
+  traceId: string;
+  /** epoch ms */
+  start: number;
+  durationMs: number;
+  error: boolean;
+  spans: number;
+  services: string[];
+  rootName?: string;
+  entrypointId?: string;
+  /** observed / instrumentable steps of the root entrypoint's flow */
+  coverage?: { observed: number; instrumentable: number };
+}
+
+export interface TraceDiff {
+  observedEntrypoints: number;
+  totalEntrypoints: number;
+  /** Runtime-only calls: drawn (same-class) or reachable through uninstrumented code. */
+  runtimeOnly: { from: string; to: string; count: number; async: boolean; drawn: boolean }[];
+  unmatched: { key: string; count: number; reason: string }[];
+}
+
+export interface TraceData {
+  runtime: RuntimeState;
+  traces: TraceRow[];
+  diff: TraceDiff;
+  /** Launchable services (Spring Boot) for the empty state. */
+  services: Pick<Service, "id" | "name">[];
+  /** A request that needs no login, for the "send a request" hint (e.g. GET /captchaImage). */
+  suggestedRequest?: { method: string; url: string };
+}
+
+/** One span of a trace, matched to a static step when possible (waterfall rows). */
+export interface TraceSpanView {
+  spanId: string;
+  parentSpanId?: string;
+  name: string;
+  layer?: string;
+  stepId?: string;
+  service: string;
+  /** ms from the trace start */
+  offsetMs: number;
+  durationMs: number;
+  error: boolean;
+  async: boolean;
+}
+
+export interface TraceDetailData {
+  traceId: string;
+  start: number;
+  entrypointId?: string;
+  spans: TraceSpanView[];
+}
+
 export type ViewPayload =
   | { view: "overview"; data: OverviewData }
   | { view: "topology"; data: TopologyData }
@@ -122,7 +194,8 @@ export type ViewPayload =
   | { view: "features"; data: FeaturesData }
   | { view: "startup"; data: StartupData }
   | { view: "flow"; data: FlowListData }
-  | { view: "history"; data: HistoryData };
+  | { view: "history"; data: HistoryData }
+  | { view: "trace"; data: TraceData };
 
 export type HostToWebview =
   | { type: "init"; locale: string; state: AnalysisState; showTopology: boolean }
@@ -130,7 +203,11 @@ export type HostToWebview =
   | { type: "viewData"; payload: ViewPayload }
   | { type: "flowDetail"; data: FlowDetailData }
   | { type: "reveal"; view: ViewId; nodeId?: string }
-  | { type: "error"; error: UserFacingError };
+  | { type: "error"; error: UserFacingError }
+  | { type: "runtimeState"; state: RuntimeState }
+  /** New spans changed observed stats: refetch the visible view / flow. */
+  | { type: "runtimeUpdated" }
+  | { type: "traceDetail"; data: TraceDetailData };
 
 export type WebviewCommand =
   | "atlas.analyze"
@@ -139,7 +216,11 @@ export type WebviewCommand =
   | "atlas.configureProvider"
   | "atlas.exportHtml"
   | "atlas.exportMarkdown"
-  | "atlas.diagnose";
+  | "atlas.diagnose"
+  | "atlas.runtime.copyVmOptions"
+  | "atlas.runtime.launch"
+  | "atlas.runtime.stop"
+  | "atlas.runtime.clear";
 
 export type WebviewToHost =
   | { type: "ready" }
@@ -148,4 +229,7 @@ export type WebviewToHost =
   | { type: "openSource"; ref: SourceRef }
   | { type: "runCommand"; command: WebviewCommand }
   | { type: "markEdgeWrong"; edgeId: string }
-  | { type: "copyText"; text: string };
+  | { type: "copyText"; text: string }
+  | { type: "requestTrace"; traceId: string }
+  /** Launch / copy VM options for one service (from the Startup view or the Trace empty state). */
+  | { type: "runtimeAction"; action: "copyVmOptions" | "launch"; serviceId?: string };

@@ -20,6 +20,8 @@ import {
   overviewData,
   startupData,
   topologyData,
+  traceData,
+  traceDetail,
 } from "./mock.js";
 
 const PHASES: AnalysisPhase[] = ["parse", "rules", "cross-service", "history", "ai"];
@@ -108,6 +110,8 @@ export function installMockHost(win: Window = window): () => void {
               return post({ type: "viewData", payload: { view: "flow", data: flowListData() } });
             case "history":
               return post({ type: "viewData", payload: { view: "history", data: historyData() } });
+            case "trace":
+              return post({ type: "viewData", payload: { view: "trace", data: traceData(q.get("traces") !== "0") } });
           }
         });
         break;
@@ -132,6 +136,12 @@ export function installMockHost(win: Window = window): () => void {
           post({ type: "analysisState", state });
         }
         break;
+      case "requestTrace": {
+        const detail = traceDetail(m.traceId);
+        later(100, () => (detail ? post({ type: "traceDetail", data: detail }) : undefined));
+        break;
+      }
+      case "runtimeAction":
       case "openSource":
       case "markEdgeWrong":
         break;

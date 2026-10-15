@@ -2,8 +2,9 @@ import * as vscode from "vscode";
 import { randomBytes } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import type { HostToWebview, SourceRef, ViewId, WebviewCommand, WebviewToHost } from "@project-atlas/core";
+import type { HostToWebview, SourceRef, UserFacingError, ViewId, WebviewCommand, WebviewToHost } from "@project-atlas/core";
 import type { AtlasController } from "./controller.js";
+import type { RuntimeManager } from "./runtime.js";
 import { log } from "./log.js";
 import { addEdgeRemoval } from "./overrides-writer.js";
 import { t } from "./settings.js";
@@ -26,6 +27,10 @@ const ALLOWED_COMMANDS: ReadonlySet<WebviewCommand> = new Set([
   "atlas.exportHtml",
   "atlas.exportMarkdown",
   "atlas.diagnose",
+  "atlas.runtime.copyVmOptions",
+  "atlas.runtime.launch",
+  "atlas.runtime.stop",
+  "atlas.runtime.clear",
 ]);
 
 const highlight = vscode.window.createTextEditorDecorationType({
@@ -35,6 +40,8 @@ const highlight = vscode.window.createTextEditorDecorationType({
 
 export class AtlasPanel implements vscode.Disposable {
   private static current: AtlasPanel | undefined;
+  /** Runtime capture (set on activation); absent in tests that only exercise the map. */
+  static runtime: RuntimeManager | undefined;
   private readonly disposables: vscode.Disposable[] = [];
   private ready = false;
   private pending: HostToWebview[] = [];
@@ -65,6 +72,8 @@ export class AtlasPanel implements vscode.Disposable {
     panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
     controller.onDidChangeState((state) => this.post({ type: "analysisState", state }), undefined, this.disposables);
     controller.onDidChangeGraph(() => this.post({ type: "init", locale: vscode.env.language, state: controller.state, showTopology: (controller.graph?.services.length ?? 0) > 1 }), undefined, this.disposables);
+    AtlasPanel.runtime?.onDidChangeState((state) => this.post({ type: "runtimeState", state }), undefined, this.disposables);
+    AtlasPanel.runtime?.onDidUpdate(() => this.post({ type: "runtimeUpdated" }), undefined, this.disposables);
   }
 
   private html(): string {
@@ -110,6 +119,25 @@ export class AtlasPanel implements vscode.Disposable {
         this.ready = true;
         void this.panel.webview.postMessage({ type: "init", locale: vscode.env.language, state: this.controller.state, showTopology: (this.controller.graph?.services.length ?? 0) > 1 } satisfies HostToWebview);
         for (const m of this.pending.splice(0)) void this.panel.webview.postMessage(m);
+        if (AtlasPanel.runtime) void this.panel.webview.postMessage({ type: "runtimeState", state: AtlasPanel.runtime.state } satisfies HostToWebview);
+        return;
+      }
+      case "requestTrace": {
+        const detail = await AtlasPanel.runtime?.traceDetail(message.traceId);
+        if (detail) this.post({ type: "traceDetail", data: detail });
+        return;
+      }
+      case "runtimeAction": {
+        const runtime = AtlasPanel.runtime;
+        if (!runtime) return;
+        try {
+          if (message.action === "copyVmOptions") await runtime.copyVmOptions(message.serviceId);
+          else await runtime.launch(message.serviceId);
+        } catch (error) {
+          const uf = (error as { userFacing?: UserFacingError }).userFacing;
+          if (uf) this.post({ type: "error", error: uf });
+          else log(`runtime action failed: ${(error as Error).message}`);
+        }
         return;
       }
       case "requestView":

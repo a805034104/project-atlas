@@ -31,5 +31,12 @@
   "cfg.exclude": "额外跳过的路径（gitignore 语法），叠加在 `.atlasignore` 之上。",
   "cfg.maxFileSizeKB": "超过此大小的文件会被跳过。",
   "cfg.history": "收集各模块的 git 修改记录。",
-  "cfg.codeLens": "在控制器方法上方显示「请求流转」CodeLens。"
+  "cfg.codeLens": "在控制器方法上方显示「请求流转」CodeLens。",
+  "cmd.runtime.copyVmOptions": "复制追踪用的 VM 参数（IDEA / Eclipse / java -jar）",
+  "cmd.runtime.launch": "带追踪启动",
+  "cmd.runtime.stop": "停止追踪接收器",
+  "cmd.runtime.clear": "清除已记录的追踪",
+  "cfg.runtime.enabled": "允许本地运行时追踪：在 127.0.0.1 上启动接收器，收集用追踪方式启动的服务发出的 OpenTelemetry span，流转图会标出真正执行过的步骤。数据不出本机；SQL 文本、请求体和 header 一律不存。",
+  "cfg.runtime.port": "本地追踪接收器的首选端口（被占用时自动顺延）。",
+  "cfg.runtime.javaagentPath": "本地 `opentelemetry-javaagent-2.31.1.jar` 的路径（离线使用）。会校验 sha256；留空则自动下载（先 Maven Central，再阿里云镜像）。"
 }

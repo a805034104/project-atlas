@@ -1,8 +1,25 @@
 import type { StartupData, StartupGuide } from "@project-atlas/core";
 import { useI18n } from "../i18n.js";
+import { useApp } from "../state.js";
 
 import { CommandButton, CopyButton, EmptyState, SourceLink, sourceText } from "../components/common.js";
 import { ViewFrame } from "../components/ViewFrame.js";
+
+function TraceButtons({ serviceId }: { serviceId: string }) {
+  const { t } = useI18n();
+  const { send, state } = useApp();
+  if (state.runtime && !state.runtime.trusted) return null;
+  return (
+    <div className="trace-actions">
+      <button type="button" className="secondary" onClick={() => send({ type: "runtimeAction", action: "copyVmOptions", serviceId })}>
+        {t("startup.traceCopy")}
+      </button>
+      <button type="button" className="secondary" onClick={() => send({ type: "runtimeAction", action: "launch", serviceId })}>
+        {t("startup.traceLaunch")}
+      </button>
+    </div>
+  );
+}
 
 function Guide({ guide, index }: { guide: StartupGuide; index: number }) {
   const { t } = useI18n();
@@ -12,6 +29,7 @@ function Guide({ guide, index }: { guide: StartupGuide; index: number }) {
       <h2 id={id} className="code">
         {guide.target}
       </h2>
+      {guide.serviceId && guide.steps.some((s) => /\b(java|mvnw?|gradlew?)\b/.test(s.command)) ? <TraceButtons serviceId={guide.serviceId} /> : null}
 
       <h3 className="subtle">{t("startup.prereqs")}</h3>
       {guide.prerequisites.length === 0 ? (
