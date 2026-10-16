@@ -1,0 +1,24 @@
+{
+  "name": "@project-atlas/web",
+  "version": "0.3.0",
+  "private": true,
+  "description": "ProjectAtlas local web app: a 127.0.0.1 server that serves the map UI and analyzes imported projects",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "sea": "node build-sea.mjs"
+  },
+  "dependencies": {
+    "@project-atlas/core": "0.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "postject": "1.0.0-alpha.6"
+  }
+}

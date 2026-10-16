@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { bearerMatches } from "../util/secure.js";
 import { gunzip } from "node:zlib";
 import { decodeTraceRequest, decodeTraceRequestJson, OtlpDecodeError } from "./otlp-decode.js";
 import { toSpanRecords, type SpanRecord } from "./span-record.js";
@@ -56,14 +56,7 @@ class Rejection extends Error {
   }
 }
 
-function tokenMatches(header: string | undefined, token: string): boolean {
-  const presented = /^Bearer\s+(.+)$/i.exec(header ?? "")?.[1]?.trim() ?? "";
-  const a = Buffer.from(presented);
-  const b = Buffer.from(token);
-  // Compare against a same-length buffer so the timing does not leak the token length either.
-  const same = a.length === b.length;
-  return timingSafeEqual(same ? a : b, b) && same;
-}
+const tokenMatches = bearerMatches;
 
 function readBody(req: IncomingMessage, limit: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {

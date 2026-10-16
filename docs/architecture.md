@@ -16,9 +16,13 @@ packages/
     store/      sharded graph persistence + view slicing (protocol payloads)
     runtime/    OTLP receiver + decoder, whitelisted span records, aggregates, trace store, reconcile overlay,
                 javaagent fetch / config / per-launcher injection (v0.2, see runtime-tracing.md)
+    host/       shared host logic (v0.3): AnalysisController, RuntimeHost, HostSession (message dispatch),
+                HostEnv (what a host provides: settings, dialogs, progress, clipboard…), source access
     analyze.ts  deterministic orchestrator     enrich.ts  AI enrichment (hub files, estimate, merge)
     protocol.ts host ⇄ webview message contract
-  webview/   React + @xyflow/react + elkjs (ELK in a blob Web Worker), VS Code theme tokens only
+  webview/   React + @xyflow/react + elkjs (ELK in a blob Web Worker), VS Code theme tokens only;
+             flow = top-down pyramid (deterministic tidy tree); src/web = the web app shell (home, dialogs, source drawer)
+  web/       local web app (v0.3): 127.0.0.1 server, HTTP + SSE transport, projects, single-file build (Node SEA)
   vscode/    extension host: commands, TreeView, CodeLens, panel, SecretStorage, cost dialog, exports
   cli/       `project-atlas analyze|show|estimate`
   mcp/       read-only MCP server over .atlas/graph

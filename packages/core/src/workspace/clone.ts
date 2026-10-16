@@ -9,7 +9,8 @@ import type { UserFacingError } from "../protocol.js";
  * Shallow clone of services declared in atlas.yaml (`services[].git`).
  *
  *   url ─▶ allow-list (https:// | git@host:) ─▶ dir = <atlasDir>/clones/sha1(url+ref)
- *       ─▶ git -c protocol.ext.allow=never clone --depth 1 --no-recurse-submodules [--branch ref] -- url dir
+ *       ─▶ git -c protocol.ext.allow=never -c protocol.file.allow=never -c core.symlinks=false
+ *              clone --depth 1 --no-recurse-submodules [--branch ref] -- url dir
  *          (env GIT_ALLOW_PROTOCOL=https:ssh, GIT_TERMINAL_PROMPT=0)
  *
  * Callers must only invoke this in a trusted workspace and after user confirmation.
@@ -38,7 +39,7 @@ export class CloneError extends Error {
 }
 
 export function isAllowedGitUrl(url: string): boolean {
-  if (!ALLOWED.test(url) || url.startsWith("-")) return false;
+  if (!ALLOWED.test(url) || url.startsWith("-") || /^git@-/.test(url)) return false;
   // Credentials must come from the git credential helper, never from atlas.yaml (they would be logged/persisted).
   return !/^https:\/\/[^/@]*@/.test(url);
 }
@@ -54,7 +55,7 @@ export async function shallowClone(options: { atlasDir: string; url: string; ref
   const dir = cloneDirFor(options.atlasDir, url, ref);
   if (existsSync(path.join(dir, ".git"))) return dir; // already cloned: reuse (user can clear the cache)
   await mkdir(path.dirname(dir), { recursive: true });
-  const args = ["-c", "protocol.ext.allow=never", "-c", "protocol.file.allow=never", "clone", "--depth", "1", "--no-recurse-submodules", "--quiet", ...(ref ? ["--branch", ref] : []), "--", url, dir];
+  const args = ["-c", "protocol.ext.allow=never", "-c", "protocol.file.allow=never", "-c", "core.symlinks=false", "clone", "--depth", "1", "--no-recurse-submodules", "--quiet", ...(ref ? ["--branch", ref] : []), "--", url, dir];
   await new Promise<void>((resolve, reject) => {
     const child = spawn(options.gitPath ?? "git", args, {
       env: { ...process.env, GIT_ALLOW_PROTOCOL: "https:ssh", GIT_TERMINAL_PROMPT: "0" },

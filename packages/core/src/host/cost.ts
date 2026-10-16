@@ -1,4 +1,4 @@
-import type { CostPlan } from "@project-atlas/core";
+import type { CostPlan } from "../llm/budget.js";
 
 /**
  * Pure formatting for the AI cost confirmation (spec Design Pass 3: show

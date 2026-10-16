@@ -1,14 +1,15 @@
 import * as vscode from "vscode";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createProvider, renderAtlasMarkdown, type ViewId } from "@project-atlas/core";
+import { createProvider, renderAtlasMarkdown, renderStaticHtml, type ViewId } from "@project-atlas/core";
 import { AtlasCodeLens, entrypointsForFile } from "./codelens.js";
 import { AtlasController, toUserFacing } from "./controller.js";
 import { initLog, log, recentLog, showLog } from "./log.js";
 import { AtlasPanel } from "./panel.js";
 import { isChinese, providerConfig, readSettings, storeApiKey, t, type ProviderName } from "./settings.js";
 import { RuntimeManager } from "./runtime.js";
-import { renderStaticHtml } from "./static-export.js";
+import { vscodeEnv } from "./env.js";
+
 import { AtlasTree } from "./tree.js";
 
 /**
@@ -29,7 +30,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<AtlasE
   context.subscriptions.push(initLog());
   const folder = vscode.workspace.workspaceFolders?.find((f) => f.uri.scheme === "file");
   if (!folder) return;
-  const controller = new AtlasController(context, folder.uri);
+  let openPanelRef: ((reveal?: { view: ViewId; nodeId?: string }) => unknown) | undefined;
+  const env = vscodeEnv(context, (view, nodeId) => openPanelRef?.({ view, ...(nodeId ? { nodeId } : {}) }));
+  AtlasPanel.env = env;
+  const controller = new AtlasController(env, folder.uri);
   context.subscriptions.push(controller);
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
@@ -51,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AtlasE
     }
     status.show();
   };
-  controller.onDidChangeState(renderStatus, undefined, context.subscriptions);
+  context.subscriptions.push(controller.onDidChangeState(renderStatus));
   renderStatus();
   context.subscriptions.push(status);
 
@@ -62,10 +66,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<AtlasE
   );
 
   const openPanel = (reveal?: { view: ViewId; nodeId?: string }) => AtlasPanel.show(context, controller, reveal);
+  openPanelRef = openPanel;
   const register = (id: string, fn: (...args: never[]) => unknown) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
   // Runtime capture (v0.2): history loads now, the receiver starts on first use.
-  const runtime = new RuntimeManager(controller, () => openPanel({ view: "trace" }));
+  const runtime = new RuntimeManager(env, controller);
   AtlasPanel.runtime = runtime;
   context.subscriptions.push(runtime);
   void runtime.restore();
@@ -78,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AtlasE
       else throw error;
     }
   };
-  register("atlas.runtime.copyVmOptions", runtimeCommand(() => runtime.copyVmOptions()));
+  register("atlas.runtime.copyVmOptions", runtimeCommand(async () => void (await runtime.copyVmOptions())));
   register("atlas.runtime.launch", runtimeCommand(() => runtime.launch()));
   register("atlas.runtime.stop", runtimeCommand(() => runtime.stop()));
   register("atlas.runtime.clear", runtimeCommand(() => runtime.clear()));

@@ -15,4 +15,13 @@ export function mount(container: HTMLElement): void {
 }
 
 const root = document.getElementById("root");
-if (root) mount(root);
+if (root && document.body.dataset.atlasHost === "web") {
+  // Local web app: home page + one map per imported project over HTTP/SSE.
+  void import("./web/WebApp.js").then(({ WebApp }) =>
+    createRoot(root).render(
+      <StrictMode>
+        <WebApp />
+      </StrictMode>,
+    ),
+  );
+} else if (root) mount(root);

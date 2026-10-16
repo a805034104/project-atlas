@@ -6,11 +6,31 @@
 [![release](https://img.shields.io/github/v/release/a805034104/project-atlas)](https://github.com/a805034104/project-atlas/releases)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**A map of your Spring / Vue / RuoYi project, inside VS Code.** Open the repository, click *Analyze*, and within a minute you can follow any request from the Vue page through the gateway, filters, interceptors, aspects, controller, service and mapper down to the SQL statement. Every step links to the file and line it came from.
+**A map of your Spring / Vue / RuoYi project, in your browser.** Download one file, double-click it, paste the path of a repository, and within a minute you can follow any request from the Vue page through the gateway, filters, interceptors, aspects, controller, service and mapper down to the SQL statement, drawn top-down like a pyramid. Every step opens the file and line it came from. Nothing to install, no account, nothing leaves your computer.
 
 ![Request flow of GET /system/user/list in RuoYi-Cloud](docs/images/flow.png)
 
-<sub>Real output for [RuoYi-Cloud](https://gitee.com/y_project/RuoYi-Cloud): `GET /system/user/list`, from the Vue page `listUser()`, through the gateway `AuthFilter` / `XssFilter` and route, `@PreAuthorize`, `SysUserController.list`, the `@DataScope` aspect and `SysUserServiceImpl`, down to the mapper XML `<select>`.</sub>
+<sub>Real output for [RuoYi-Cloud](https://gitee.com/y_project/RuoYi-Cloud): `GET /system/user/list`, from the Vue page `listUser()`, through the gateway `AuthFilter` / `XssFilter` and route, `SysUserController.list` (with its `@Around` aspect beside it), `SysUserServiceImpl` (with `@DataScope`), down to the mapper XML `<select>`.</sub>
+
+## Get started
+
+| Your computer | Download from [Releases](https://github.com/a805034104/project-atlas/releases/latest) |
+|---|---|
+| Windows 10/11 (x64) | `project-atlas-win-x64.exe` |
+| macOS (Apple silicon) | `project-atlas-macos-arm64` |
+| Linux (x64) | `project-atlas-linux-x64` |
+
+1. Double-click the file (Linux / macOS terminal: `chmod +x project-atlas-* && ./project-atlas-*`). A small window says where ProjectAtlas is running and your browser opens.
+2. Paste the folder of a Spring Boot / Spring Cloud / Vue project (or a public git URL) and click **Analyze**. No key is needed.
+3. Open **Flow** and pick an endpoint. Close the window to quit.
+
+The files are not code-signed yet:
+- **Windows SmartScreen**: *More info* ▸ *Run anyway*.
+- **macOS**: right-click ▸ *Open* once, or `xattr -d com.apple.quarantine project-atlas-macos-arm64`.
+
+Every file has a `.sha256` next to it, built in public CI from this repository.
+
+![Import a project](docs/images/home.png)
 
 ## Why
 
@@ -29,7 +49,7 @@ Joining a large Spring Cloud codebase usually means a week of reading code to an
 | **Runtime reconciliation** | Pinned OpenTelemetry javaagent 2.31.1 (sha256-checked). Steps, edges and links observed at runtime with count · p95 · errors; a Trace tab with a waterfall; calls seen only at runtime are listed, never drawn as guesses |
 | **Startup guide** | Prerequisites (JDK, MySQL, Redis, Nacos…), build and run commands, ports, each with the file and line it comes from |
 | **Modules & history** | Maven modules, Spring Boot apps (`spring.application.name`, Nacos configs exported as SQL), Vue apps; per-module git history |
-| **Optional AI** | Module summaries and a feature list from Anthropic, any OpenAI-compatible API (DeepSeek, Qwen…) or a local Ollama. Keys live in VS Code SecretStorage; `.env`/keys are never sent and secrets in files are masked |
+| **Optional AI** | Module summaries and a feature list from Anthropic, any OpenAI-compatible API (DeepSeek, Qwen…) or a local Ollama. Keys stay on your computer (`~/.project-atlas/credentials.json`; VS Code SecretStorage in the extension); `.env`/keys are never sent and secrets in files are masked |
 | **CLI & MCP** | `project-atlas analyze` / `show` / `trace` for terminals and CI; a read-only MCP server so coding agents query verified call chains instead of guessing them |
 
 ![Runtime overlay: every step of GET /system/user/list observed, with latency](docs/images/flow-runtime.png)
@@ -44,15 +64,12 @@ Joining a large Spring Cloud codebase usually means a week of reading code to an
 <td align="center"><sub>Startup guide with sources</sub></td>
 </tr></table>
 
-## Install
+## Other ways to run it
 
-ProjectAtlas is not on the Marketplace yet.
+- **VS Code extension**: the same map inside the editor. Install the `.vsix` from [Releases](https://github.com/a805034104/project-atlas/releases) (*Extensions* ▸ `…` ▸ *Install from VSIX…*), then run **Atlas: Analyze**. Requires VS Code 1.95+.
+- **From source** with Node.js 20+: `node packages/web/dist/main.js` starts the same web app; the CLI and MCP server are below.
 
-1. Download `project-atlas-<version>.vsix` from [Releases](https://github.com/a805034104/project-atlas/releases).
-2. In VS Code: *Extensions* ▸ `…` ▸ *Install from VSIX…* (or `code --install-extension project-atlas-0.2.1.vsix`).
-3. Open a Spring / Vue project and run **Atlas: Analyze** (status bar or command palette). No key is needed.
-
-Requires VS Code 1.95+. Runtime tracing also needs a JDK 8+ for your own application.
+Runtime tracing additionally needs a JDK 8+ for your own application.
 
 ### From source
 
@@ -64,11 +81,20 @@ npx vitest run                   # optional: the test suite
 node packages/cli/dist/bin.js analyze /path/to/your/project --no-ai
 ```
 
-Press F5 in VS Code with `packages/vscode` open to run the extension in a development host.
+`node packages/web/dist/main.js` starts the web app from the checkout; `node packages/web/build-sea.mjs` builds the single-file program for your OS. Press F5 in VS Code with `packages/vscode` open to run the extension in a development host.
 
 ## Usage
 
-**In VS Code** — *Atlas: Analyze*, then browse the tabs: Overview, Topology, Modules, Features, Startup, Flow, History, Trace. CodeLens on controller methods opens the flow of that endpoint. *Export HTML* writes a single offline file you can share.
+**In the browser**: import a project, then browse the tabs: Overview, Topology, Modules, Features, Startup, Flow, History, Trace. In **Flow**:
+- The entry is on top, and each call is one row lower.
+- Aspects are drawn beside the method they advise.
+- A method with many callees folds into "+N", which you can expand.
+- Clicking a step opens its source on the right, with links to open it in VS Code or IDEA.
+- *Export HTML* writes a single offline file you can share.
+
+Recent projects stay on the home page. The data lives in `~/.project-atlas` and in each project's `.atlas` folder.
+
+**In VS Code**: *Atlas: Analyze*. CodeLens on controller methods opens the flow of that endpoint.
 
 **CLI**
 
@@ -83,7 +109,11 @@ project-atlas trace --print-config                      # VM options to paste in
 
 **MCP** — `atlas-mcp --dir .atlas` serves entrypoints, flows, service links and runtime aggregates (never span attribute values) to coding agents over stdio.
 
-**Runtime tracing** — paste the VM options from *Atlas: Copy VM Options for Tracing* into your IDE run configuration, restart, send a request. Spans go to a receiver on 127.0.0.1 only; SQL text, bodies and headers are never stored. See [docs/runtime-tracing.md](docs/runtime-tracing.md).
+**Runtime tracing**: on the Startup tab, click *Copy VM options for tracing* and paste them into your IDE run configuration. Restart the service and send a request.
+- Spans go to a receiver on 127.0.0.1 only.
+- SQL text, request bodies and headers are never stored.
+
+See [docs/runtime-tracing.md](docs/runtime-tracing.md).
 
 ## Supported
 
