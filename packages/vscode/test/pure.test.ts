@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CostPlan } from "@project-atlas/core";
 import { parseAtlasYaml } from "../../core/src/overrides/atlas-yaml.js";
-import { formatTokens, formatUsd, phaseChoices, planTitle } from "../src/cost.js";
-import { addEdgeRemoval } from "../src/overrides-writer.js";
+import { formatTokens, formatUsd, phaseChoices, planTitle } from "@project-atlas/core";
+import { addEdgeRemoval } from "@project-atlas/core";
 
 const plan: CostPlan = {
   model: "claude-sonnet-5-5",
