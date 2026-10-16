@@ -1,0 +1,8 @@
+server:
+  port: 18111
+spring:
+  application:
+    name: order-producer
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
