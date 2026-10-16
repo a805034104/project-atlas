@@ -43,6 +43,7 @@ const en = {
 
   "state.loading": "Loading",
   "state.analyzing": "Analyzing: {phase} {pct}",
+  "state.queued": "Waiting for another project's analysis to finish…",
   "state.cancel": "Cancel",
   "state.never.title": "This workspace has not been analyzed yet",
   "state.never.body":
@@ -321,6 +322,7 @@ const zh: Record<StringKey, string> = {
 
   "state.loading": "加载中",
   "state.analyzing": "分析中：{phase} {pct}",
+  "state.queued": "等待其他项目的分析完成…",
   "state.cancel": "取消",
   "state.never.title": "此工作区尚未分析",
   "state.never.body": "Atlas 在本地构建确定性地图（模块、入口、流转、启动、修改记录），不发出任何网络请求。",

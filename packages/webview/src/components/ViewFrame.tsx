@@ -18,7 +18,7 @@ function AnalyzingSkeleton({ analysis, rows }: { analysis: AnalysisState; rows: 
     <div>
       {analysis.status === "running" ? (
         <div className="progress-line" role="status">
-          <span>{t("state.analyzing", { phase, pct })}</span>
+          <span>{analysis.queued ? t("state.queued") : t("state.analyzing", { phase, pct })}</span>
           <CommandButton command="atlas.cancel">{t("state.cancel")}</CommandButton>
         </div>
       ) : null}

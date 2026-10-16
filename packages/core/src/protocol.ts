@@ -44,6 +44,8 @@ export interface AnalysisState {
   /** AI layer availability: "none" = no provider configured (deterministic map only). */
   ai: "none" | "pending-confirmation" | "declined" | "running" | "done" | "partial" | "error";
   error?: UserFacingError;
+  /** Waiting for another project's analysis to finish parsing (the web app parses one project at a time). */
+  queued?: boolean;
 }
 
 /** Error contract (spec DX Pass 3): problem + cause + fix + docs link. */
