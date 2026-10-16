@@ -47,9 +47,14 @@ export interface AggregateState {
   traces: TraceSummary[];
   total: number;
   duplicates: number;
+  /** Spans whose key arrived after the key limit (a route per tenant, dynamic topics…): counted, not kept. */
+  overflow?: number;
 }
 
 const MAX_SAMPLES = 5;
+/** Distinct keys kept (a few thousand in real services); bounds memory and aggregates.json. */
+const MAX_NODE_KEYS = 20_000;
+const MAX_EDGE_KEYS = 50_000;
 const MAX_TRACES = 200;
 /** Parent/child join window: at 200 spans/s, 20 000 spans is ~100 s (children usually arrive within a second). */
 const MAX_RECENT_SPANS = 20_000;
@@ -110,10 +115,14 @@ export class Aggregator {
   private readonly waiting = new Map<string, { seen: Seen; r: SpanRecord }[]>();
   private waitingCount = 0;
   private readonly traceIndex = new Map<string, TraceSummary>();
+  private nodeKeys: number;
+  private edgeKeys: number;
 
   constructor(state: AggregateState = emptyAggregates()) {
     this.state = state;
     for (const t of state.traces) this.traceIndex.set(t.t, t);
+    this.nodeKeys = Object.keys(state.nodes).length;
+    this.edgeKeys = Object.keys(state.edges).length;
   }
 
   /** Forget everything (user cleared the traces): state, join windows and trace index. */
@@ -123,6 +132,8 @@ export class Aggregator {
     this.waiting.clear();
     this.waitingCount = 0;
     this.traceIndex.clear();
+    this.nodeKeys = 0;
+    this.edgeKeys = 0;
   }
 
   /** Fold a batch in; returns the records that were new (duplicates from exporter retries are skipped). */
@@ -139,8 +150,13 @@ export class Aggregator {
       const key = spanKey(r);
       const seen: Seen = { key, start: r.start, end: r.start + r.dur, ...(r.a.thread ? { thread: r.a.thread } : {}) };
       this.remember(id, seen);
-      const node = (this.state.nodes[key] ??= { count: 0, err: 0, lastSeen: 0, sketch: {}, samples: [] });
-      touch(node, r, r.dur, r.err);
+      let node = this.state.nodes[key];
+      if (!node && this.nodeKeys < MAX_NODE_KEYS) {
+        node = this.state.nodes[key] = { count: 0, err: 0, lastSeen: 0, sketch: {}, samples: [] };
+        this.nodeKeys++;
+      }
+      if (node) touch(node, r, r.dur, r.err);
+      else this.state.overflow = (this.state.overflow ?? 0) + 1;
 
       if (r.p) {
         const parentId = `${r.t}:${r.p}`;
@@ -187,7 +203,12 @@ export class Aggregator {
 
   private edge(parent: Seen, child: Seen, r: SpanRecord): void {
     const key = `${parent.key}>${child.key}`;
-    const stats = (this.state.edges[key] ??= { count: 0, err: 0, lastSeen: 0, sketch: {}, samples: [] });
+    let stats = this.state.edges[key];
+    if (!stats) {
+      if (this.edgeKeys >= MAX_EDGE_KEYS) return;
+      stats = this.state.edges[key] = { count: 0, err: 0, lastSeen: 0, sketch: {}, samples: [] };
+      this.edgeKeys++;
+    }
     touch(stats, r, r.dur, r.err);
     const otherThread = parent.thread !== undefined && child.thread !== undefined && parent.thread !== child.thread;
     // V7: async = handed to another thread AND not awaited (submit(..).get() stays synchronous).
