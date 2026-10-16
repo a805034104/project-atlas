@@ -1,4 +1,5 @@
 import { appendFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { atlasHome, createParsePool } from "@project-atlas/core";
@@ -51,12 +52,16 @@ export function parseArgs(argv: readonly string[]): MainOptions {
 export async function main(options: MainOptions): Promise<{ url: string; close(): Promise<void> } | undefined> {
   const home = atlasHome(options.home);
   const logDir = path.join(home, "logs");
-  mkdirSync(logDir, { recursive: true });
+  mkdirSync(logDir, { recursive: true, mode: 0o700 });
   const logFile = path.join(logDir, `web-${new Date().toISOString().slice(0, 10)}.log`);
   const log = options.log ?? ((line: string) => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`));
   const here = options.here ?? (typeof __filename === "string" ? path.dirname(__filename) : path.dirname(fileURLToPath(import.meta.url)));
   const zh = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase().startsWith("zh");
   const say = (zhText: string, en: string) => process.stdout.write(`${zh ? zhText : en}\n`);
+  // Keys, the unpacked parser worker and the instance secret live in the home: outside the user's
+  // own profile, other accounts on the machine may be able to read or replace them.
+  const rel = path.relative(path.resolve(homedir()), path.resolve(home));
+  if (rel.startsWith("..") || path.isAbsolute(rel)) say(`警告：数据目录 ${home} 不在你的用户目录下，同一台电脑上的其他账号可能读到或替换其中的文件（API key、程序文件）。`, `Warning: the data folder ${home} is outside your user profile; other accounts on this computer may be able to read or replace files in it (API keys, program files).`);
 
   if (options.selfTest) {
     const assets = await resolveAssets(home, VERSION, here);

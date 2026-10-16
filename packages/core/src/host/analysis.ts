@@ -202,7 +202,8 @@ export class AnalysisController {
       const err = toUserFacing(error, this.t);
       this.env.log(`Analysis failed: ${err.code} ${err.problem} — ${err.cause}`);
       this.setState({ status: "error", error: err });
-      void this.env.notify("error", `${err.code} ${err.problem}`);
+      const showLog = this.t("查看日志", "Show log");
+      void this.env.notify("error", `${err.code} ${err.problem}`, this.env.showLog ? [showLog] : []).then((pick) => pick === showLog && this.env.showLog?.());
     }
   }
 

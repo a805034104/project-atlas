@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { atlasHome, type HostSettings, type ProviderConfig, type ProviderName } from "@project-atlas/core";
@@ -11,9 +12,10 @@ import { atlasHome, type HostSettings, type ProviderConfig, type ProviderName } 
  */
 
 export async function writeJsonAtomic(file: string, value: unknown, mode?: number): Promise<void> {
-  await mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tmp, JSON.stringify(value, null, 2), mode !== undefined ? { mode } : {});
+  await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
+  // Unpredictable name, created exclusively: nobody can plant or pre-open it.
+  const tmp = `${file}.${randomBytes(8).toString("hex")}.tmp`;
+  await writeFile(tmp, JSON.stringify(value, null, 2), { flag: "wx", ...(mode !== undefined ? { mode } : {}) });
   await rename(tmp, file);
 }
 
@@ -63,7 +65,8 @@ type SettingsPatch = Partial<Omit<WebSettings, "runtime">> & { runtime: Partial<
 
 export class SettingsStore {
   private value: WebSettings;
-  private keys: Partial<Record<ProviderName, string>> = {};
+  /** Each key remembers the endpoint it was entered for; it is only ever sent there. */
+  private keys: Partial<Record<ProviderName, StoredKey>> = {};
 
   private constructor(
     readonly home: string,
@@ -77,7 +80,13 @@ export class SettingsStore {
     const defaults = defaultSettings(systemLocale);
     const stored = await readJson<Partial<WebSettings>>(path.join(home, "web-settings.json"), {});
     const store = new SettingsStore(home, { ...defaults, ...stored, runtime: { ...defaults.runtime, ...(stored.runtime ?? {}) } });
-    store.keys = await readJson(path.join(home, "credentials.json"), {});
+    const raw = await readJson<Record<string, unknown>>(path.join(home, "credentials.json"), {});
+    for (const p of PROVIDERS) {
+      const v = raw[p];
+      // 0.3.0-dev stored bare strings: bind them to the provider's default endpoint only.
+      if (typeof v === "string") store.keys[p] = { key: v, endpoint: endpointOf("") };
+      else if (v && typeof v === "object" && typeof (v as StoredKey).key === "string" && typeof (v as StoredKey).endpoint === "string") store.keys[p] = v as StoredKey;
+    }
     return store;
   }
 
@@ -87,7 +96,7 @@ export class SettingsStore {
 
   /** Settings for the UI: never the keys, only whether one is stored. */
   publicView(): WebSettings & { keyStored: Record<string, boolean> } {
-    return { ...this.value, keyStored: Object.fromEntries(PROVIDERS.map((p) => [p, Boolean(this.keys[p])])) };
+    return { ...this.value, keyStored: Object.fromEntries(PROVIDERS.map((p) => [p, this.keyFor(p) !== undefined])) };
   }
 
   async update(patch: SettingsInput): Promise<void> {
@@ -97,10 +106,16 @@ export class SettingsStore {
     this.value = next;
     await writeJsonAtomic(path.join(this.home, "web-settings.json"), next);
     if (apiKey !== undefined && next.provider !== "none" && next.provider !== "ollama") {
-      if (apiKey) this.keys[next.provider] = apiKey.trim();
+      if (apiKey) this.keys[next.provider] = { key: apiKey.trim(), endpoint: endpointOf(next.baseUrl) };
       else delete this.keys[next.provider];
       await writeJsonAtomic(path.join(this.home, "credentials.json"), this.keys, 0o600);
     }
+  }
+
+  /** The stored key, only while the base URL still points where it was entered. */
+  private keyFor(provider: ProviderName): string | undefined {
+    const k = this.keys[provider];
+    return k && k.endpoint === endpointOf(this.value.baseUrl) ? k.key : undefined;
   }
 
   hostSettings(): HostSettings {
@@ -112,8 +127,23 @@ export class SettingsStore {
   providerConfig(): ProviderConfig | undefined {
     const v = this.value;
     if (v.provider === "none") return undefined;
-    const apiKey = v.provider === "ollama" ? undefined : (process.env["ATLAS_API_KEY"] ?? (v.provider === "anthropic" ? process.env["ANTHROPIC_API_KEY"] : undefined) ?? this.keys[v.provider]);
+    const apiKey = v.provider === "ollama" ? undefined : (process.env["ATLAS_API_KEY"] ?? (v.provider === "anthropic" ? process.env["ANTHROPIC_API_KEY"] : undefined) ?? this.keyFor(v.provider));
     return { provider: v.provider, ...(v.model ? { model: v.model } : {}), ...(v.baseUrl ? { baseUrl: v.baseUrl } : {}), ...(apiKey ? { apiKey } : {}) };
+  }
+}
+
+interface StoredKey {
+  key: string;
+  /** Origin of the base URL the key was entered with ("default" = the provider's own). */
+  endpoint: string;
+}
+
+function endpointOf(baseUrl: string): string {
+  if (!baseUrl) return "default";
+  try {
+    return new URL(baseUrl).origin;
+  } catch {
+    return baseUrl;
   }
 }
 

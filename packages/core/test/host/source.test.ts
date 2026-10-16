@@ -32,7 +32,8 @@ describe("source access stays inside the analyzed roots", () => {
     const f = await fixture();
     expect(await resolveInRoot(f.roots, { rootId: "r1", file: "../secret/id_rsa" }, f.home)).toBeUndefined();
     expect(await resolveInRoot(f.roots, { rootId: "r1", file: path.join(f.outside, "id_rsa") }, f.home)).toBeUndefined();
-    expect((await readSnippet(f.roots, { rootId: "r1", file: "../secret/id_rsa" }, 20, f.home)).error).toBe("outside-project");
+    // same answer as a missing file: the page cannot probe which paths exist
+    expect((await readSnippet(f.roots, { rootId: "r1", file: "../secret/id_rsa" }, 20, f.home)).error).toBe("not-found");
     expect(await resolveInRoot(f.roots, { rootId: "r1", file: "..foo" }, f.home)).toBe(path.join(f.root, "..foo"));
   });
 
@@ -53,5 +54,23 @@ describe("source access stays inside the analyzed roots", () => {
     const f = await fixture();
     expect(await resolveInRoot(f.roots, { rootId: "nope", file: "src/A.java" }, f.home)).toBeUndefined();
     expect(await resolveInRoot(f.roots, { rootId: "r1", file: "src/A.java\0.txt" }, f.home)).toBeUndefined();
+  });
+
+  it("with host bounds, a root named by a stored graph outside the imported folder is ignored", async () => {
+    const f = await fixture();
+    // a repository ships .atlas/graph.json whose root is the parent folder (or "/")
+    const forged = [{ id: "evil", path: f.base }];
+    expect(await resolveInRoot(forged, { rootId: "evil", file: "secret/id_rsa" }, f.home, [f.root])).toBeUndefined();
+    expect(await resolveInRoot(f.roots, { rootId: "r1", file: "src/A.java" }, f.home, [f.root])).toBe(path.join(f.root, "src", "A.java"));
+  });
+
+  it("with host bounds, a git checkout under the ProjectAtlas home is readable, the rest of the home is not", async () => {
+    const f = await fixture();
+    const checkout = path.join(f.home, "projects", "abc", ".atlas", "clones", "x");
+    await mkdir(path.join(checkout, "src"), { recursive: true });
+    await writeFile(path.join(checkout, "src", "B.java"), "class B {}");
+    const roots = [{ id: "g", path: checkout }, { id: "h", path: f.home }];
+    expect(await resolveInRoot(roots, { rootId: "g", file: "src/B.java" }, f.home, [checkout])).toBe(path.join(checkout, "src", "B.java"));
+    expect(await resolveInRoot(roots, { rootId: "h", file: "credentials.json" }, f.home, [checkout])).toBeUndefined();
   });
 });

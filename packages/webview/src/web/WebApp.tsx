@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HostPrompt, HostToWebview, SourceSnippet } from "@project-atlas/core";
 import { App } from "../App.js";
 import { createBridge } from "../bridge.js";
-import { answerPrompt, connectProject, getJson, postJson, signIn, type ProjectConnection } from "./api.js";
+import { answerPrompt, connectProject, getJson, postJson, signIn, withTicket, type ProjectConnection } from "./api.js";
 import { Home } from "./Home.js";
 import { SettingsDialog } from "./Settings.js";
 import { webT, type WebT } from "./strings.js";
@@ -200,13 +200,15 @@ function ProjectPage({ project, autoAnalyze, t, openSettings, onSignedOut }: { p
         }
         const format = command === "atlas.exportHtml" ? "html" : command === "atlas.exportMarkdown" ? "md" : command === "atlas.diagnose" ? "diagnostics" : undefined;
         if (format) {
-          window.location.assign(`/api/p/${project.id}/export?format=${format}`);
+          void withTicket(`/api/p/${project.id}/export?format=${format}`).then((url) => window.location.assign(url));
           return true;
         }
         return false;
       },
       onConnection: (up) => {
         setConnected(up);
+        // The snapshot that follows a (re)connect lists every open prompt: drop ones that closed meanwhile.
+        if (up) setPrompts([]);
         // EventSource hides the status: ask whether the session itself is gone (server restarted).
         if (!up) void getJson("/api/state").catch((e: unknown) => (e as { status?: number }).status === 401 && onSignedOut());
       },
@@ -261,7 +263,7 @@ function ProjectPage({ project, autoAnalyze, t, openSettings, onSignedOut }: { p
         <App bridge={bridge} vscode={conn.api} />
       </div>
       {snippet ? <SourceDrawer snippet={snippet} t={t} onClose={() => setSnippet(undefined)} /> : null}
-      {modal ? <PromptDialog prompt={modal} t={t} onAnswer={(v) => answer(modal, v)} /> : null}
+      {modal ? <PromptDialog key={modal.id} prompt={modal} t={t} onAnswer={(v) => answer(modal, v)} /> : null}
       {toasts.length > 0 ? (
         <div className="web-toasts" role="status" aria-live="polite">
           {toasts.map((p) =>
@@ -288,18 +290,21 @@ function ProjectPage({ project, autoAnalyze, t, openSettings, onSignedOut }: { p
 
 function Dialog({ title, children, onClose, wide = false }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // onClose is a new closure on every render: keep the latest in a ref so focus is set once, on open.
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLElement>("input, select, textarea, button")?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close.current();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       previous?.focus?.();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div className="web-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={ref} className={`web-dialog${wide ? " wide" : ""}`} role="dialog" aria-modal="true" aria-label={title}>

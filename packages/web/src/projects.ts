@@ -99,6 +99,10 @@ export class ProjectRegistry {
   private records: ProjectRecord[] = [];
   private readonly loaded = new Map<string, ProjectSession>();
   private analysisQueue: Promise<unknown> = Promise.resolve();
+  /** Sessions being created: a second request for the same project waits for the same restore. */
+  private loading = new Map<string, Promise<ProjectSession>>();
+  /** One queued analysis per project: repeated clicks join it instead of queueing more runs. */
+  private queued = new Map<string, { promise: Promise<void>; cancelled: boolean }>();
 
   private constructor(private readonly options: RegistryOptions) {}
 
@@ -175,6 +179,7 @@ export class ProjectRegistry {
     const existing = this.get(id);
     if (existing) {
       existing.openedAt = new Date().toISOString();
+      if (trusted) existing.trusted = true;
       await this.save();
       return existing;
     }
@@ -217,6 +222,15 @@ export class ProjectRegistry {
       live.lastUsed = Date.now();
       return live;
     }
+    const pending = this.loading.get(id);
+    if (pending) return pending;
+    const created = this.createSession(record).finally(() => this.loading.delete(id));
+    this.loading.set(id, created);
+    return created;
+  }
+
+  private async createSession(record: ProjectRecord): Promise<ProjectSession> {
+    const id = record.id;
     const hub = new EventHub();
     const prompts = new PromptBroker(hub);
     const log = (line: string) => this.options.log(`[${record.name}] ${line}`);
@@ -241,12 +255,15 @@ export class ProjectRegistry {
       switch (command) {
         case "atlas.analyze":
         case "atlas.analyzeIncremental":
-          await this.runExclusive(() => controller.analyze());
+          await this.queueAnalysis(id, controller);
           return;
-        case "atlas.cancel":
+        case "atlas.cancel": {
+          const waiting = this.queued.get(id);
+          if (waiting) waiting.cancelled = true;
           controller.cancel();
           prompts.cancelAll();
           return;
+        }
         case "atlas.runtime.copyVmOptions":
         case "atlas.runtime.launch":
           await runtime.copyVmOptions();
@@ -262,20 +279,34 @@ export class ProjectRegistry {
           return;
       }
     };
-    const session = new HostSession({ env, controller, runtime, post: (m) => hub.broadcast(m), runCommand });
+    // Only the folder the user imported and its clones: never roots named by a stored graph.
+    const sourceBounds = () => [record.path, path.join(record.atlasDir, "clones")];
+    const session = new HostSession({ env, controller, runtime, post: (m) => hub.broadcast(m), runCommand, sourceBounds });
     const project: ProjectSession = { record, controller, runtime, session, hub, prompts, lastUsed: Date.now(), runCommand };
-    this.loaded.set(id, project);
     await controller.restore();
     await runtime.restore();
-    this.evict();
+    this.loaded.set(id, project);
+    this.evict(project);
     return project;
   }
 
-  /** Run analyses one at a time (each one starts its own parse workers). */
-  private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const next = this.analysisQueue.then(fn, fn);
-    this.analysisQueue = next.catch(() => undefined);
-    return next;
+  /**
+   * Analyses run one at a time (each one starts its own parse workers). A project that already
+   * waits in the queue is not queued again, and a cancel before its turn drops it.
+   */
+  private queueAnalysis(id: string, controller: AnalysisController): Promise<void> {
+    const waiting = this.queued.get(id);
+    if (waiting && !waiting.cancelled) return waiting.promise;
+    if (controller.busy) return controller.analyze().then(() => undefined);
+    const entry = { cancelled: false, promise: Promise.resolve() };
+    const run = async () => {
+      this.queued.delete(id);
+      if (!entry.cancelled) await controller.analyze();
+    };
+    entry.promise = this.analysisQueue.then(run, run);
+    this.analysisQueue = entry.promise.catch(() => undefined);
+    this.queued.set(id, entry);
+    return entry.promise;
   }
 
   /** Something is in flight (analysis, receiver with recent spans): keep the process alive. */
@@ -287,15 +318,23 @@ export class ProjectRegistry {
     return false;
   }
 
-  /** Any tab connected to any project. */
-  connected(): boolean {
-    for (const s of this.loaded.values()) if (s.hub.size > 0) return true;
-    return false;
+  private lastRequestAt = Date.now();
+
+  /** A signed-in page made a request (hidden tabs ping every few minutes). */
+  touch(): void {
+    this.lastRequestAt = Date.now();
   }
 
-  private evict(): void {
+  /** Any tab connected to any project, or a page (maybe hidden) heard from in the last 10 minutes. */
+  connected(): boolean {
+    for (const s of this.loaded.values()) if (s.hub.size > 0) return true;
+    return Date.now() - this.lastRequestAt < 10 * 60_000;
+  }
+
+  private evict(keep: ProjectSession): void {
     if (this.loaded.size <= MAX_LOADED) return;
-    const idle = [...this.loaded.values()].filter((s) => s.hub.size === 0 && !s.controller.busy && !s.runtime.running).sort((a, b) => a.lastUsed - b.lastUsed);
+    // The session just opened has no stream yet but is about to be used: never evict it.
+    const idle = [...this.loaded.values()].filter((s) => s !== keep && s.hub.size === 0 && !s.controller.busy && !s.runtime.running && !this.queued.has(s.record.id)).sort((a, b) => a.lastUsed - b.lastUsed);
     for (const s of idle.slice(0, this.loaded.size - MAX_LOADED)) this.unload(s);
   }
 
