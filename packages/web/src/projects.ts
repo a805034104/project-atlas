@@ -101,8 +101,7 @@ export class ProjectRegistry {
   private analysisQueue: Promise<unknown> = Promise.resolve();
   /** Sessions being created: a second request for the same project waits for the same restore. */
   private loading = new Map<string, Promise<ProjectSession>>();
-  /** One queued analysis per project: repeated clicks join it instead of queueing more runs. */
-  private queued = new Map<string, { promise: Promise<void>; cancelled: boolean }>();
+
 
   private constructor(private readonly options: RegistryOptions) {}
 
@@ -249,21 +248,21 @@ export class ProjectRegistry {
       assets: this.options.assets,
       log,
     });
-    const controller = new AnalysisController({ env, atlasDir: record.atlasDir, roots: () => [{ path: record.path }] });
+    // Parsing runs one project at a time (each starts its own worker threads); questions and AI
+    // calls happen outside the lock, so an unanswered dialog never holds up another project.
+    const controller = new AnalysisController({ env, atlasDir: record.atlasDir, roots: () => [{ path: record.path }], exclusive: (fn) => this.runExclusive(fn) });
     const runtime = new RuntimeHost({ env, controller, workspaceDir: record.path });
     const runCommand = async (command: WebviewCommand): Promise<void> => {
       switch (command) {
         case "atlas.analyze":
         case "atlas.analyzeIncremental":
-          await this.queueAnalysis(id, controller);
+          // Repeated clicks join the analysis already running (or waiting for the lock).
+          await controller.analyze();
           return;
-        case "atlas.cancel": {
-          const waiting = this.queued.get(id);
-          if (waiting) waiting.cancelled = true;
+        case "atlas.cancel":
           controller.cancel();
           prompts.cancelAll();
           return;
-        }
         case "atlas.runtime.copyVmOptions":
         case "atlas.runtime.launch":
           await runtime.copyVmOptions();
@@ -290,23 +289,11 @@ export class ProjectRegistry {
     return project;
   }
 
-  /**
-   * Analyses run one at a time (each one starts its own parse workers). A project that already
-   * waits in the queue is not queued again, and a cancel before its turn drops it.
-   */
-  private queueAnalysis(id: string, controller: AnalysisController): Promise<void> {
-    const waiting = this.queued.get(id);
-    if (waiting && !waiting.cancelled) return waiting.promise;
-    if (controller.busy) return controller.analyze().then(() => undefined);
-    const entry = { cancelled: false, promise: Promise.resolve() };
-    const run = async () => {
-      this.queued.delete(id);
-      if (!entry.cancelled) await controller.analyze();
-    };
-    entry.promise = this.analysisQueue.then(run, run);
-    this.analysisQueue = entry.promise.catch(() => undefined);
-    this.queued.set(id, entry);
-    return entry.promise;
+  /** The host-wide parse lock (FIFO). */
+  private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.analysisQueue.then(fn, fn);
+    this.analysisQueue = next.catch(() => undefined);
+    return next;
   }
 
   /** Something is in flight (analysis, receiver with recent spans): keep the process alive. */
@@ -334,7 +321,7 @@ export class ProjectRegistry {
   private evict(keep: ProjectSession): void {
     if (this.loaded.size <= MAX_LOADED) return;
     // The session just opened has no stream yet but is about to be used: never evict it.
-    const idle = [...this.loaded.values()].filter((s) => s !== keep && s.hub.size === 0 && !s.controller.busy && !s.runtime.running && !this.queued.has(s.record.id)).sort((a, b) => a.lastUsed - b.lastUsed);
+    const idle = [...this.loaded.values()].filter((s) => s !== keep && s.hub.size === 0 && !s.controller.busy && !s.runtime.running).sort((a, b) => a.lastUsed - b.lastUsed);
     for (const s of idle.slice(0, this.loaded.size - MAX_LOADED)) this.unload(s);
   }
 
