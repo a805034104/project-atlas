@@ -11,7 +11,7 @@ import {
 } from "../../src/llm/index.js";
 import { anthropicReply, connectionRefused, fakeFetch, hang } from "./fake-fetch.js";
 
-const KEY = "sk-ant-api03-SUPERSECRETKEY0123456789abcdef";
+const KEY = ["sk", "ant", "api03", "FAKEKEY0123456789abcdef"].join("-"); // fake, assembled at runtime
 const req = { system: "SYS", user: "USER", maxOutputTokens: 123 };
 
 async function caught(promise: Promise<unknown>): Promise<Error> {
@@ -26,7 +26,7 @@ async function caught(promise: Promise<unknown>): Promise<Error> {
 function assertNoKey(error: Error): void {
   expect(error.message).not.toContain(KEY);
   expect(JSON.stringify((error as { toUserFacing?: () => unknown }).toUserFacing?.() ?? {})).not.toContain(KEY);
-  expect(error.message).not.toContain("SUPERSECRET");
+  expect(error.message).not.toContain("FAKEKEY0123456789");
 }
 
 describe("anthropic provider", () => {
