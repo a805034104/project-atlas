@@ -92,7 +92,11 @@ export function WebApp() {
 
   useEffect(() => {
     void signIn().then(() => refresh());
-    const onHash = () => setWhere(route());
+    const onHash = () => {
+      // A newer launch (second double-click) can hand this tab a fresh code.
+      if (/(?:^#|&)code=/.test(window.location.hash)) void signIn().then(() => refresh());
+      setWhere(route());
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, [refresh]);
@@ -142,7 +146,7 @@ export function WebApp() {
     <div className="web-app">
       {header}
       {where.page === "project" && project ? (
-        <ProjectPage key={project.id} project={project} autoAnalyze={where.analyze} t={t} openSettings={() => setSettingsOpen(true)} />
+        <ProjectPage key={project.id} project={project} autoAnalyze={where.analyze} t={t} openSettings={() => setSettingsOpen(true)} onSignedOut={() => setSignedIn("failed")} />
       ) : (
         <Home app={app} t={t} onChanged={refresh} />
       )}
@@ -159,7 +163,7 @@ export function WebApp() {
   );
 }
 
-function ProjectPage({ project, autoAnalyze, t, openSettings }: { project: ProjectRecord; autoAnalyze: boolean; t: WebT; openSettings: () => void }) {
+function ProjectPage({ project, autoAnalyze, t, openSettings, onSignedOut }: { project: ProjectRecord; autoAnalyze: boolean; t: WebT; openSettings: () => void; onSignedOut: () => void }) {
   const [prompts, setPrompts] = useState<HostPrompt[]>(() => {
     try {
       const notice = window.sessionStorage.getItem("atlas.notice");
@@ -201,7 +205,11 @@ function ProjectPage({ project, autoAnalyze, t, openSettings }: { project: Proje
         }
         return false;
       },
-      onConnection: setConnected,
+      onConnection: (up) => {
+        setConnected(up);
+        // EventSource hides the status: ask whether the session itself is gone (server restarted).
+        if (!up) void getJson("/api/state").catch((e: unknown) => (e as { status?: number }).status === 401 && onSignedOut());
+      },
     });
   }
   const conn = connection.current;

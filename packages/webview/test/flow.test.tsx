@@ -16,15 +16,28 @@ function openFlow(detail: FlowDetailData = userListDetail()) {
 
 const node = (name: RegExp | string) => screen.getByRole("button", { name });
 
-describe("swimlane", () => {
-  it("renders only lanes that have steps, in spec order, grouped per service band", () => {
+describe("flow pyramid", () => {
+  it("draws one frame per service and a rail naming the layers on each row, entry on top", () => {
     const h = openFlow();
-    const bands = [...h.container.querySelectorAll(".swimlane .band-header")].map((b) => b.textContent);
-    expect(bands).toEqual(["▾ruoyi-ui (1 steps)", "▾ruoyi-gateway (1 steps)", "▾ruoyi-system (11 steps)", "▾ruoyi-auth (2 steps)"]);
-    const systemLanes = [...(h.container.querySelectorAll(".swimlane .lane-band")[2]?.querySelectorAll(".lane-label") ?? [])].map(
-      (l) => l.textContent,
-    );
-    expect(systemLanes).toEqual(["filter", "interceptor", "aspect", "controller", "service", "repository", "SQL", "external HTTP"]);
+    const frames = [...h.container.querySelectorAll(".pyramid .pyr-frame .band-header")].map((b) => b.textContent);
+    expect(frames).toEqual(["▾ruoyi-ui (1 steps)", "▾ruoyi-gateway (1 steps)", "▾ruoyi-system (11 steps)", "▾ruoyi-auth (2 steps)"]);
+    const rail = [...h.container.querySelectorAll(".pyr-rail-row")].map((r) => r.textContent);
+    expect(rail[0]).toBe("frontend");
+    expect(rail[1]).toBe("filter");
+    const top = (name: RegExp) => Number.parseFloat((node(name) as HTMLElement).style.top);
+    expect(top(/^user\.js listUser,/)).toBeLessThan(top(/^AuthFilter\.filter,/));
+    expect(top(/^AuthFilter\.filter,/)).toBeLessThan(top(/^SysUserController\.list,/));
+    expect(top(/^SysUserController\.list,/)).toBeLessThan(top(/^SysUserMapper\.selectUserList,/));
+  });
+
+  it("an aspect with one target is drawn beside it, not as a row of its own", () => {
+    // The analyzer's shape: caller → aspect → advised method.
+    const base = userListDetail();
+    const viaAspect = { ...(base.edges.find((e) => e.id === "e-ctrl-aspect") as CallEdge), id: "e-aspect-svc", from: "s-aspect", to: "s-svc", order: 0 };
+    const h = openFlow({ ...base, edges: [...base.edges, viaAspect] });
+    const pill = h.container.querySelector(".pyr-sidecar");
+    expect(pill?.getAttribute("aria-label")).toMatch(/advises/);
+    expect(h.container.querySelector('.pyr-node.layer-aspect')).toBeNull();
   });
 
   it("node aria-labels name the layer and outgoing edge count", () => {
@@ -140,13 +153,13 @@ describe("graph keyboard traversal", () => {
 });
 
 describe("responsive", () => {
-  it("under 600px the entrypoint list becomes a select and the swimlane goes vertical", () => {
+  it("under 600px the entrypoint list becomes a select and the pyramid becomes an indented list", () => {
     window.innerWidth = 480;
     const h = openFlow();
     expect(screen.queryByRole("listbox")).toBeNull();
     const select = screen.getByRole("combobox", { name: "Entrypoint" }) as HTMLSelectElement;
     expect(select.value).toBe(USER_LIST_EP);
-    expect(h.container.querySelector(".swimlane.vertical")).not.toBeNull();
+    expect(h.container.querySelector(".pyramid.vertical")).not.toBeNull();
     // Edges are listed under each step in vertical mode.
     expect(h.container.querySelector('.vertical-edges .edge-label[data-edge-id="e-svc-ext"]')).not.toBeNull();
   });
