@@ -453,7 +453,7 @@ function scenarioRuntime(scenario: RuntimeScenario): RuntimeState {
           problem: "The trace receiver stopped: port 43180 is now used by another process.",
           cause: "listen EADDRINUSE 127.0.0.1:43180",
           fix: "Restart the traced application so it picks up the new receiver port.",
-          docsUrl: "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#atlas-e073",
+          docsUrl: "https://github.com/a805034104/project-atlas/blob/main/docs/errors.md#atlas-e073",
         },
       };
     case "restricted":

@@ -351,7 +351,7 @@ function missingKeyError(): UserFacingError {
     problem: t("没有配置 API Key", "No API key configured"),
     cause: t("已选择 AI 提供方，但 SecretStorage 中没有对应的 Key", "An AI provider is selected but no key is stored for it"),
     fix: t("运行「Atlas: 配置模型」", "Run “Atlas: Configure AI Model”"),
-    docsUrl: "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#atlas-e020",
+    docsUrl: "https://github.com/a805034104/project-atlas/blob/main/docs/errors.md#atlas-e020",
     fixCommand: "atlas.configureProvider",
   };
 }
@@ -366,7 +366,7 @@ export function toUserFacing(error: unknown): UserFacingError {
     problem: t("分析失败", "Analysis failed"),
     cause: message,
     fix: t("运行「Atlas: 导出诊断包」并附在 issue 中", "Run “Atlas: Export Diagnostics” and attach it to an issue"),
-    docsUrl: "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md",
+    docsUrl: "https://github.com/a805034104/project-atlas/blob/main/docs/errors.md",
     fixCommand: "atlas.diagnose",
   };
 }

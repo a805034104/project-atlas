@@ -160,7 +160,7 @@ describe("ollama provider", () => {
     expect(uf.code).toBe("ATLAS-E021");
     expect(uf.fix).toContain("ollama serve");
     expect(uf.problem).toContain("http://localhost:11434");
-    expect(uf.docsUrl).toBe("https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#atlas-e021");
+    expect(uf.docsUrl).toBe("https://github.com/a805034104/project-atlas/blob/main/docs/errors.md#atlas-e021");
   });
 });
 

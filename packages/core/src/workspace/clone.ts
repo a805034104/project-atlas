@@ -32,7 +32,7 @@ export class CloneError extends Error {
       problem: `Cannot clone ${this.url}`,
       cause: this.cause_,
       fix: "Check the URL, ref and your git credentials (only https:// and git@ URLs are allowed).",
-      docsUrl: "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#atlas-e030",
+      docsUrl: "https://github.com/a805034104/project-atlas/blob/main/docs/errors.md#atlas-e030",
     };
   }
 }

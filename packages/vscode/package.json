@@ -8,7 +8,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/project-atlas/project-atlas"
+    "url": "https://github.com/a805034104/project-atlas"
   },
   "engines": {
     "vscode": "^1.95.0"
