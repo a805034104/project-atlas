@@ -2,7 +2,7 @@
 // (Dark Modern, Light Modern, Dark High Contrast, Light High Contrast), from the dev harness
 // (packages/webview: mock host + emulated theme variables) in headless Chrome / Edge.
 //
-//   node scripts/theme-shots.mjs [outDir]      (default docs/screenshots/v0.2)
+//   node scripts/theme-shots.mjs [outDir]      (default docs/screenshots/v0.3)
 // Env: CHROME (path to chrome.exe / msedge.exe / chromium).
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const out = path.resolve(repo, process.argv[2] ?? "docs/screenshots/v0.2");
+const out = path.resolve(repo, process.argv[2] ?? "docs/screenshots/v0.3");
 const PORT = 5199;
 const browsers = [
   process.env.CHROME,
