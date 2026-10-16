@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createProvider, renderAtlasMarkdown, type ViewId } from "@project-atlas/core";
+import { createProvider, renderAtlasMarkdown, renderStaticHtml, type ViewId } from "@project-atlas/core";
 import { AtlasCodeLens, entrypointsForFile } from "./codelens.js";
 import { AtlasController, toUserFacing } from "./controller.js";
 import { initLog, log, recentLog, showLog } from "./log.js";
@@ -9,7 +9,7 @@ import { AtlasPanel } from "./panel.js";
 import { isChinese, providerConfig, readSettings, storeApiKey, t, type ProviderName } from "./settings.js";
 import { RuntimeManager } from "./runtime.js";
 import { vscodeEnv } from "./env.js";
-import { renderStaticHtml } from "./static-export.js";
+
 import { AtlasTree } from "./tree.js";
 
 /**

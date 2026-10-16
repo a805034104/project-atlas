@@ -17,6 +17,7 @@ describe("clone allow-list", () => {
     ["https://host/repo.git --config core.sshCommand=x", false],
     ["https://user:fake-token@github.com/a/b.git", false],
     ["https://token@github.com/a/b.git", false],
+    ["git@-oProxyCommand:x/y.git", false],
   ])("%s → %s", (url, ok) => {
     expect(isAllowedGitUrl(url)).toBe(ok);
   });
