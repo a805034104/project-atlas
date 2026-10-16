@@ -29,6 +29,10 @@ const HOST_TYPE_RECORD: Record<HostToWebview["type"], true> = {
   runtimeState: true,
   runtimeUpdated: true,
   traceDetail: true,
+  sourceSnippet: true,
+  prompt: true,
+  promptClosed: true,
+  clipboard: true,
 };
 const HOST_TYPES: ReadonlySet<string> = new Set(Object.keys(HOST_TYPE_RECORD));
 
