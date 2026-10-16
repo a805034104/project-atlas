@@ -46,6 +46,38 @@ jobs:
           name: vsix
           path: packages/vscode/project-atlas.vsix
 
+  runtime-rabbitmq:
+    # AC#22 on a real broker: two Spring Boot services, a topic exchange, the pinned javaagent.
+    runs-on: ubuntu-latest
+    services:
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s --health-timeout 10s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: npm ci
+      - run: npx tsc -b
+      - name: Build the RabbitMQ fixture
+        working-directory: fixtures/synthetic/rabbitmq
+        run: mvn -q -B -DskipTests package
+      - name: Producer → exchange → queue → consumer, confirmed at runtime
+        run: node scripts/runtime-e2e.mjs --rabbitmq-only
+        env:
+          RABBITMQ_REQUIRED: "1"
+
   perf:
     runs-on: ubuntu-latest
     steps:

@@ -179,8 +179,28 @@ async function reflectionScenario() {
   check(summary.spans > 0, `CLI summary (${summary.spans} spans)`);
 }
 
+/** RabbitMQ (a broker on 127.0.0.1:5672: local install, or the service container in CI). */
+async function rabbitScenario() {
+  const { createConnection } = await import("node:net");
+  const up = await new Promise((resolve) => {
+    const socket = createConnection({ host: "127.0.0.1", port: 5672 }, () => (socket.end(), resolve(true)));
+    socket.on("error", () => resolve(false));
+  });
+  if (!up) {
+    if (process.env.RABBITMQ_REQUIRED) throw new Error("runtime E2E failed: no RabbitMQ broker on 127.0.0.1:5672");
+    console.log("RabbitMQ scenario skipped: no broker on 127.0.0.1:5672");
+    return;
+  }
+  // The agent reports the exchange (publish) and the routing key (Spring listener), never the queue.
+  await channelScenario({ fixture: "rabbitmq", label: "RabbitMQ", channel: "rabbitmq:order.q", producerPort: 18111, consumerPort: 18112, sameTrace: true });
+}
+
 if (process.argv.includes("--reflection-only")) {
   await reflectionScenario();
+  process.exit(0);
+}
+if (process.argv.includes("--rabbitmq-only")) {
+  await rabbitScenario();
   process.exit(0);
 }
 if (!existsSync(jar)) {
@@ -191,6 +211,7 @@ execFileSync("bash", [startDeps], { stdio: "inherit" });
 if (process.argv.includes("--channels-only")) {
   await redisStreamScenario();
   await kafkaScenario();
+  await rabbitScenario();
   process.exit(0);
 }
 
@@ -236,6 +257,7 @@ try {
   await reflectionScenario();
   await redisStreamScenario();
   await kafkaScenario();
+  await rabbitScenario();
   console.log("runtime E2E passed");
 } catch (error) {
   console.error(stderr.split("\n").slice(-30).join("\n"));
