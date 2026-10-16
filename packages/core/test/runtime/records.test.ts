@@ -173,3 +173,25 @@ describe("Aggregator.reset", () => {
     expect(agg.state.total).toBe(1);
   });
 });
+
+describe("bounded lookups", () => {
+  it("reads one trace across segments without the others", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "atlas-traces-"));
+    const store = new TraceStore(dir, { segmentSpans: 3 });
+    const recs = Array.from({ length: 9 }, (_, i) => record({ t: (i % 3 === 0 ? "a" : "b").repeat(32), s: String(i + 1).padStart(16, "0") }));
+    await store.append(recs);
+    const a = await store.traceRecords("a".repeat(32));
+    expect(a.map((r) => r.s)).toEqual(["1", "4", "7"].map((s) => s.padStart(16, "0")));
+    expect(await store.traceRecords("c".repeat(32))).toEqual([]);
+  });
+
+  it("caps distinct keys; spans past the cap are counted as overflow", () => {
+    const agg = new Aggregator();
+    const recs = Array.from({ length: 20_005 }, (_, i) => record({ t: "a".repeat(32), s: String(i + 1).padStart(16, "0"), a: { cls: `C${i}`, fn: "m" } }));
+    agg.add(recs);
+    expect(Object.keys(agg.state.nodes).length).toBe(20_000);
+    expect(agg.state.overflow).toBe(5);
+    agg.add([record({ t: "b".repeat(32), s: "f".repeat(16), a: { cls: "C1", fn: "m" } })]); // existing key still counts
+    expect(agg.state.nodes["m:app:C1#m"]?.count).toBe(2);
+  });
+});

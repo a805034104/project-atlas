@@ -194,12 +194,14 @@ function TraceBody({ data }: { data: TraceData }) {
   const runtime = state.runtime ?? data.runtime;
 
   if (data.traces.length === 0) {
+    // Off or failed: nothing is receiving, so "waiting for the first request" would mislead.
+    const idle = runtime.status === "off" || runtime.status === "error";
     return (
       <div className="trace">
         <StatusLine data={data} />
         {runtime.error ? <ErrorPanel error={runtime.error} /> : null}
-        <EmptyState title={runtime.status === "off" ? t("trace.empty.title") : t("trace.waiting.title")} action={<StartActions data={data} />}>
-          <p className="muted">{runtime.status === "off" ? t("trace.empty.body") : t("trace.waiting.body")}</p>
+        <EmptyState title={idle ? t("trace.empty.title") : t("trace.waiting.title")} action={<StartActions data={data} />}>
+          <p className="muted">{idle ? t("trace.empty.body") : t("trace.waiting.body")}</p>
           {data.suggestedRequest ? (
             <p>
               <code className="command">curl {data.suggestedRequest.url}</code> <CopyButton text={`curl ${data.suggestedRequest.url}`} />

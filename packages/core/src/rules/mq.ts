@@ -749,23 +749,27 @@ function payloadArgType(broker: MqBroker, call: JavaCall, method: JavaMethod | u
 export function linkMq(sends: readonly MqSendSite[], consumers: readonly MqConsumerSite[], topology: RabbitTopology, graph: GraphBuilder): ServiceLink[] {
   const links: ServiceLink[] = [];
   for (const send of sends) {
-    let targets: { c: MqConsumerSite; channel: string; rationale: string }[] = [];
+    let targets: { c: MqConsumerSite; channel: string; rationale: string; runtime?: NonNullable<ServiceLink["runtime"]> }[] = [];
     const sameBroker = consumers.filter((c) => c.broker === send.broker);
     if (send.broker === "rabbitmq") {
       const queues = rabbitRoute(topology, send.destination, send.key ?? "");
       if (!queues) continue;
       const via = send.destination === "" ? "default exchange" : `exchange ${send.destination}`;
-      const reached = queues.map((q) => ({ q, rationale: `${via}, routing key ${send.key ?? ""} → queue ${q}` }));
+      // Runtime destinations (OTel agent, default semconv): publish → exchange ("<default>" for ""),
+      // amqp delivery → exchange, Spring listener → received routing key.
+      const ex = (e: string) => (e === "" ? "<default>" : e);
+      const runtimeOf = (exchange: string, key: string, q: string) => ({ producer: [ex(send.destination)], consumer: [...new Set([ex(exchange), key, q].filter(Boolean))], strong: [...new Set([key, q].filter(Boolean))] });
+      const reached = queues.map((q) => ({ q, rationale: `${via}, routing key ${send.key ?? ""} → queue ${q}`, runtime: runtimeOf(send.destination, send.key ?? "", q) }));
       // One dead-letter hop: expired / rejected messages are re-published to the queue's DLX (TTL delay queues).
       for (const { q, rationale } of [...reached]) {
         const dl = topology.deadLetters.get(q);
         if (!dl) continue;
         const dlKey = dl.key ?? send.key ?? "";
         for (const q2 of rabbitRoute(topology, dl.exchange, dlKey) ?? []) {
-          if (!reached.some((r) => r.q === q2)) reached.push({ q: q2, rationale: `${rationale} → dead-letter (expired/rejected) → exchange ${dl.exchange}, routing key ${dlKey} → queue ${q2}` });
+          if (!reached.some((r) => r.q === q2)) reached.push({ q: q2, rationale: `${rationale} → dead-letter (expired/rejected) → exchange ${dl.exchange}, routing key ${dlKey} → queue ${q2}`, runtime: runtimeOf(dl.exchange, dlKey, q2) });
         }
       }
-      for (const { q, rationale } of reached) for (const c of sameBroker) if (c.destinations.includes(q)) targets.push({ c, channel: `rabbitmq:${q}`, rationale });
+      for (const { q, rationale, runtime } of reached) for (const c of sameBroker) if (c.destinations.includes(q)) targets.push({ c, channel: `rabbitmq:${q}`, rationale, runtime });
     } else {
       targets = sameBroker
         .filter((c) => (c.pattern ? c.pattern.test(send.destination) : c.destinations.includes(send.destination)))
@@ -780,7 +784,7 @@ export function linkMq(sends: readonly MqSendSite[], consumers: readonly MqConsu
       targets = targets.filter((t) => t.c.dispatch?.group !== group || (match.length === 1 && t === match[0]));
       if (match.length !== 1) graph.unresolved.push({ fromStepId: send.stepId, expression: `${send.broker}:${send.destination} → ${group} (handler chosen by payload type${send.payloadType ? ` ${send.payloadType}` : ""})`, reason: "dynamic-dispatch", at: send.at });
     }
-    for (const { c, channel, rationale } of targets) {
+    for (const { c, channel, rationale, runtime } of targets) {
       graph.edge(send.stepId, c.handlerStepId, { provenance: "framework-rule", rationale });
       const evidence: SourceRef[] = [
         { rootId: send.at.rootId, file: send.at.file, line: send.at.line ?? 1 },
@@ -798,6 +802,7 @@ export function linkMq(sends: readonly MqSendSite[], consumers: readonly MqConsu
         confidence: 1,
         evidence,
         rationale,
+        ...(runtime ? { runtime } : {}),
       });
     }
   }

@@ -1,0 +1,5 @@
+server:
+  port: 18101
+spring:
+  application:
+    name: reflect-demo

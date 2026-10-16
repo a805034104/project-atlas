@@ -150,3 +150,81 @@ describe("AC#22 — runtime confirms cross-service links", () => {
     expect(span("GET login_tokens:abc").dbTable).toBeUndefined();
   });
 });
+
+/** order-service → exchange order.topic (topic) → queues stock.q ("order.*") and audit.q ("order.#"), both in stock-service. */
+async function rabbitGraph() {
+  const files: Record<string, string> = {};
+  const app = (name: string, port: number, sources: Record<string, string>) => {
+    files[`${name}/pom.xml`] = pom(name);
+    files[`${name}/src/main/java/${name.replace("-", "")}/App.java`] = `package ${name.replace("-", "")};\n@SpringBootApplication public class App {}\n`;
+    files[`${name}/src/main/resources/application.yml`] = `server:\n  port: ${port}\nspring:\n  application:\n    name: ${name}\n`;
+    for (const [f, body] of Object.entries(sources)) files[`${name}/src/main/java/${name.replace("-", "")}/${f}`] = `package ${name.replace("-", "")};\n${body}\n`;
+  };
+  app("order-service", 8081, {
+    "OrderController.java": `
+@RestController
+public class OrderController {
+  @Autowired private RabbitTemplate rabbitTemplate;
+  @PostMapping("/orders")
+  public void create(Long id) { rabbitTemplate.convertAndSend("order.topic", "order.created", id); }
+}`,
+  });
+  app("stock-service", 8082, {
+    "RabbitConfig.java": `
+@Configuration
+public class RabbitConfig {
+  @Bean public TopicExchange orderExchange() { return new TopicExchange("order.topic"); }
+  @Bean public Queue stockQueue() { return new Queue("stock.q"); }
+  @Bean public Queue auditQueue() { return new Queue("audit.q"); }
+  @Bean public Binding stockBinding(Queue stockQueue, TopicExchange orderExchange) { return BindingBuilder.bind(stockQueue).to(orderExchange).with("order.*"); }
+  @Bean public Binding auditBinding(Queue auditQueue, TopicExchange orderExchange) { return BindingBuilder.bind(auditQueue).to(orderExchange).with("order.#"); }
+}`,
+    "Listeners.java": `
+@Component
+public class Listeners {
+  @RabbitListener(queues = "stock.q") public void onStock(Long id) {}
+  @RabbitListener(queues = "audit.q") public void onAudit(Long id) {}
+}`,
+  });
+  return analyzeTree(files);
+}
+
+describe("RabbitMQ runtime confirmation (the agent reports exchange / routing key, not the queue)", () => {
+  it("records runtime destinations on the static links", async () => {
+    const g = await rabbitGraph();
+    const stock = g.serviceLinks.find((l) => l.channel === "rabbitmq:stock.q");
+    expect(stock?.runtime).toEqual({ producer: ["order.topic"], consumer: ["order.topic", "order.created", "stock.q"], strong: ["order.created", "stock.q"] });
+    expect(g.serviceLinks.map((l) => l.channel).sort()).toEqual(["rabbitmq:audit.q", "rabbitmq:stock.q"]);
+  });
+
+  it("an exchange or a shared routing key alone confirms nothing; the handler that ran picks the queue", async () => {
+    const g = await rabbitGraph();
+    const linkOf = (q: string) => g.serviceLinks.find((l) => l.channel === `rabbitmq:${q}`)!.id;
+    const agg = new Aggregator();
+    agg.add([
+      rec("order-service", "producer", { msgSystem: "rabbitmq", msgDest: "order.topic" }, "1", "1"),
+      rec("stock-service", "consumer", { msgSystem: "rabbitmq", msgDest: "order.topic" }, "1", "2", "1"), // amqp delivery: exchange
+    ]);
+    expect(reconcile(g, agg.state).links).toEqual({});
+    agg.add([rec("stock-service", "consumer", { msgSystem: "rabbitmq", msgDest: "order.created" }, "1", "3", "2")]); // Spring listener: routing key
+    expect(reconcile(g, agg.state).links).toEqual({}); // both queues receive "order.created"
+    agg.add([rec("stock-service", "internal", { cls: "stockservice.Listeners", fn: "onStock" }, "1", "4", "3")]);
+    expect(Object.keys(reconcile(g, agg.state).links)).toEqual([linkOf("stock.q")]);
+  });
+
+  it("with one queue per producer, the routing key the listener reports confirms the link", async () => {
+    const g = await rabbitGraph();
+    const stock = g.serviceLinks.find((l) => l.channel === "rabbitmq:stock.q")!;
+    const g1 = { ...g, serviceLinks: [stock] };
+    const agg = new Aggregator();
+    agg.add([
+      rec("order-service", "producer", { msgSystem: "rabbitmq", msgDest: "order.topic" }, "2", "1"),
+      rec("stock-service", "consumer", { msgSystem: "rabbitmq", msgDest: "order.created" }, "2", "2", "1"),
+    ]);
+    expect(Object.keys(reconcile(g1, agg.state).links)).toEqual([stock.id]);
+    // without the producer seen on its exchange, nothing
+    const agg2 = new Aggregator();
+    agg2.add([rec("stock-service", "consumer", { msgSystem: "rabbitmq", msgDest: "order.created" }, "3", "2")]);
+    expect(reconcile(g1, agg2.state).links).toEqual({});
+  });
+});

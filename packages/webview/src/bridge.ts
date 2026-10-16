@@ -17,14 +17,20 @@ export interface Bridge {
   onMessage(listener: HostListener): () => void;
 }
 
-const HOST_TYPES: ReadonlySet<string> = new Set<HostToWebview["type"]>([
-  "init",
-  "analysisState",
-  "viewData",
-  "flowDetail",
-  "reveal",
-  "error",
-]);
+// A Record, not a list: adding a HostToWebview type without listing it here fails to compile
+// (v0.2 shipped with runtimeState / runtimeUpdated / traceDetail silently dropped).
+const HOST_TYPE_RECORD: Record<HostToWebview["type"], true> = {
+  init: true,
+  analysisState: true,
+  viewData: true,
+  flowDetail: true,
+  reveal: true,
+  error: true,
+  runtimeState: true,
+  runtimeUpdated: true,
+  traceDetail: true,
+};
+const HOST_TYPES: ReadonlySet<string> = new Set(Object.keys(HOST_TYPE_RECORD));
 
 /** Shallow structural check: drops foreign messages (e.g. devtools, extensions). */
 export function isHostMessage(data: unknown): data is HostToWebview {

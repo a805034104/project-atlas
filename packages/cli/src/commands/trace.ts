@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -43,24 +43,59 @@ import type { CliIo } from "../io.js";
 
 export interface TraceDeps {
   /** Spawn the traced command; returns its exit code. Tests replace this. */
-  run?: (command: string, env: Record<string, string>, cwd: string, options: { stdoutToStderr: boolean }) => Promise<number>;
+  run?: (command: string, env: Record<string, string>, cwd: string, options: RunOptions) => Promise<number>;
   /** Resolves when the user interrupts a `--print-config` session. */
   waitForInterrupt?: () => Promise<void>;
   /** Flush window after the command exits (exporter batch delay is 500 ms). */
   settleMs?: number;
 }
 
-function defaultRun(command: string, env: Record<string, string>, cwd: string, options: { stdoutToStderr: boolean }): Promise<number> {
+/** End a Windows process and everything it started (cmd.exe → mvn's JVM → the app's JVM). */
+function killTree(pid: number): Promise<void> {
+  return new Promise((resolve) => execFile("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => resolve()));
+}
+
+export interface RunOptions {
+  stdoutToStderr: boolean;
+  /** After Ctrl-C, how long the tree may take to stop by itself before it is killed (Windows). */
+  graceMs?: number;
+  /** stderr for the "stopping" notice. */
+  notice?: (line: string) => void;
+}
+
+/**
+ *   Ctrl-C ─▶ the console delivers it to every process in the tree; this one stays alive to summarise
+ *     Windows: still running after graceMs (a JVM stuck in shutdown hooks, cmd.exe asking
+ *              "Terminate batch job (Y/N)?" for mvn.cmd), or a second Ctrl-C ─▶ taskkill /T /F
+ *   exit code: the child's; 130 when the run was interrupted.
+ */
+export function runTraced(command: string, env: Record<string, string>, cwd: string, options: RunOptions): Promise<number> {
   return new Promise((resolve, reject) => {
     // shell: the command comes from the user's own terminal (or the startup guide); mvn is mvn.cmd on Windows.
     // With --json the app's own output goes to stderr so stdout stays one JSON document.
     const child = spawn(command, { cwd, env: { ...process.env, ...env }, stdio: options.stdoutToStderr ? ["inherit", process.stderr, "inherit"] : "inherit", shell: true });
-    const forward = () => {}; // Ctrl-C reaches the child through the console; keep this process alive to summarise
+    let interrupts = 0;
+    let timer: NodeJS.Timeout | undefined;
+    const forward = () => {
+      interrupts++;
+      if (process.platform !== "win32" || child.pid === undefined) return;
+      if (interrupts === 1) {
+        const graceMs = options.graceMs ?? 10_000;
+        options.notice?.(`atlas: stopping (up to ${Math.ceil(graceMs / 1000)} s; Ctrl-C again to stop now)`);
+        timer = setTimeout(() => void killTree(child.pid as number), graceMs);
+      } else {
+        void killTree(child.pid);
+      }
+    };
     process.on("SIGINT", forward);
-    child.on("error", reject);
+    child.on("error", (error) => {
+      process.off("SIGINT", forward);
+      reject(error);
+    });
     child.on("exit", (code, signal) => {
       process.off("SIGINT", forward);
-      resolve(code ?? (signal ? 130 : 1));
+      if (timer) clearTimeout(timer);
+      resolve(interrupts > 0 ? 130 : (code ?? (signal ? 130 : 1)));
     });
   });
 }
@@ -216,7 +251,7 @@ export async function traceCommand(cmd: TraceCommand, io: CliIo, deps: TraceDeps
         );
       }
       io.stderr(`atlas: ${launch.launcher} → ${launch.command}${Object.keys(launch.env).length ? `  (JAVA_TOOL_OPTIONS set)` : ""}\n`);
-      const code = await (deps.run ?? defaultRun)(launch.command, launch.env, io.cwd, { stdoutToStderr: cmd.json });
+      const code = await (deps.run ?? runTraced)(launch.command, launch.env, io.cwd, { stdoutToStderr: cmd.json, notice: (line) => io.stderr(`${line}\n`) });
       await new Promise((resolve) => setTimeout(resolve, deps.settleMs ?? 1500));
       if (!session) return code;
       const s = summary(graph, session.aggregator.state);

@@ -145,6 +145,25 @@ export class TraceStore {
     }
   }
 
+  /** The stored records of one trace. Lines are parsed only when they contain the id (100k spans ≈ tens of ms). */
+  async traceRecords(traceId: string): Promise<SpanRecord[]> {
+    const out: SpanRecord[] = [];
+    for (const file of await this.segmentFiles()) {
+      const text = await readFile(path.join(this.dir, file), "utf8").catch(() => "");
+      if (!text.includes(traceId)) continue;
+      for (const line of text.split("\n")) {
+        if (!line.includes(traceId)) continue;
+        try {
+          const r = JSON.parse(line) as SpanRecord;
+          if (r.t === traceId) out.push(r);
+        } catch {
+          // torn or foreign line
+        }
+      }
+    }
+    return out;
+  }
+
   async loadAggregates(): Promise<AggregateState> {
     try {
       const parsed = JSON.parse(await readFile(path.join(this.dir, "aggregates.json"), "utf8")) as AggregateState;
