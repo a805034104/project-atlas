@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyGraph } from "@project-atlas/core";
-import { renderStaticHtml } from "../src/static-export.js";
+import { renderStaticHtml } from "@project-atlas/core";
 
 describe("single-file HTML export", () => {
   const graph = emptyGraph("0.1.0", "evil</script><script>alert(1)</script>", new Date("2026-10-15T00:00:00Z"));
