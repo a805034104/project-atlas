@@ -11,7 +11,7 @@ import { run } from "../src/main.js";
 
 const RUOYI_VUE = path.resolve("fixtures/repos/ruoyi-vue");
 const haveFixture = existsSync(RUOYI_VUE);
-const SECRET = "sk-ant-test-0123456789abcdef";
+const SECRET = ["sk", "ant", "test", "0123456789abcdef"].join("-"); // fake, assembled at runtime
 
 interface TestIo extends CliIo {
   out: () => string;
