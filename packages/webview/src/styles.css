@@ -690,56 +690,198 @@ ol.plain-list {
   color: var(--vscode-descriptionForeground);
 }
 
-.swimlane-scroll {
-  overflow: auto;
-  max-width: 100%;
-}
-
-.swimlane {
+/* Flow diagram: top-down pyramid (views/flow/Pyramid.tsx). */
+.pyramid-wrap {
   position: relative;
 }
 
-.lane-band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px solid var(--vscode-contrastBorder, var(--vscode-panel-border, var(--vscode-descriptionForeground)));
+.pyramid-scroll {
+  overflow: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 160px);
 }
 
-.band-header {
+.pyramid-sizer {
+  position: relative;
+}
+
+.pyramid {
+  position: relative;
+}
+
+.pyr-rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.pyr-rail-row {
+  position: absolute;
+  left: 6px;
+  right: 6px;
   display: flex;
-  gap: 6px;
   align-items: center;
-  height: 30px;
-  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.25;
 }
 
-.lane-row {
+.pyr-frame {
   position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px dashed var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  border: 1px dashed var(--vscode-panel-border, var(--vscode-contrastBorder, var(--vscode-descriptionForeground)));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--vscode-descriptionForeground) 6%, transparent);
 }
 
-.lane-label {
-  display: inline-block;
-  position: sticky;
-  left: 0;
-  background: var(--vscode-editor-background);
+.pyr-frame-title {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  height: 22px;
+  font-size: 12px;
+}
+
+.pyr-frame-title {
   z-index: 1;
-  padding: 4px 6px;
-  font-size: 0.85em;
+  padding-right: 6px;
+  border-radius: 4px;
+  background: var(--vscode-editor-background);
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-.swimlane-edges {
+.pyr-frame-title .code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Edge labels sit beside the vertical line (never on a frame title); recursion labels centre on the loop. */
+.pyr-edge-label {
+  position: absolute;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.pyr-edge-label.back {
+  transform: translate(-50%, -50%);
+}
+
+.pyr-edge-label .edge-label {
+  position: static;
+  transform: none;
+}
+
+.pyr-frame-title button {
+  padding: 0 4px;
+  min-height: 0;
+  line-height: 1.3;
+}
+
+.pyramid-edges {
   position: absolute;
   left: 0;
   top: 0;
   overflow: visible;
 }
 
-.swimlane-edges .edge-path {
+.pyramid-edges .edge-path {
   pointer-events: stroke;
+}
+
+.edge-path.edge-back {
+  stroke-dasharray: 5 3;
+}
+
+.edge-path.edge-sidecar {
+  stroke-dasharray: 3 3;
+}
+
+.edge-path.dim {
+  opacity: 0.25;
+}
+
+.pyr-node {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.pyr-label {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.pyr-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 16px;
+}
+
+.pyr-chip {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 14px;
+}
+
+.chip-controller { color: var(--vscode-charts-blue); }
+.chip-service { color: var(--vscode-charts-green); }
+.chip-repository,
+.chip-sql { color: var(--vscode-charts-orange); }
+.chip-filter,
+.chip-interceptor,
+.chip-aspect { color: var(--vscode-charts-purple); }
+.chip-frontend { color: var(--vscode-charts-yellow); }
+.chip-external-http { color: var(--vscode-charts-red); }
+
+.pyr-more {
+  border-style: dashed;
+  align-items: center;
+  color: var(--vscode-textLink-foreground);
+}
+
+.pyr-sidecar {
+  position: absolute;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px dashed var(--vscode-charts-purple);
+  border-radius: 14px;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  font-size: 12px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.pyr-sidecar.dim {
+  opacity: 0.25;
+}
+
+.pyr-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  z-index: 3;
 }
 
 .arrow-head {
@@ -795,7 +937,7 @@ ol.plain-list {
   z-index: 2;
 }
 
-.swimlane.vertical .edge-label {
+.pyramid.vertical .edge-label {
   position: static;
   transform: none;
 }
@@ -823,18 +965,26 @@ ol.plain-list {
   font-size: 0.85em;
 }
 
-.swimlane.vertical .context-menu {
+.pyramid.vertical .context-menu {
   position: static;
 }
 
-.swimlane.vertical .lane-band {
-  position: static;
+.pyramid.vertical .pyr-band {
   margin-bottom: 8px;
+  border-top: 1px solid var(--vscode-contrastBorder, var(--vscode-panel-border, var(--vscode-descriptionForeground)));
+}
+
+.pyramid.vertical .band-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 30px;
+  font-weight: 600;
 }
 
 .vertical-step {
   display: grid;
-  grid-template-columns: 7em minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px 8px;
   padding: 4px 0;
 }
@@ -845,7 +995,6 @@ ol.plain-list {
 }
 
 .vertical-edges {
-  grid-column: 2;
   list-style: none;
   margin: 0;
   padding: 0 0 0 12px;
@@ -862,7 +1011,7 @@ ol.plain-list {
   font-weight: 600;
 }
 
-/* narrow panel (< 600px): list → select, swimlane → vertical */
+/* narrow panel (< 600px): list → select, pyramid → indented list */
 .flow.narrow {
   flex-direction: column;
 }
