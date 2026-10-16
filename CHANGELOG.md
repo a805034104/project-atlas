@@ -25,7 +25,8 @@ Closes the items v0.2.0 shipped as partial.
 - **RabbitMQ runtime confirmation**: links carry the destinations the agent reports (publish → exchange or `<default>`;
   delivery → exchange; Spring listener → routing key). A link is confirmed when the producer was seen on its exchange and
   the consumer on its routing key or queue; an exchange-only match, or several queues behind one exchange, also needs the
-  listener method observed. Spring Cloud Stream channels match on any binder.
+  listener method observed. Spring Cloud Stream channels match on any binder. Verified on a real broker in CI
+  (`runtime-rabbitmq`: rabbitmq:3.13 service container, `fixtures/synthetic/rabbitmq`, topic exchange → queue).
 - **AC#23 on a real JVM**: `fixtures/synthetic/reflection` + `node scripts/runtime-e2e.mjs --reflection-only` — reflection
   into another bean is listed as runtime-only reachability with no edge; reflection inside one class draws a
   runtime-observed edge.

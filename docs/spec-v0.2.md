@@ -1,7 +1,7 @@
 <!-- /autoplan restore point: /c/Users/admin/.gstack/projects/project-atlas/feat-v0.2-autoplan-restore-20261015-124844.md -->
 # ProjectAtlas v0.2 计划：运行时对账（Java）+ 消息队列链路
 
-> 状态：**已实现并发布 v0.2.0（2026-10-15，tag `v0.2.0`）**。闸门批准后实现，/review（安全、测试、性能、红队四路）发现的问题已修复，见 CHANGELOG。v0.2.1（2026-10-16）补齐：AC#23 真实 JVM（`runtime-e2e.mjs --reflection-only`）、AC-RT-WIN 真实控制台 Ctrl-C（`runtime-win.mjs`）、四主题截图（`docs/screenshots/v0.2`）、RabbitMQ 运行时按 agent 实际上报的交换机 / routing key 印证、重载歧义处理。仍未完成：RabbitMQ/RocketMQ 运行时只在 Linux CI（docker）上跑过真实 broker，本机只有单元测试；留存样本人工评分。上位文档是 `docs/spec.md`：本文件只写 v0.2 的范围、取舍和新增决策；
+> 状态：**已实现并发布 v0.2.0（2026-10-15，tag `v0.2.0`）**。闸门批准后实现，/review（安全、测试、性能、红队四路）发现的问题已修复，见 CHANGELOG。v0.2.1（2026-10-16）补齐：AC#23 真实 JVM（`runtime-e2e.mjs --reflection-only`）、AC-RT-WIN 真实控制台 Ctrl-C（`runtime-win.mjs`）、四主题截图（`docs/screenshots/v0.2`）、RabbitMQ 运行时按 agent 实际上报的交换机 / routing key 印证、重载歧义处理。RabbitMQ 运行时已在 CI 的真实 broker（rabbitmq:3.13 服务容器，`runtime-rabbitmq` 任务）上通过。仍未完成：RocketMQ 运行时没有真实 broker 测试（只有单元测试）；留存样本人工评分。上位文档是 `docs/spec.md`：本文件只写 v0.2 的范围、取舍和新增决策；
 > 未在此改写的细节沿用 spec.md「运行时追踪（仅本地）」「评审修订 v1.1」两节。**本文与 spec.md 冲突时以本文为准。**
 
 ## 0. 定位（评审后新增）
