@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -69,15 +69,15 @@ async function collectWasm(base: string, grammars: Record<string, string>): Prom
 }
 
 async function unpack(sea: SeaApi, dir: string): Promise<Assets> {
-  await mkdir(path.join(dir, "wasm"), { recursive: true });
+  await mkdir(path.join(dir, "wasm"), { recursive: true, mode: 0o700 });
   for (const name of EMBEDDED) {
     const data = Buffer.from(sea.getAsset(name));
     const target = name.endsWith(".wasm") ? path.join(dir, "wasm", name) : path.join(dir, name);
     const expected = createHash("sha256").update(data).digest("hex");
     const current = await readFile(target).then((b) => createHash("sha256").update(b).digest("hex"), () => undefined);
     if (current === expected) continue;
-    const tmp = `${target}.${process.pid}.tmp`;
-    await writeFile(tmp, data);
+    const tmp = `${target}.${randomBytes(8).toString("hex")}.tmp`;
+    await writeFile(tmp, data, { flag: "wx" });
     await rename(tmp, target);
   }
   return { assetsDir: dir, wasmDir: path.join(dir, "wasm"), workerPath: path.join(dir, "worker.cjs"), mode: "sea" };

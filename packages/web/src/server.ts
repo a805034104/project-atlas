@@ -5,18 +5,21 @@ import path from "node:path";
 import { createProvider, renderAtlasMarkdown, renderStaticHtml, secretEquals, toUserFacing, type WebviewToHost } from "@project-atlas/core";
 import { listDirs } from "./fs-api.js";
 import { ImportError, type ProjectRegistry } from "./projects.js";
+import { healthProof } from "./instance.js";
 import { baseHeaders, checkRequest, contentSecurityPolicy, createAuth, type Auth } from "./security.js";
 import type { SettingsInput, SettingsStore } from "./store.js";
 
 /**
  * Local HTTP server (127.0.0.1 only).
  *
- *   GET  /healthz                      { nonce }            unauthenticated (instance check)
+ *   GET  /healthz?challenge=<hex>      { proof }            unauthenticated; proof = HMAC(secret, challenge),
+ *                                                           so a second launch knows it talks to the real instance
  *   GET  /                             page shell (CSP nonce, data-atlas-host="web")
  *   GET  /assets/<file>                webview bundle + web theme (allow-list)
- *   POST /api/session      {code}      one-time launch code ─▶ session cookie
+ *   POST /api/session      {code}      one-time launch code ─▶ session token (kept in the page, sent as X-Atlas-Session)
  *   POST /api/launch-code              x-atlas-secret (web.json) ─▶ fresh code for a second launch
- *   ── cookie required below ──
+ *   ── X-Atlas-Session (or a single-use ?ticket= for EventSource / downloads) required below ──
+ *   POST /api/ticket                   single-use ticket
  *   GET  /api/state                    version, projects, settings (no keys)
  *   POST /api/projects     {input, trusted}          import a folder / git URL
  *   POST /api/projects/:id/remove | /trust {trusted}
@@ -84,15 +87,18 @@ export async function startServer(options: ServerOptions): Promise<AtlasServer> 
     const url = new URL(req.url ?? "/", `http://127.0.0.1:${a.port}`);
     const route = `${req.method} ${url.pathname}`;
 
-    if (route === "GET /healthz") return json(res, 200, { nonce: options.nonce, version: options.version });
+    if (route === "GET /healthz") {
+      const challenge = url.searchParams.get("challenge") ?? "";
+      if (!/^[0-9a-f]{32,128}$/.test(challenge)) return json(res, 200, { version: options.version });
+      return json(res, 200, { version: options.version, proof: healthProof(a.secret, challenge) });
+    }
     if (route === "GET /") return page(res);
     if (req.method === "GET" && url.pathname.startsWith("/assets/")) return asset(res, url.pathname.slice("/assets/".length));
     if (route === "POST /api/session") {
       const body = await readJson<{ code?: string }>(req);
       const session = typeof body.code === "string" ? a.redeem(body.code) : undefined;
       if (!session) throw new HttpError(401, "invalid or expired launch code");
-      res.setHeader("Set-Cookie", `${a.cookieName}=${session}; HttpOnly; SameSite=Strict; Path=/`);
-      return json(res, 200, { ok: true });
+      return json(res, 200, { session });
     }
     if (route === "POST /api/launch-code") {
       const presented = req.headers["x-atlas-secret"];
@@ -100,7 +106,9 @@ export async function startServer(options: ServerOptions): Promise<AtlasServer> 
       return json(res, 200, { code: a.issueCode() });
     }
     if (!url.pathname.startsWith("/api/")) throw new HttpError(404, "not found");
-    if (!a.authenticated(req)) throw new HttpError(401, "not signed in");
+    if (!a.authenticated(req, url)) throw new HttpError(401, "not signed in");
+    options.registry.touch();
+    if (route === "POST /api/ticket") return json(res, 200, { ticket: a.issueTicket() });
 
     if (route === "GET /api/state") return json(res, 200, { version: options.version, dataDir: options.dataDir, projects: options.registry.list(), settings: options.settings.publicView() });
     if (route === "POST /api/projects") {
@@ -218,6 +226,7 @@ export async function startServer(options: ServerOptions): Promise<AtlasServer> 
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : options.port;
   auth = createAuth(port);
+  auth.onReplay = () => options.log("warning: a launch code was used twice, so someone else saw it; every page was signed out. Start ProjectAtlas again to get a new link.");
   return {
     server,
     port,

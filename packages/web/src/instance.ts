@@ -1,6 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { secretEquals } from "@project-atlas/core";
+import { writeJsonAtomic } from "./store.js";
 
 /**
  * One local web app per user.
@@ -8,10 +10,16 @@ import path from "node:path";
  *   web.lock   created with "wx" by the starting process (atomic); removed on exit
  *   web.json   { pid, port, nonce, secret } (0600) once the server listens
  *
- * A second launch finds a live instance (GET /healthz answers with the same nonce — a pid alone
- * can be reused by another program), asks it for a fresh one-time code with the secret, opens the
- * browser there and exits. A lock or web.json left by a dead process is taken over.
+ * A second launch finds a live instance and proves it is the real one before trusting it: it sends
+ * a random challenge to GET /healthz and expects HMAC(secret, challenge) back. Only then does it
+ * send the secret to ask for a fresh one-time code, open the browser there and exit. Whatever
+ * else may listen on a port left in a stale web.json (a pid or port can be reused by another
+ * program) learns nothing. A lock or web.json left by a dead process is taken over.
  */
+
+export function healthProof(secret: string, challenge: string): string {
+  return createHmac("sha256", secret).update(`atlas-healthz:${challenge}`).digest("hex");
+}
 
 export interface InstanceInfo {
   pid: number;
@@ -40,8 +48,9 @@ export async function findLiveInstance(home: string, fetchImpl: typeof fetch = f
   const info = await readInfo(home);
   if (!info) return undefined;
   try {
-    const health = (await (await fetchImpl(`http://127.0.0.1:${info.port}/healthz`, { signal: AbortSignal.timeout(1500) })).json()) as { nonce?: string };
-    if (health.nonce !== info.nonce) return undefined;
+    const challenge = randomBytes(16).toString("hex");
+    const health = (await (await fetchImpl(`http://127.0.0.1:${info.port}/healthz?challenge=${challenge}`, { signal: AbortSignal.timeout(1500) })).json()) as { proof?: string };
+    if (typeof health.proof !== "string" || !secretEquals(health.proof, healthProof(info.secret, challenge))) return undefined;
     const res = await fetchImpl(`http://127.0.0.1:${info.port}/api/launch-code`, {
       method: "POST",
       headers: { "content-type": "application/json", origin: `http://127.0.0.1:${info.port}`, "x-atlas-secret": info.secret },
@@ -68,7 +77,7 @@ export interface InstanceLock {
  * then hands over to it); throws only on unexpected file-system errors.
  */
 export async function acquireInstanceLock(home: string, fetchImpl: typeof fetch = fetch): Promise<InstanceLock | undefined> {
-  await mkdir(home, { recursive: true });
+  await mkdir(home, { recursive: true, mode: 0o700 });
   const lockFile = path.join(home, "web.lock");
   const nonce = randomBytes(16).toString("hex");
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -77,7 +86,7 @@ export async function acquireInstanceLock(home: string, fetchImpl: typeof fetch 
       return {
         nonce,
         publish: async (port, secret) => {
-          await writeFile(path.join(home, "web.json"), JSON.stringify({ pid: process.pid, port, nonce, secret } satisfies InstanceInfo), { mode: 0o600 });
+          await writeJsonAtomic(path.join(home, "web.json"), { pid: process.pid, port, nonce, secret } satisfies InstanceInfo, 0o600);
         },
         release: async () => {
           const info = await readInfo(home);

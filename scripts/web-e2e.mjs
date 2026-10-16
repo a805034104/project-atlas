@@ -101,7 +101,8 @@ try {
   await cdp("Page.navigate", { url });
   await until(() => evaluate("location.hash === '#/' && !!document.querySelector('.web-import input')"), 30_000, "home page");
   check(await evaluate("!location.href.includes('code=')"), "signed in; the one-time code is gone from the address bar");
-  check(await evaluate("fetch('/api/state').then(r => r.status === 200)"), "session cookie works");
+  check(await evaluate(`fetch("/api/state", { headers: { "x-atlas-session": localStorage.getItem("atlas.session") } }).then(r => r.status === 200)`), "session token works (header)");
+  check(await evaluate(`fetch("/api/state").then(r => r.status === 401) && document.cookie === ""`), "no cookie: a bare request is refused");
 
   // Import: React reads the value through its own setter, so set it the way a keystroke would.
   await evaluate(`(() => {

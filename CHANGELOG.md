@@ -9,10 +9,13 @@ Plan and review record: docs/spec-v0.3-web.md.
   the browser opens, import a project by path, folder picker or public git URL, see the map. One instance per user (a
   second launch opens the running one), exits 30 minutes after the last page closes, recent projects on the home page,
   `--self-test` proves the packaged parser runs on worker threads.
-- **Local web server** (127.0.0.1 only): exact Host / Origin / Sec-Fetch-Site / content-type checks, one-time launch
-  codes in the URL fragment exchanged for an HttpOnly SameSite=Strict per-port cookie, strict CSP, no framing; the
-  source panel reads only inside imported roots (realpath on both sides, the ProjectAtlas home always refused); UNC
-  paths refused; git imports keep the v0.1 clone guards plus `core.symlinks=false`. Questions the analysis waits for
+- **Local web server** (127.0.0.1 only): exact Host / Origin / Sec-Fetch-Site / content-type checks; one-time launch
+  codes in the URL fragment exchanged for a session token kept in the page and sent as a header (no cookie: browsers
+  send cookies to every port of 127.0.0.1), single-use tickets for the event stream and downloads, and a replayed code
+  signs everyone out; a second launch checks the running instance by challenge-response before handing it the
+  secret; strict CSP, no framing. The source panel reads only inside the imported folder and its clones (never roots
+  named by a stored graph; realpath on both sides). A stored API key is only sent to the base URL it was entered for.
+  UNC paths refused; git imports keep the v0.1 clone guards plus `core.symlinks=false`. Questions the analysis waits for
   (AI cost, clone confirmation, service pick) become dialogs in the page.
 - **Pyramid flow**: entry on top, one row per call depth, callers centred over callees; aspects (also chains of
   @Before/@AfterReturning/@Around at the entry) drawn beside the method they advise; more than 6 callees fold into

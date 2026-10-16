@@ -48,6 +48,7 @@ export function vscodeEnv(context: vscode.ExtensionContext, reveal: (view: ViewI
       const show = level === "error" ? vscode.window.showErrorMessage : level === "warning" ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
       return Promise.resolve(show(message, ...actions));
     },
+    showLog: () => void vscode.commands.executeCommand("atlas.showLog"),
     clipboard: async (text) => {
       await vscode.env.clipboard.writeText(text);
       void vscode.window.setStatusBarMessage(vscode.env.language.toLowerCase().startsWith("zh") ? "已复制" : "Copied", 1500);

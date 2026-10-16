@@ -6,7 +6,7 @@ import type { AnalysisController } from "./analysis.js";
 import type { Disposable } from "./emitter.js";
 import { translator, type HostEnv } from "./env.js";
 import { addEdgeRemoval } from "./overrides-writer.js";
-import { readSnippet } from "./source.js";
+import { readSnippet, resolveInRoot } from "./source.js";
 import { RuntimeActionError, type RuntimeHost } from "./runtime-host.js";
 
 /**
@@ -44,6 +44,8 @@ export interface HostSessionOptions {
   runCommand(command: WebviewCommand): Promise<void>;
   /** Extension: open an editor. Omitted on the web, where `readSource` serves snippets. */
   openSource?(absolutePath: string, line?: number): Promise<void>;
+  /** Directories the host itself knows; source reads stay inside them (see source.ts). */
+  sourceBounds?(): readonly string[];
   /** Hold pushes until the webview says `ready` (the extension's panel); the web replays snapshots instead. */
   bufferUntilReady?: boolean;
 }
@@ -121,7 +123,7 @@ export class HostSession {
       }
       case "readSource": {
         const roots = controller.graph?.project.roots ?? [];
-        return [{ type: "sourceSnippet", data: await readSnippet(roots, message.ref) }];
+        return [{ type: "sourceSnippet", data: await readSnippet(roots, message.ref, 20, undefined, this.options.sourceBounds?.()) }];
       }
       case "openSource":
         await this.openSource(message.ref);
@@ -154,13 +156,18 @@ export class HostSession {
 
   private async openSource(ref: SourceRef): Promise<void> {
     const roots = this.options.controller.graph?.project.roots ?? [];
-    const snippet = await readSnippet(roots, ref, 0);
-    if (!snippet.absolutePath || snippet.error === "outside-project") {
-      this.options.env.log(`Refused to open a path outside the workspace root: ${ref.file}`);
+    const bounds = this.options.sourceBounds?.();
+    if (!this.options.openSource) {
+      this.options.post({ type: "sourceSnippet", data: await readSnippet(roots, ref, 20, undefined, bounds) });
       return;
     }
-    if (this.options.openSource) await this.options.openSource(snippet.absolutePath, ref.line);
-    else this.options.post({ type: "sourceSnippet", data: await readSnippet(roots, ref) });
+    const target = await resolveInRoot(roots, ref, undefined, bounds);
+    if (!target) {
+      this.options.env.log(`Cannot open ${ref.file}: missing, or outside the analyzed folders`);
+      void this.options.env.notify("warning", this.t(`无法打开 ${ref.file}：文件不存在或不在分析的目录内`, `Cannot open ${ref.file}: it is missing or outside the analyzed folders`));
+      return;
+    }
+    await this.options.openSource(target, ref.line);
   }
 
   private async markEdgeWrong(edgeId: string): Promise<void> {

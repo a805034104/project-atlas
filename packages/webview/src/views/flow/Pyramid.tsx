@@ -73,8 +73,12 @@ export function Pyramid({
   const collapsedBands = useMemo(() => new Set(state.persisted.collapsedBands), [state.persisted.collapsedBands]);
   const model = useMemo(() => buildSwimlane(detail, { expandedBranches: expanded, collapsedBands }), [detail, expanded, collapsedBands]);
   const layout = useMemo(() => buildPyramid(model, { expandedFanout }), [model, expandedFanout]);
-  const nodeIds = useMemo(() => layout.nodes.map((n) => n.id), [layout]);
-  const navEdges = useMemo(() => layout.links.filter((l) => l.kind !== "back").map((l) => ({ from: l.from, to: l.to })), [layout]);
+  // Keyboard order follows what is drawn: the pyramid's nodes, or every step in the narrow list.
+  const nodeIds = useMemo(() => (vertical ? model.nodes.map((n) => n.id) : layout.nodes.map((n) => n.id)), [vertical, model, layout]);
+  const navEdges = useMemo(
+    () => (vertical ? model.edges.map((e) => ({ from: e.from, to: e.to })) : layout.links.filter((l) => l.kind !== "back").map((l) => ({ from: l.from, to: l.to }))),
+    [vertical, model, layout],
+  );
   const names = useMemo(() => new Map(model.nodes.map((n) => [n.id, n.label])), [model]);
   const outCount = (id: string) => model.edges.filter((e) => e.from === id).length;
 
@@ -85,7 +89,8 @@ export function Pyramid({
     ro.observe(el);
     setViewport(el.clientWidth);
     return () => ro.disconnect();
-  }, []);
+    // The scroller only exists in the wide layout: re-attach after a narrow/wide switch.
+  }, [vertical]);
   const scale = zoom === "fit" ? (viewport > 0 ? Math.min(1, Math.max(ZOOM_MIN, viewport / layout.width)) : 1) : zoom;
 
   const toggleBand = (serviceId: string) => {
@@ -106,8 +111,14 @@ export function Pyramid({
   };
   const expandFanout = (parent: string) => setExpandedFanout(new Set([...expandedFanout, parent]));
 
-  const activate = (id: string) => {
+  const placed = (id: string): { more?: { parent: string }; node?: LaneNode } | undefined => {
     const p = layout.nodes.find((x) => x.id === id);
+    if (p) return p;
+    const node = vertical ? model.nodes.find((n) => n.id === id) : undefined;
+    return node ? { node } : undefined;
+  };
+  const activate = (id: string) => {
+    const p = placed(id);
     if (p?.more) return expandFanout(p.more.parent);
     const n = p?.node;
     if (!n) return;
@@ -115,7 +126,7 @@ export function Pyramid({
     else toggleBand(n.serviceId);
   };
   const toggle = (id: string) => {
-    const p = layout.nodes.find((x) => x.id === id);
+    const p = placed(id);
     if (p?.more) return expandFanout(p.more.parent);
     const n = p?.node;
     if (!n) return;

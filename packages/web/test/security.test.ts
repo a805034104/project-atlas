@@ -3,6 +3,7 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { healthProof } from "../src/instance.js";
 import { ProjectRegistry } from "../src/projects.js";
 import { startServer, type AtlasServer } from "../src/server.js";
 import { SettingsStore } from "../src/store.js";
@@ -29,12 +30,12 @@ function send(port: number, method: string, pathname: string, headers: Record<st
 let server: AtlasServer;
 let home: string;
 let project: string;
-let cookie = "";
+let session = "";
 const origin = () => `http://127.0.0.1:${server.port}`;
 const host = () => `127.0.0.1:${server.port}`;
 const post = (pathname: string, body: unknown, extra: Record<string, string> = {}) =>
-  send(server.port, "POST", pathname, { host: host(), origin: origin(), "content-type": "application/json", ...(cookie ? { cookie } : {}), ...extra }, JSON.stringify(body));
-const get = (pathname: string, extra: Record<string, string> = {}) => send(server.port, "GET", pathname, { host: host(), ...(cookie ? { cookie } : {}), ...extra });
+  send(server.port, "POST", pathname, { host: host(), origin: origin(), "content-type": "application/json", ...(session ? { "x-atlas-session": session } : {}), ...extra }, JSON.stringify(body));
+const get = (pathname: string, extra: Record<string, string> = {}) => send(server.port, "GET", pathname, { host: host(), ...(session ? { "x-atlas-session": session } : {}), ...extra });
 
 beforeAll(async () => {
   home = await mkdtemp(path.join(tmpdir(), "atlas-web-home-"));
@@ -55,10 +56,14 @@ afterAll(async () => {
 });
 
 describe("local web server: transport guards (AC-W3)", () => {
-  it("answers /healthz with the instance nonce, unauthenticated", async () => {
-    const r = await get("/healthz");
+  it("answers /healthz with a proof of the secret for a challenge, and gives nothing reusable away", async () => {
+    const challenge = "ab".repeat(16);
+    const r = await get(`/healthz?challenge=${challenge}`);
     expect(r.status).toBe(200);
-    expect(JSON.parse(r.body).nonce).toBe("n0nce");
+    expect(JSON.parse(r.body).proof).toBe(healthProof(server.auth.secret, challenge));
+    expect(r.body).not.toContain("n0nce");
+    expect(r.body).not.toContain(server.auth.secret);
+    expect(JSON.parse((await get("/healthz")).body).proof).toBeUndefined();
   });
 
   it("rejects a foreign Host (DNS rebinding) on every route", async () => {
@@ -83,7 +88,7 @@ describe("local web server: transport guards (AC-W3)", () => {
     expect((await get("/assets/credentials.json")).status).toBe(404);
   });
 
-  it("refuses API calls without a session cookie", async () => {
+  it("refuses API calls without the session header", async () => {
     expect((await get("/api/state")).status).toBe(401);
     expect((await post("/api/projects", { input: project })).status).toBe(401);
   });
@@ -96,18 +101,34 @@ describe("local web server: transport guards (AC-W3)", () => {
     expect((await get("/api/state", { "sec-fetch-site": "cross-site" })).status).toBe(403);
   });
 
-  it("launch codes are one-time and expire; the session cookie is HttpOnly + SameSite=Strict", async () => {
+  it("launch codes are one-time; the session travels in a header, never a cookie (cookies reach every local port)", async () => {
     expect((await post("/api/session", { code: "not-issued" })).status).toBe(401);
     const code = server.auth.issueCode();
     const ok = await post("/api/session", { code });
     expect(ok.status).toBe(200);
-    const setCookie = String(ok.headers["set-cookie"]);
-    expect(setCookie).toMatch(new RegExp(`^atlas_${server.port}=`));
-    expect(setCookie).toContain("HttpOnly");
-    expect(setCookie).toContain("SameSite=Strict");
-    expect((await post("/api/session", { code })).status).toBe(401); // spent
-    cookie = setCookie.split(";")[0] as string;
+    expect(ok.headers["set-cookie"]).toBeUndefined();
+    session = JSON.parse(ok.body).session as string;
     expect((await get("/api/state")).status).toBe(200);
+    // the same token as a cookie is not accepted
+    expect((await send(server.port, "GET", "/api/state", { host: host(), cookie: `atlas_${server.port}=${session}` })).status).toBe(401);
+  });
+
+  it("a replayed launch code signs everyone out (someone else saw it)", async () => {
+    const code = server.auth.issueCode();
+    const first = JSON.parse((await post("/api/session", { code })).body).session as string;
+    expect((await get("/api/state", { "x-atlas-session": first })).status).toBe(200);
+    expect((await post("/api/session", { code })).status).toBe(401);
+    expect((await get("/api/state", { "x-atlas-session": first })).status).toBe(401);
+    session = JSON.parse((await post("/api/session", { code: server.auth.issueCode() })).body).session as string;
+    expect((await get("/api/state")).status).toBe(200);
+  });
+
+  it("tickets for EventSource / downloads are single-use", async () => {
+    const { ticket } = JSON.parse((await post("/api/ticket", {})).body) as { ticket: string };
+    const bare = (q: string) => send(server.port, "GET", `/api/state?ticket=${q}`, { host: host() });
+    expect((await bare(ticket)).status).toBe(200);
+    expect((await bare(ticket)).status).toBe(401);
+    expect((await bare("made-up")).status).toBe(401);
   });
 
   it("a second launch gets a fresh code only with the instance secret", async () => {
@@ -141,6 +162,16 @@ describe("local web server: transport guards (AC-W3)", () => {
     expect(JSON.parse(unc.body).error.code).toBe("ATLAS-E082");
     const relative = await post("/api/projects", { input: "some/relative" });
     expect(JSON.parse(relative.body).error.code).toBe("ATLAS-E082");
+  });
+
+  it("a stored key is only sent to the endpoint it was entered for", async () => {
+    expect(JSON.parse((await get("/api/state")).body).settings.keyStored.anthropic).toBe(true);
+    expect((await post("/api/settings", { provider: "anthropic", baseUrl: "https://attacker.example" })).status).toBe(200);
+    const moved = JSON.parse((await get("/api/state")).body).settings;
+    expect(moved.keyStored.anthropic).toBe(false);
+    // and back to the original endpoint: the key applies again
+    await post("/api/settings", { baseUrl: "" });
+    expect(JSON.parse((await get("/api/state")).body).settings.keyStored.anthropic).toBe(true);
   });
 
   it("rejects oversized bodies", async () => {

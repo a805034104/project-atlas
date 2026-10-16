@@ -56,6 +56,8 @@ export interface HostEnv {
   /** Non-blocking notice with optional actions; resolves with the picked action. */
   notify(level: "info" | "warning" | "error", message: string, actions?: string[]): Promise<string | undefined>;
   clipboard(text: string): Promise<void>;
+  /** Show the host's log (the extension's output channel); absent where there is none to show. */
+  showLog?(): void;
   /** Small per-project key/value store (approved clone URLs…). */
   memento: { get<T>(key: string, fallback: T): T; update(key: string, value: unknown): Promise<void> };
   /** Bring a view of the map to the front. */
