@@ -96,6 +96,9 @@ async function channelScenario({ fixture, label, channel, producerPort, consumer
     await until(async () => (await fetch(`http://127.0.0.1:${producerPort}/`)).status > 0, 120_000, `producer on :${producerPort}`);
     check(/using the receiver of pid/.test(b.stderr), "second CLI reused the first one's receiver (V8)");
     for (const id of ["1", "2", "3"]) check((await fetch(`http://127.0.0.1:${producerPort}/orders/${id}`, { method: "POST" })).ok, `POST /orders/${id}`);
+    // A Kafka consumer joins its group only after the previous (killed) member's session times out:
+    // wait for the handler's own output rather than a fixed delay.
+    if (sameTrace) await until(() => /handled order 3/.test(a.stderr), 90_000, "the consumer to handle the orders");
     await new Promise((r) => setTimeout(r, 4000));
   } finally {
     killPort(producerPort);
@@ -133,6 +136,53 @@ async function kafkaScenario() {
   await channelScenario({ fixture: "kafka", label: "Kafka", channel: "kafka:order-created", producerPort: 18091, consumerPort: 18092, sameTrace: true });
 }
 
+/**
+ * AC#23 — calls the static analysis cannot see, on a real JVM (no external services):
+ *   GET /jobs/reportJob/run  JobService.runByName ⇢(reflection)⇢ ReportJob.execute   other class: reachable only
+ *   GET /jobs/local          JobService.runLocal  ⇢(reflection)⇢ JobService.audit    same class: runtime-observed edge
+ */
+async function reflectionScenario() {
+  const synth = path.join(repo, "fixtures/synthetic/reflection");
+  const appJar = path.join(synth, "target/reflect-demo-1.0.0.jar");
+  if (!existsSync(appJar)) {
+    console.log("reflection scenario skipped: build fixtures/synthetic/reflection with `mvn -q -DskipTests package`");
+    return;
+  }
+  console.log("reflection scenario (AC#23):");
+  const { rmSync } = await import("node:fs");
+  rmSync(path.join(synth, ".atlas", "traces"), { recursive: true, force: true });
+  const port = 18101;
+  const t = traceCli(["--dir", synth, "--json", "--", "java", "-jar", appJar], synth);
+  try {
+    await until(async () => (await fetch(`http://127.0.0.1:${port}/report`)).ok, 120_000, `reflect-demo on :${port}`);
+    for (let i = 0; i < 2; i++) {
+      check((await (await fetch(`http://127.0.0.1:${port}/jobs/reportJob/run`)).text()) === "report done", "GET /jobs/reportJob/run (reflection into another bean)");
+      check((await (await fetch(`http://127.0.0.1:${port}/jobs/local`)).text()) === "audited", "GET /jobs/local (reflection inside JobService)");
+    }
+    await new Promise((r) => setTimeout(r, 2500));
+  } finally {
+    killPort(port);
+  }
+  await Promise.race([t.exited, new Promise((_, reject) => setTimeout(() => reject(new Error("CLI did not exit")), 30_000))]);
+  const core = await import(pathToFileURL(path.join(repo, "packages/core/dist/index.js")).href);
+  const { graph } = await core.loadStoredGraph(path.join(synth, ".atlas"));
+  const overlay = core.reconcile(graph, await new core.TraceStore(path.join(synth, ".atlas", "traces")).loadAggregates());
+  const step = (name) => graph.steps.find((s) => s.symbol.name === name);
+  const [runByName, execute, runLocal, audit] = ["JobService.runByName", "ReportJob.execute", "JobService.runLocal", "JobService.audit"].map(step);
+  check(!graph.edges.some((e) => e.from === runByName.id && e.to === execute.id), "static graph: no edge runByName → ReportJob.execute");
+  check(!!overlay.steps[execute.id], `ReportJob.execute observed (${overlay.steps[execute.id]?.count ?? 0}×)`);
+  check(overlay.reachability.some((r) => r.from === runByName.id && r.to === execute.id), "AC#23: runByName ⇢ ReportJob.execute listed as runtime-only reachability");
+  check(!overlay.runtimeEdges.some((e) => e.to === execute.id), "AC#23: no guessed edge into ReportJob.execute (another class, frames may sit in between)");
+  const local = overlay.runtimeEdges.find((e) => e.from === runLocal.id && e.to === audit.id);
+  check(!!local && !local.async, `AC#23: same-class runLocal → audit drawn as runtime-observed edge (${local?.observed.count ?? 0}×)`);
+  const summary = JSON.parse(t.stdout);
+  check(summary.spans > 0, `CLI summary (${summary.spans} spans)`);
+}
+
+if (process.argv.includes("--reflection-only")) {
+  await reflectionScenario();
+  process.exit(0);
+}
 if (!existsSync(jar)) {
   console.log(`runtime E2E skipped: ${jar} not built (see docs/s0-spike.md)`);
   process.exit(0);
@@ -183,6 +233,7 @@ try {
   check(!summary.runtimeEdges.some((e) => e.to === "SysUserServiceImpl.selectUserByUserName"), "no guessed edge through Spring Security (login → selectUserByUserName stays reachable-only)");
   check(Date.now() - requested < 60_000, "observations reported promptly");
   console.log(`RuoYi scenario passed (${summary.spans} spans)`);
+  await reflectionScenario();
   await redisStreamScenario();
   await kafkaScenario();
   console.log("runtime E2E passed");

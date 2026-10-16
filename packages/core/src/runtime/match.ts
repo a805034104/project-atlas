@@ -6,8 +6,10 @@ import { parseMethodSpanKey, statsQuantile, type AggregateState, type Stats } fr
 /**
  * Reconcile runtime aggregates with the static graph (R2).
  *
- *   key m:svc:Class#method ─▶ method steps of that service (overloads with several matches, or an
- *                         unknown service name with candidates in several services → ambiguous)
+ *   key m:svc:Class#method ─▶ method steps of that service (an unknown service name with candidates
+ *                         in several services → ambiguous). Overloaded names (foo(A) / foo(B): the
+ *                         agent instruments by name) are credited only where the caller pins one:
+ *                         the route's handler, or a certain caller with a static edge to it.
  *       aspect advice  ─▶ the aspect steps whose target step was observed
  *   key r:svc:GET /p   ─▶ entrypoint (path variables normalised, context-path included)
  *   key d:svc:OP table ─▶ sql step under the observed mapper (or the only mapper of the
@@ -114,6 +116,8 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
 
   const unmatched = (key: string, count: number, reason: RuntimeOverlay["unmatched"][number]["reason"]) => overlay.unmatched.push({ key, count, reason });
 
+  /** Steps whose method name is overloaded in their class: a span key alone does not pick one. */
+  const inDoubt = new Set(graph.steps.filter((s) => (s.overloads ?? 0) > 1).map((s) => s.id));
   /** Steps a span key stands for ([] = not mapped; undefined = ambiguous, already reported). */
   const resolved = new Map<string, FlowStep[] | undefined>();
   const resolveKey = (key: string): FlowStep[] | undefined => {
@@ -125,12 +129,21 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
       const serviceId = serviceIdByName.get(parsed.svc.toLowerCase());
       // Unknown service name (OTEL_SERVICE_NAME override): only an answer confined to one service counts.
       const candidates = serviceId ? all.filter((c) => c.serviceId === serviceId) : new Set(all.map((c) => c.serviceId)).size > 1 ? undefined : all;
-      if (!candidates || new Set(candidates.map((c) => c.symbol.fqn)).size > 1) out = undefined;
-      else out = candidates;
+      if (!candidates) out = undefined;
+      else {
+        // Several fqns in one service: overloads foo(A) / foo(B), settled per caller (see "Overloads").
+        if (new Set(candidates.map((c) => c.symbol.fqn)).size > 1) for (const c of candidates) inDoubt.add(c.id);
+        out = candidates;
+      }
     }
     resolved.set(key, out);
     return out;
   };
+
+  // Overloads: the agent instruments by method name, so the key stands for every foo(..) of the
+  // class. Such a step is credited only where its caller pins it (see "Overloads" below).
+  const overloaded = (s: FlowStep) => inDoubt.has(s.id);
+  const pendingOverloads = new Map<string, number>();
 
   // ── Nodes ──────────────────────────────────────────────────────────────────
   for (const [key, stats] of Object.entries(state.nodes)) {
@@ -140,6 +153,7 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
       const steps = resolveKey(key);
       const mk = parsedKey.method;
       if (steps === undefined) unmatched(key, stats.count, "ambiguous");
+      else if (steps.some(overloaded)) pendingOverloads.set(key, stats.count);
       else if (steps.length > 0) for (const s of steps) overlay.steps[s.id] = mergeStats(overlay.steps[s.id], rs);
       else if (!aspectSteps.has(mk)) unmatched(key, stats.count, knownClasses.has(mk.split("#")[0] as string) ? "no-step" : "stale");
     } else if (key.startsWith("r:")) {
@@ -160,9 +174,52 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
     }
   }
 
+  // ── Overloads ──────────────────────────────────────────────────────────────
+  //   route span ─▶ the handler of that entrypoint          pins the controller overload
+  //   caller (not itself in doubt) ─static edge─▶ foo(A)    pins foo(A)
+  // Credited with the pinning edges' counts, repeated until nothing new is pinned
+  // (controller overload ─▶ service overload).
+  const flowSteps = new Map(graph.flows.map((f) => [f.entrypointId, new Set(f.stepIds)]));
+  const credited = new Set<string>();
+  const usedEdgeKeys = new Set<string>();
+  for (let progress = pendingOverloads.size > 0; progress; ) {
+    progress = false;
+    for (const [edgeKey, stats] of Object.entries(state.edges)) {
+      if (usedEdgeKeys.has(edgeKey)) continue;
+      const gt = edgeKey.indexOf(">");
+      const parentKey = edgeKey.slice(0, gt);
+      const childKey = edgeKey.slice(gt + 1);
+      if (!pendingOverloads.has(childKey)) continue;
+      const children = resolveKey(childKey) ?? [];
+      const parents = parentKey.startsWith("r:") ? [] : (resolveKey(parentKey) ?? []).filter((p) => !overloaded(p) || credited.has(p.id));
+      const routeEps = parentKey.startsWith("r:") ? (entrypointsForRouteKey(graph, parentKey) ?? []) : [];
+      const pinned = children.filter(
+        (c) =>
+          (c.layer === "controller" && routeEps.some((e) => flowSteps.get(e.id)?.has(c.id))) ||
+          parents.some((p) => p.id !== c.id && (outgoing.get(p.id) ?? []).some((e) => e.to === c.id)),
+      );
+      if (pinned.length === 0) continue;
+      usedEdgeKeys.add(edgeKey);
+      for (const c of pinned) {
+        overlay.steps[c.id] = mergeStats(overlay.steps[c.id], toRuntimeStats(stats));
+        if (!credited.has(c.id)) progress = true;
+        credited.add(c.id);
+      }
+    }
+  }
+  for (const [key, count] of pendingOverloads) if (!(resolveKey(key) ?? []).some((s) => credited.has(s.id))) unmatched(key, count, "ambiguous");
+  /** A step whose span key is certain (not an overload left in doubt). */
+  const certain = (s: FlowStep) => !overloaded(s) || credited.has(s.id);
+
   // ── Edges ──────────────────────────────────────────────────────────────────
   /** Shortest static path from → to (edges), or undefined. */
+  const pathMemo = new Map<string, CallEdge[] | undefined>();
   const staticPath = (from: string, to: string): CallEdge[] | undefined => {
+    const memoKey = `${from}|${to}`;
+    if (!pathMemo.has(memoKey)) pathMemo.set(memoKey, bfsPath(from, to));
+    return pathMemo.get(memoKey);
+  };
+  const bfsPath = (from: string, to: string): CallEdge[] | undefined => {
     const via = new Map<string, CallEdge>();
     let frontier = [from];
     for (let depth = 0; depth < MAX_PATH_DEPTH && frontier.length > 0; depth++) {
@@ -197,7 +254,7 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
     const gt = edgeKey.indexOf(">");
     const parentKey = edgeKey.slice(0, gt);
     const childKey = edgeKey.slice(gt + 1);
-    const parents = resolveKey(parentKey);
+    const parents = resolveKey(parentKey)?.filter(certain);
     const rs = toRuntimeStats(stats);
     if (!parents || parents.length === 0) continue;
 
@@ -214,7 +271,7 @@ export function reconcile(graph: AtlasGraph, state: AggregateState): RuntimeOver
       }
       continue;
     }
-    const children = resolveKey(childKey);
+    const children = resolveKey(childKey)?.filter(certain);
     if (!children || children.length === 0) continue;
     for (const p of parents) {
       for (const c of children) {
@@ -339,18 +396,30 @@ function reconcileLinks(graph: AtlasGraph, state: AggregateState, overlay: Runti
     const flow = entrypointId ? flowByEntrypoint.get(entrypointId) : undefined;
     return (flow?.stepIds ?? []).some((id) => SPAN_LAYERS.has(stepById.get(id)?.layer as FlowLayer) && overlay.steps[id] !== undefined);
   };
+  type Link = AtlasGraph["serviceLinks"][number];
+  // Spring Cloud Stream channels ("stream:dest") run on whichever binder (kafka, rabbitmq…).
+  const systemsOf = (l: Link): string[] => {
+    const prefix = l.channel.slice(0, l.channel.indexOf(":"));
+    return prefix === "stream" ? [...new Set([...produced.keys(), ...consumed.keys()].map((k) => k.slice(0, k.indexOf(":"))))] : [prefix];
+  };
+  const channelDest = (l: Link) => l.channel.slice(l.channel.indexOf(":") + 1);
+  /** The link's producer service was seen sending to one of its runtime destinations. */
+  const producerSeen = (l: Link) =>
+    systemsOf(l).some((system) => (l.runtime?.producer ?? [channelDest(l)]).some((d) => produced.get(`${system}:${d}`)?.has(serviceName.get(l.fromServiceId) ?? "")));
   for (const [channelKey, bySvc] of consumed) {
     const colon = channelKey.indexOf(":");
     const system = channelKey.slice(0, colon);
     const dest = channelKey.slice(colon + 1);
     const producers = produced.get(channelKey) ?? new Set<string>();
     for (const [svc, stats] of bySvc) {
-      const onChannel = graph.serviceLinks.filter((l) => l.kind === "mq" && serviceName.get(l.toServiceId) === svc && (l.channel === `${system}:${dest}` || l.channel === `stream:${dest}`));
-      const fromSeen = onChannel.filter((l) => producers.has(serviceName.get(l.fromServiceId) ?? ""));
-      // Several links between the same services on one channel (RocketMQ tags, @KafkaHandler by
-      // payload type): the consumer span cannot tell them apart, only the handler that ran can.
-      const siblings = (l: (typeof onChannel)[number]) => fromSeen.filter((o) => o.fromServiceId === l.fromServiceId).length;
-      const confirmed = fromSeen.filter((l) => siblings(l) === 1 || consumerRan(l.toEntrypointId));
+      const onChannel = graph.serviceLinks.filter((l) => l.kind === "mq" && serviceName.get(l.toServiceId) === svc && systemsOf(l).includes(system) && (l.runtime?.consumer ?? [channelDest(l)]).includes(dest));
+      const fromSeen = onChannel.filter(producerSeen);
+      // Several links between the same services on one destination (RocketMQ tags, @KafkaHandler by
+      // payload type, RabbitMQ queues bound to one exchange): the consumer span cannot tell them
+      // apart, only the handler that ran can. A RabbitMQ exchange name alone is never enough.
+      const siblings = (l: Link) => fromSeen.filter((o) => o.fromServiceId === l.fromServiceId).length;
+      const specific = (l: Link) => !l.runtime || l.runtime.strong.includes(dest);
+      const confirmed = fromSeen.filter((l) => (siblings(l) === 1 && specific(l)) || consumerRan(l.toEntrypointId));
       for (const l of confirmed) mark(l.id, stats);
       // Redis streams carry no trace context: without a producer seen, nothing is claimed.
       if (onChannel.length === 0 && (system !== "redis-stream" || producers.size > 0)) {
@@ -368,10 +437,24 @@ function reconcileLinks(graph: AtlasGraph, state: AggregateState, overlay: Runti
 export function entrypointsForRouteKey(graph: AtlasGraph, key: string): AtlasGraph["entrypoints"] | undefined {
   const m = /^r:(.*):([A-Z]+) (.*)$/.exec(key);
   if (!m) return [];
-  const service = graph.services.find((s) => s.name.toLowerCase() === (m[1] as string).toLowerCase());
-  const path = normalizeHttpPath(m[3] as string);
-  const eps = graph.entrypoints.filter((e) => e.kind === "http" && (!service || e.serviceId === service.id) && e.path === path && (e.method === m[2] || e.method === "ANY"));
+  const index = routeIndex(graph);
+  const service = index.services.get((m[1] as string).toLowerCase());
+  const byPath = index.byPath.get(normalizeHttpPath(m[3] as string)) ?? [];
+  const eps = byPath.filter((e) => (!service || e.serviceId === service.id) && (e.method === m[2] || e.method === "ANY"));
   return !service && new Set(eps.map((e) => e.serviceId)).size > 1 ? undefined : eps;
+}
+
+/** HTTP entrypoints by normalised path, per graph object (views and trace lists call this per row). */
+const routeIndexes = new WeakMap<AtlasGraph, { services: Map<string, AtlasGraph["services"][number]>; byPath: Map<string, AtlasGraph["entrypoints"]> }>();
+function routeIndex(graph: AtlasGraph) {
+  let index = routeIndexes.get(graph);
+  if (!index) {
+    const byPath = new Map<string, AtlasGraph["entrypoints"]>();
+    for (const e of graph.entrypoints) if (e.kind === "http" && e.path !== undefined) (byPath.get(e.path) ?? byPath.set(e.path, []).get(e.path))?.push(e);
+    index = { services: new Map(graph.services.map((s) => [s.name.toLowerCase(), s])), byPath };
+    routeIndexes.set(graph, index);
+  }
+  return index;
 }
 
 /** Graph with the overlay folded in (observed fields + runtime-observed edges); the input is not modified. */

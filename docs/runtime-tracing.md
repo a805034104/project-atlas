@@ -29,7 +29,7 @@ project-atlas trace -- mvn -pl ruoyi-admin spring-boot:run     # 先在根目录
 project-atlas trace -- mvn test                                 # 把测试套件当作请求来源
 ```
 
-`java -jar` 会在 `java` 之后插入 agent 参数；`mvn spring-boot:run` 通过 `-Dspring-boot.run.agents` 注入（Maven 自身的 JVM 不会被插桩）；其他命令（`mvn test`、Gradle、`sh ry.sh start`）通过 `JAVA_TOOL_OPTIONS` 追加，构建工具 JVM 发来的 span 会按命令行自动丢弃。命令结束（或 Ctrl-C）后打印观测到的入口、步骤覆盖率和「仅运行时」调用；退出码原样透传。加 `--json` 时，应用自己的输出走 stderr，stdout 只有一份 JSON。
+`java -jar` 会在 `java` 之后插入 agent 参数；`mvn spring-boot:run` 通过 `-Dspring-boot.run.agents` 注入（Maven 自身的 JVM 不会被插桩）；其他命令（`mvn test`、Gradle、`sh ry.sh start`）通过 `JAVA_TOOL_OPTIONS` 追加，构建工具 JVM 发来的 span 会按命令行自动丢弃。命令结束（或 Ctrl-C）后打印观测到的入口、步骤覆盖率和「仅运行时」调用；退出码原样透传，Ctrl-C 结束时为 130。Windows 上 Ctrl-C 后 10 秒内整棵进程树还没退出（JVM 卡在关闭钩子，或 `mvn.cmd` 停在「终止批处理操作吗(Y/N)?」），CLI 会用 `taskkill /T` 结束整棵树；再按一次 Ctrl-C 立即结束。加 `--json` 时，应用自己的输出走 stderr，stdout 只有一份 JSON。
 
 ### 3. VS Code 里一键启动
 
@@ -51,7 +51,9 @@ project-atlas trace import traces.pb    # 或 OTLP/JSON
 | `●` 运行时边 | 静态规则内联掉的同类内调用（如 `selectCaptchaEnabled → selectConfigByKey`） |
 | `⇝` 运行时可达 | 中间隔着没插桩的代码（框架分发、反射、未被入口走到的方法），**只列出，不画边**（宁缺勿错） |
 | 单条 trace 模式 | 从瀑布图点「在流转图中查看」：只显示这一次请求的耗时，没经过的步骤变暗 |
-| 拓扑图 `· 3×` | 跨服务链路被运行时印证：HTTP/Feign/网关看父子 span；Kafka/RabbitMQ/RocketMQ 看消费端；Redis Stream 不传播 trace 上下文，生产和消费两端都在同一个 key 上出现才算 |
+| 拓扑图 `· 3×` | 跨服务链路被运行时印证：HTTP/Feign/网关看父子 span；Kafka/RocketMQ 看消费端；Redis Stream 不传播 trace 上下文，生产和消费两端都在同一个 key 上出现才算 |
+| RabbitMQ 链路 | agent 的 span 不记队列名：生产端记交换机（默认交换机记 `<default>`），消费端记交换机（amqp 投递）或 routing key（Spring 监听器）。所以要求生产端在该交换机上被看到，消费端的 routing key 或队列名对得上；只对上交换机名、或同一交换机后面有好几个队列时，还要看到对应的 `@RabbitListener` 方法执行过 |
+| 同名重载 | agent 按方法名插桩，`find(Long)` 和 `find(String)` 的 span 分不开。只有调用方能确定是哪一个时才计入：该路由的 Controller 方法，或静态图里有边指向它的确定调用方；确定不了的列为「未匹配 · 歧义」 |
 
 ## 离线 / 内网
 
@@ -96,7 +98,7 @@ v0.2 adds **runtime reconciliation**: start your Spring Boot service with the Op
 
 ## Reading the result
 
-`✓ 21 ms` on a step = observed, p95. `12× · p95 12ms ⚠ 1/12` on an edge = observed 12 times, one error. "Steps observed 9/9" = instrumentable steps of the flow that ran (annotation markers such as `@PreAuthorize` are not counted). `●` runtime edges are same-class calls the static rules inline; `⇝` "reachable" calls went through uninstrumented code (framework dispatch, reflection) and are listed, never drawn. Topology links show `· N×` when confirmed: HTTP by client/server spans, Kafka / RabbitMQ / RocketMQ by consumers, Redis streams (no context propagation) only when both sides were seen on the same key.
+`✓ 21 ms` on a step = observed, p95. `12× · p95 12ms ⚠ 1/12` on an edge = observed 12 times, one error. "Steps observed 9/9" = instrumentable steps of the flow that ran (annotation markers such as `@PreAuthorize` are not counted). `●` runtime edges are same-class calls the static rules inline; `⇝` "reachable" calls went through uninstrumented code (framework dispatch, reflection) and are listed, never drawn. Topology links show `· N×` when confirmed: HTTP by client/server spans, Kafka / RocketMQ by consumers, Redis streams (no context propagation) only when both sides were seen on the same key. RabbitMQ spans never name the queue (publish: the exchange, `<default>` for the default one; consumer: the exchange or, from a Spring listener, the routing key), so a RabbitMQ link needs the producer seen on its exchange and the consumer on its routing key or queue; an exchange alone, or several queues behind one exchange, also needs the `@RabbitListener` method observed. Overloads (`find(Long)` / `find(String)`) share one span name because the agent instruments by name; a step is credited only where its caller pins it (the route's controller method, or a certain caller with a static edge to it), otherwise the span is reported as ambiguous. On Windows, Ctrl-C ends the whole process tree: whatever still runs 10 s later (a JVM in shutdown hooks, `mvn.cmd` asking "Terminate batch job (Y/N)?") is killed with `taskkill /T`, at once on a second Ctrl-C; the CLI exits with 130.
 
 ## Offline
 

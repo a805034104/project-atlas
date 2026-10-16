@@ -12,6 +12,7 @@
 
 import type {
   RuntimeState,
+  RuntimeStats,
   TraceData,
   TraceDetailData,
   TraceSpanView,
@@ -238,8 +239,18 @@ export function genericDetail(ep: Entrypoint, depth = 12): FlowDetailData {
   };
 }
 
-export function flowDetail(entrypointId: string, depth?: number): FlowDetailData | undefined {
-  if (entrypointId === USER_LIST_EP) return userListDetail();
+/** Runtime overlay on a flow (aggregated mode): every step and static edge observed, plus one runtime-observed edge. */
+function withObserved(detail: FlowDetailData): FlowDetailData {
+  const stats = (count: number, p95Ms: number, errorCount = 0): RuntimeStats => ({ count, p50Ms: Math.round(p95Ms * 0.6 * 10) / 10, p95Ms, errorCount, lastSeen: new Date(T0).toISOString(), sampleTraceIds: [TRACE_A] });
+  const steps = detail.steps.map((s, i) => (s.layer === "external-http" ? s : { ...s, observed: stats(40, Math.max(1, 38 - i * 3)) }));
+  const edges = detail.edges.map((e, i) => (e.chain || e.provenance === "ai-inferred" ? e : { ...e, observed: stats(40, Math.max(1, 30 - i * 2), i === 3 ? 3 : 0) }));
+  const [a, b] = steps.filter((s) => s.layer === "service");
+  const runtime = a && b ? [{ id: "e-runtime", from: a.id, to: b.id, order: 1000, provenance: "runtime-observed" as const, confidence: 1, rationale: "observed at runtime", observed: stats(4, 2.1) }] : [];
+  return { ...detail, entrypoint: { ...detail.entrypoint, observed: stats(40, 38.4) }, steps, edges: [...edges, ...runtime] };
+}
+
+export function flowDetail(entrypointId: string, depth?: number, observed = false): FlowDetailData | undefined {
+  if (entrypointId === USER_LIST_EP) return observed ? withObserved(userListDetail()) : userListDetail();
   const ep = entrypoints.find((e) => e.id === entrypointId);
   return ep ? genericDetail(ep, depth) : undefined;
 }
@@ -418,9 +429,44 @@ export function runtimeState(status: RuntimeState["status"] = "receiving"): Runt
   return { status, port: 43180, spans: status === "off" ? 0 : 132, duplicates: 0, rejected: status === "receiving" ? 3 : 0, since: T0 - 60_000, trusted: true };
 }
 
-export function traceData(withTraces = true): TraceData {
+/**
+ * Trace tab scenarios (state matrix rows): receiving (default), off (never started), waiting,
+ * downloading, error (receiver failed), history (app exited, statistics kept), restricted.
+ */
+export type RuntimeScenario = "receiving" | "off" | "waiting" | "downloading" | "error" | "history" | "restricted";
+
+function scenarioRuntime(scenario: RuntimeScenario): RuntimeState {
+  switch (scenario) {
+    case "off":
+    case "history":
+      return { ...runtimeState("off"), spans: scenario === "history" ? 132 : 0 };
+    case "waiting":
+      return { ...runtimeState("waiting"), spans: 0 };
+    case "downloading":
+      return { ...runtimeState("downloading"), spans: 0, agent: { received: 10_485_760, total: 25_107_554, source: "repo1.maven.org" } };
+    case "error":
+      return {
+        ...runtimeState("error"),
+        spans: 0,
+        error: {
+          code: "ATLAS-E073",
+          problem: "The trace receiver stopped: port 43180 is now used by another process.",
+          cause: "listen EADDRINUSE 127.0.0.1:43180",
+          fix: "Restart the traced application so it picks up the new receiver port.",
+          docsUrl: "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#atlas-e073",
+        },
+      };
+    case "restricted":
+      return { ...runtimeState("off"), trusted: false };
+    default:
+      return runtimeState("receiving");
+  }
+}
+
+export function traceData(withTraces = true, scenario: RuntimeScenario = withTraces ? "receiving" : "off"): TraceData {
+  withTraces &&= scenario === "receiving" || scenario === "history";
   return {
-    runtime: runtimeState(withTraces ? "receiving" : "off"),
+    runtime: scenarioRuntime(scenario),
     services: serviceRefs.filter((s) => s.id !== "svc-ui"),
     suggestedRequest: { method: "GET", url: "http://localhost:8080/captchaImage" },
     traces: withTraces

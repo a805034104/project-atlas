@@ -6,6 +6,8 @@
  * Query parameters (index.dev.html):
  *   ?locale=en|zh-cn   ?ai=none|done   ?stale=N   ?status=never|error|done|running
  *   ?topology=0        ?tab=<view>&node=<id> (deep link via a reveal message)
+ *   ?runtime=receiving|off|waiting|downloading|error|history|restricted (Trace tab state)
+ *   ?theme=light|hc-dark|hc-light (default dark)   ?observed=1 (runtime overlay on GET /system/user/list)
  */
 
 import type { AnalysisPhase, AnalysisState, HostToWebview, ViewId, WebviewToHost } from "@project-atlas/core";
@@ -22,6 +24,7 @@ import {
   topologyData,
   traceData,
   traceDetail,
+  type RuntimeScenario,
 } from "./mock.js";
 
 const PHASES: AnalysisPhase[] = ["parse", "rules", "cross-service", "history", "ai"];
@@ -111,13 +114,13 @@ export function installMockHost(win: Window = window): () => void {
             case "history":
               return post({ type: "viewData", payload: { view: "history", data: historyData() } });
             case "trace":
-              return post({ type: "viewData", payload: { view: "trace", data: traceData(q.get("traces") !== "0") } });
+              return post({ type: "viewData", payload: { view: "trace", data: traceData(q.get("traces") !== "0", (q.get("runtime") as RuntimeScenario | null) ?? undefined) } });
           }
         });
         break;
       }
       case "requestFlow": {
-        const detail = flowDetail(m.entrypointId, m.depth);
+        const detail = flowDetail(m.entrypointId, m.depth, q.get("observed") === "1");
         later(200, () => (detail ? post({ type: "flowDetail", data: detail }) : undefined));
         break;
       }

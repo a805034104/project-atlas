@@ -2,6 +2,7 @@ import { withinDir } from "./util/collections.js";
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { collectModuleHistory } from "./git/index.js";
+import { parseMethodKey } from "./runtime/agent-config.js";
 import { GraphBuilder } from "./graph/builder.js";
 import { stableId } from "./model/ids.js";
 import { SCHEMA_VERSION, type AtlasGraph, type Diagnostic, type ModuleHistory, type Root, type Stack, type StartupGuide } from "./model/types.js";
@@ -237,6 +238,13 @@ export async function analyzeWorkspace(options: AnalyzeOptions): Promise<Analysi
   for (const s of scheduled) if (!ignored.has(s.entrypointId)) graph.projectFlow(s.entrypointId, [], [], s.handlerStepId);
   for (const c of mqConsumers) if (!ignored.has(c.entrypoint.id)) graph.projectFlow(c.entrypoint.id, [], [], c.handlerStepId);
   for (const r of routes) if (!ignored.has(r.entrypointId)) graph.projectFlow(r.entrypointId, [], [], r.pageStepId);
+  // The agent instruments methods by name: a span for foo(B) is indistinguishable from foo(A).
+  for (const step of graph.steps.values()) {
+    const parsed = parseMethodKey(step.symbol.fqn);
+    const type = parsed ? indexes.get(step.serviceId)?.get(parsed.cls) : undefined;
+    const overloads = type?.type.methods.filter((m) => m.name === parsed?.method).length ?? 0;
+    if (overloads > 1) step.overloads = overloads;
+  }
   phase("cross-service", 1);
 
   // ── History ───────────────────────────────────────────────────────────────

@@ -290,6 +290,17 @@ export function runSpringRules(
     return undefined;
   };
 
+  /**
+   * The method `call` runs on `owner`: undefined when there is none, null when same-arity overloads
+   * remain after matching argument types (reported once as an ambiguous overload, no edge guessed).
+   */
+  const pick = (owner: TypeRef, call: JavaCall, ctx: MethodRef | undefined, report?: { fromStep: string; at: SymbolRef }): MethodRef | null | undefined => {
+    const found = index.selectOverload(index.findMethods(owner, call.method, call.argCount), call, ctx);
+    if (found.length <= 1) return found[0];
+    if (report) graph.unresolved.push({ fromStepId: report.fromStep, expression: `${call.receiver ?? ""}.${call.method}(${call.argTexts.join(", ")}) — ${found.length} overloads of ${simpleTypeName(owner)}.${call.method}`, reason: "ambiguous-overload", at: report.at });
+    return null;
+  };
+
   /** Calls made by `m`, with same-class / superclass helpers inlined. */
   const effectiveCalls = (m: MethodRef): { call: JavaCall; ctx: MethodRef }[] => {
     const out: { call: JavaCall; ctx: MethodRef }[] = [];
@@ -297,8 +308,7 @@ export function runSpringRules(
       for (const call of ctx.method.calls) {
         const receiver = call.receiver;
         if (receiver === undefined || receiver === "this" || receiver === "super") {
-          const targets = index.findMethods(m.owner, call.method, call.argCount);
-          const helper = targets[0];
+          const helper = pick(m.owner, call, ctx);
           if (helper && !seen.has(helper.method) && depth < MAX_INLINE_DEPTH) {
             seen.add(helper.method);
             visit(helper, depth + 1, seen);
@@ -376,7 +386,7 @@ export function runSpringRules(
         if (implementors.length > 0) {
           const branch = implementors.length > 1 ? `${implementors.length} implementations of ${simple}; branch shown for each` : undefined;
           implementors.forEach((impl, i) => {
-            const target = index.findMethods(impl, call.method, call.argCount)[0];
+            const target = pick(impl, call, ctx, { fromStep, at });
             if (!target) return;
             const toStep = methodStep(target);
             graph.edge(fromStep, toStep, {
@@ -405,22 +415,22 @@ export function runSpringRules(
         mqWrapper(fromStep, w, call, ctx, at);
         continue;
       }
-      dispatch(fromStep, type, field, call, order, at);
+      dispatch(fromStep, type, field, call, ctx, order, at);
     }
   }
 
-  function dispatch(fromStep: string, type: TypeRef, field: JavaField | undefined, call: JavaCall, order: number, at: SymbolRef): void {
+  function dispatch(fromStep: string, type: TypeRef, field: JavaField | undefined, call: JavaCall, ctx: MethodRef, order: number, at: SymbolRef): void {
     const isInterface = type.type.kind === "interface" || type.type.modifiers.includes("abstract");
     if (!isInterface) {
-      const methods = index.findMethods(type, call.method, call.argCount);
-      const target = methods[0];
+      const report = index.isBean(type) ? { fromStep, at } : undefined; // data objects: no noise
+      const target = pick(type, call, ctx, report);
       // Data objects (entities, DTOs, AjaxResult…) and plain accessors are not flow steps.
       if (target && (index.isBean(type) || (target.owner === type && !isDataCall(index, type, target.method)))) connect(fromStep, target, type, order, "static");
       return;
     }
 
     if (hasAnnotation(type.type.annotations, "FeignClient")) {
-      const target = index.findMethods(type, call.method, call.argCount)[0];
+      const target = pick(type, call, ctx, { fromStep, at });
       if (target) {
         const stepId = methodStep(target);
         graph.edge(fromStep, stepId, { provenance: "framework-rule", order, rationale: "@FeignClient" });
@@ -468,7 +478,8 @@ export function runSpringRules(
     }
 
     impls.forEach((impl, i) => {
-      const target = index.findMethods(impl, call.method, call.argCount)[0];
+      const target = pick(impl, call, ctx, i === 0 ? { fromStep, at } : undefined);
+      if (target === null) return;
       if (!target) {
         // Method inherited from a library base class (MyBatis-Plus ServiceImpl / IService…): show it, stop there.
         const base = index.supertypeNames(impl).find((n) => !index.types.some((t) => t.type.name === n)) ?? index.supertypeNames(type)[0];

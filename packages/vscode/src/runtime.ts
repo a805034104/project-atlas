@@ -357,9 +357,7 @@ export class RuntimeManager implements vscode.Disposable {
   async traceDetail(traceId: string): Promise<TraceDetailData | undefined> {
     const graph = this.controller.graph;
     if (!graph || !/^[0-9a-f]{32}$/.test(traceId)) return undefined;
-    const records: SpanRecord[] = [];
-    for await (const r of (this.session?.store ?? this.store).records()) if (r.t === traceId) records.push(r);
-    return buildTraceDetail(graph, records);
+    return buildTraceDetail(graph, await (this.session?.store ?? this.store).traceRecords(traceId));
   }
 
   dispose(): void {

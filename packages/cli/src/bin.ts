@@ -6,11 +6,14 @@ import { run } from "./main.js";
 // once with it enabled; without this, AI calls bypass the user's proxy (403 in unsupported regions).
 const PROXY_VARS = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"];
 if (PROXY_VARS.some((k) => process.env[k]) && process.env.NODE_USE_ENV_PROXY === undefined) {
+  // Ctrl-C reaches the child too (same console / process group) and `trace` handles it there;
+  // this process must outlive it, or the shell prompt returns while the child still prints.
+  process.on("SIGINT", () => {});
   const child = spawnSync(process.execPath, ["--disable-warning=UNDICI-EHPA", ...process.execArgv, ...process.argv.slice(1)], {
     stdio: "inherit",
     env: { ...process.env, NODE_USE_ENV_PROXY: "1" },
   });
-  process.exit(child.status ?? 1);
+  process.exit(child.status ?? (child.signal ? 130 : 1));
 }
 
 run(process.argv.slice(2)).then(
