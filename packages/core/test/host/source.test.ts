@@ -1,11 +1,12 @@
-import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { readSnippet, resolveInRoot } from "../../src/host/source.js";
 
 async function fixture() {
-  const base = await mkdtemp(path.join(tmpdir(), "atlas-src-"));
+  // realpath: on macOS the temp dir is under /var, a symlink to /private/var
+  const base = await realpath(await mkdtemp(path.join(tmpdir(), "atlas-src-")));
   const root = path.join(base, "repo");
   const outside = path.join(base, "secret");
   const home = path.join(base, "home");
