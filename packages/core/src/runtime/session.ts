@@ -27,8 +27,10 @@ export class RuntimeLockedError extends Error {
 }
 
 export interface RuntimeSessionOptions {
-  /** Workspace root that contains `.atlas/`. */
+  /** Workspace root (the token is per workspace). */
   workspaceDir: string;
+  /** Where traces and the receiver lock live; default `<workspaceDir>/.atlas`. */
+  atlasDir?: string;
   /** Override for tests; default `~/.project-atlas`. */
   homeDir?: string;
   port?: number;
@@ -82,9 +84,9 @@ export async function workspaceToken(workspaceDir: string, homeDir?: string): Pr
 }
 
 /** The live owner of this workspace's receiver, if any. */
-export async function runtimeOwner(workspaceDir: string): Promise<LockFile | undefined> {
+export async function runtimeOwner(workspaceDir: string, atlasDir = path.join(workspaceDir, ".atlas")): Promise<LockFile | undefined> {
   try {
-    const lock = JSON.parse(await readFile(path.join(workspaceDir, ".atlas", "receiver.json"), "utf8")) as LockFile;
+    const lock = JSON.parse(await readFile(path.join(atlasDir, "receiver.json"), "utf8")) as LockFile;
     // The file lives in the workspace (repository content): accept only a well-formed lock.
     const valid = Number.isInteger(lock.pid) && lock.pid > 4 && Number.isInteger(lock.port) && lock.port >= 1024 && lock.port <= 65535;
     return valid && alive(lock.pid) && lock.pid !== process.pid ? lock : undefined;
@@ -98,6 +100,7 @@ export class RuntimeSession {
   private lastSpanAt: number | undefined;
   private constructor(
     readonly workspaceDir: string,
+    readonly atlasDir: string,
     readonly token: string,
     readonly store: TraceStore,
     readonly aggregator: Aggregator,
@@ -106,8 +109,8 @@ export class RuntimeSession {
   ) {}
 
   static async start(options: RuntimeSessionOptions): Promise<RuntimeSession> {
-    const atlasDir = path.join(options.workspaceDir, ".atlas");
-    const owner = await runtimeOwner(options.workspaceDir);
+    const atlasDir = options.atlasDir ?? path.join(options.workspaceDir, ".atlas");
+    const owner = await runtimeOwner(options.workspaceDir, atlasDir);
     if (owner) throw new RuntimeLockedError(owner.pid, owner.port);
     const token = await workspaceToken(options.workspaceDir, options.homeDir);
     const store = new TraceStore(path.join(atlasDir, "traces"));
@@ -121,10 +124,31 @@ export class RuntimeSession {
       },
       ...(options.onError ? { onError: options.onError } : {}),
     });
-    session = new RuntimeSession(options.workspaceDir, token, store, aggregator, receiver, options);
+    session = new RuntimeSession(options.workspaceDir, atlasDir, token, store, aggregator, receiver, options);
     await mkdir(atlasDir, { recursive: true });
     const lock: LockFile = { pid: process.pid, port: receiver.port, startedAt: new Date().toISOString() };
-    await writeFile(path.join(atlasDir, "receiver.json"), JSON.stringify(lock, null, 2));
+    // Create the lock atomically: the extension, the web app and the CLI may start at once.
+    // A file left by a dead process (runtimeOwner said no live owner) is replaced once.
+    const lockFile = path.join(atlasDir, "receiver.json");
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await writeFile(lockFile, JSON.stringify(lock, null, 2), { flag: "wx" });
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST" || attempt > 0) {
+          await receiver.close();
+          const winner = await runtimeOwner(options.workspaceDir, atlasDir);
+          if (winner) throw new RuntimeLockedError(winner.pid, winner.port);
+          throw error;
+        }
+        const live = await runtimeOwner(options.workspaceDir, atlasDir);
+        if (live) {
+          await receiver.close();
+          throw new RuntimeLockedError(live.pid, live.port);
+        }
+        await rm(lockFile, { force: true });
+      }
+    }
     return session;
   }
 
@@ -171,7 +195,7 @@ export class RuntimeSession {
     this.saveTimer = undefined;
     await this.receiver.close();
     await this.store.saveAggregates(this.aggregator.state);
-    const lockFile = path.join(this.workspaceDir, ".atlas", "receiver.json");
+    const lockFile = path.join(this.atlasDir, "receiver.json");
     try {
       const lock = JSON.parse(await readFile(lockFile, "utf8")) as LockFile;
       if (lock.pid === process.pid) await rm(lockFile, { force: true });

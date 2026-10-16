@@ -211,7 +211,31 @@ export type HostToWebview =
   | { type: "runtimeState"; state: RuntimeState }
   /** New spans changed observed stats: refetch the visible view / flow. */
   | { type: "runtimeUpdated" }
-  | { type: "traceDetail"; data: TraceDetailData };
+  | { type: "traceDetail"; data: TraceDetailData }
+  /** Web host: the source panel's content (the extension opens an editor instead). */
+  | { type: "sourceSnippet"; data: SourceSnippet }
+  /** Web host: a question the analysis waits for (AI cost, clone confirmation, service pick) or a notice. */
+  | { type: "prompt"; prompt: HostPrompt }
+  /** Another tab answered or the host gave up on a prompt: close it. */
+  | { type: "promptClosed"; id: string }
+  /** Web host: write this to the clipboard (with a manual fallback when the browser refuses). */
+  | { type: "clipboard"; text: string };
+
+export interface SourceSnippet {
+  ref: SourceRef;
+  /** Absolute path (for "open in VS Code / IDEA" links); absent on errors. */
+  absolutePath?: string;
+  /** 1-based number of the first line in `lines`. */
+  startLine: number;
+  lines: string[];
+  error?: "outside-project" | "not-found" | "too-large" | "binary";
+}
+
+export type HostPrompt =
+  | { id: string; kind: "choose"; title: string; many: boolean; items: { id: string; label: string; description?: string; picked?: boolean }[] }
+  | { id: string; kind: "confirm"; message: string; detail?: string; action: string }
+  | { id: string; kind: "input"; prompt: string; value?: string }
+  | { id: string; kind: "notify"; level: "info" | "warning" | "error"; message: string; actions: string[] };
 
 export type WebviewCommand =
   | "atlas.analyze"
@@ -236,4 +260,8 @@ export type WebviewToHost =
   | { type: "copyText"; text: string }
   | { type: "requestTrace"; traceId: string }
   /** Launch / copy VM options for one service (from the Startup view or the Trace empty state). */
-  | { type: "runtimeAction"; action: "copyVmOptions" | "launch"; serviceId?: string };
+  | { type: "runtimeAction"; action: "copyVmOptions" | "launch"; serviceId?: string }
+  /** Web host: load a source snippet for the source panel. */
+  | { type: "readSource"; ref: SourceRef }
+  /** Web host: answer to a `prompt` (null = dismissed). */
+  | { type: "promptAnswer"; id: string; answer: string[] | null };

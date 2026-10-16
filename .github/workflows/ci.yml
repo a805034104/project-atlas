@@ -3,6 +3,7 @@ name: ci
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
 
 permissions:
@@ -45,6 +46,25 @@ jobs:
         with:
           name: vsix
           path: packages/vscode/project-atlas.vsix
+      # Web app: single-file executable for this OS (Node SEA), proven to parse with workers,
+      # then driven end to end in headless Chrome (import RuoYi-Vue, pyramid, source panel).
+      - run: npm run build -w @project-atlas/web
+      - name: Build the single-file executable
+        run: node packages/web/build-sea.mjs --out dist-release
+      - name: Self-test the executable (parse pool has workers)
+        shell: bash
+        run: |
+          EXE="$(ls dist-release/project-atlas-* | grep -v sha256 | head -1)"
+          "./$EXE" --self-test --home "$RUNNER_TEMP/atlas-selftest"
+      - name: Web E2E (source build)
+        run: node scripts/web-e2e.mjs
+      - name: Web E2E (single-file executable)
+        shell: bash
+        run: node scripts/web-e2e.mjs --exe "$(ls dist-release/project-atlas-* | grep -v sha256 | head -1)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-atlas-${{ matrix.os }}
+          path: dist-release/project-atlas-*
 
   runtime-rabbitmq:
     # AC#22 on a real broker: two Spring Boot services, a topic exchange, the pinned javaagent.
@@ -90,3 +110,21 @@ jobs:
       - run: npx tsc -b
       - name: Synthetic 50k-file repository (AC-PERF)
         run: node scripts/perf-synthetic.mjs --files 50000 --budget-ms 90000
+
+  release:
+    # Tag v*: publish the executables (and their sha256) to a GitHub Release.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: project-atlas-*
+          path: release
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/project-atlas-*
+          fail_on_unmatched_files: true

@@ -14,3 +14,5 @@ export * from "./enrich.js";
 export * from "./export/index.js";
 export * from "./workspace/clone.js";
 export * from "./runtime/index.js";
+export * from "./host/index.js";
+export * from "./util/secure.js";

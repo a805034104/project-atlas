@@ -7,7 +7,7 @@ import { ViewFrame } from "../../components/ViewFrame.js";
 import { useNarrow } from "../../useNarrow.js";
 import { entrypointLabel } from "../FeaturesView.js";
 import { EntrypointList, FlowFilters, filterEntrypoints } from "./EntrypointList.js";
-import { Swimlane } from "./Swimlane.js";
+import { Pyramid } from "./Pyramid.js";
 
 export const DEFAULT_FLOW_DEPTH = 12;
 
@@ -140,7 +140,7 @@ function FlowBody({ data }: { data: FlowListData }) {
                 </button>
               </div>
             ) : null}
-            <Swimlane
+            <Pyramid
               detail={detail}
               vertical={narrow}
               depth={depths.current.get(selectedEp.id) ?? DEFAULT_FLOW_DEPTH}

@@ -1,4 +1,6 @@
-import { GraphView, type AtlasGraph, type FlowDetailData, type ViewId, type ViewPayload } from "@project-atlas/core";
+import type { AtlasGraph } from "../model/types.js";
+import type { FlowDetailData, ViewId, ViewPayload } from "../protocol.js";
+import { GraphView } from "../store/graph-store.js";
 
 /**
  * Single-file HTML export (E1): the webview bundle inlined together with every

@@ -20,6 +20,8 @@ import type { ParseRequest, ParseResponse } from "./worker.js";
 export interface ParsePool {
   parse(kind: ParsedKind, text: string, relPath: string): Promise<FileFacts | undefined>;
   close(): Promise<void>;
+  /** Worker threads (0 = parsing inline on the calling thread). */
+  readonly size: number;
 }
 
 export interface PoolOptions {
@@ -46,6 +48,7 @@ function inlinePool(set: ParserSet): ParsePool {
   return {
     parse: async (kind, text, relPath) => extractFacts(set, kind, text, relPath),
     close: async () => {},
+    size: 0,
   };
 }
 
@@ -113,5 +116,6 @@ function workerPool(workerPath: string, size: number, wasmDir: string | undefine
       for (const pending of queue.splice(0)) pending.reject(new Error("parse pool closed"));
       await Promise.all([...idle, ...busy.keys()].map((w) => w.terminate()));
     },
+    size,
   };
 }
