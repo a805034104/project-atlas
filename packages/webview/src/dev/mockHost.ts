@@ -47,7 +47,7 @@ export function installMockHost(win: Window = window): () => void {
         problem: "git is not installed",
         cause: "`git --version` failed: ENOENT",
         fix: "Install git, or set atlas.git.path; the History view is degraded until then.",
-        docsUrl: "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#atlas-e001",
+        docsUrl: "https://github.com/a805034104/project-atlas/blob/main/docs/errors.md#atlas-e001",
         fixCommand: "atlas.diagnose",
       },
     };

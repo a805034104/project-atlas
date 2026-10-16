@@ -17,7 +17,7 @@ import type { UserFacingError } from "../protocol.js";
  * are quoted (see scrubSecrets).
  */
 
-export const ERRORS_DOCS_BASE = "https://github.com/project-atlas/project-atlas/blob/main/docs/errors.md#";
+export const ERRORS_DOCS_BASE = "https://github.com/a805034104/project-atlas/blob/main/docs/errors.md#";
 
 export function docsUrlFor(code: string): string {
   return `${ERRORS_DOCS_BASE}${code.toLowerCase()}`;

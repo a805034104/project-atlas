@@ -2,43 +2,113 @@
 
 **[中文](README.zh-CN.md)** · English
 
-Open a Spring / Vue / RuoYi project in VS Code and get its map in under a minute:
+[![ci](https://github.com/a805034104/project-atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/a805034104/project-atlas/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/a805034104/project-atlas)](https://github.com/a805034104/project-atlas/releases)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-- **Modules and services**: Maven modules, Spring Boot apps (names from `spring.application.name`, including Nacos configs exported as SQL), Vue apps.
-- **Request flows, exact where it matters**: `GET /system/user/list` → dev proxy → Spring Cloud Gateway route (`StripPrefix`) → `JwtAuthenticationTokenFilter` → `RepeatSubmitInterceptor` → `@PreAuthorize` → `SysUserController.list` → `@DataScope` aspect → `SysUserServiceImpl.selectUserList` → `SysUserMapper` → `<select id="selectUserList">`.
-- **Cross-service links**: frontend → proxy → gateway → service, Feign clients, RestTemplate, and message queues (Kafka, RabbitMQ incl. topic/fanout exchanges and dead-letter queues, RocketMQ tags, Redis Stream, Spring Cloud Stream).
-- **Runtime reconciliation (v0.2)**: start a service with the OpenTelemetry javaagent (paste the VM options into IDEA, or `project-atlas trace -- java -jar app.jar`) and the map shows which steps and links really ran, with latency, plus calls that only appear at runtime. Local only; SQL text, bodies and headers are never stored. [How it works](docs/runtime-tracing.md)
-- **How to start it**: prerequisites, commands and ports, each pointing to the file and line it comes from.
-- **Change history** per module (git), with an optional AI summary.
-- **Optional AI** (bring your own key: Anthropic, any OpenAI-compatible API such as DeepSeek/Qwen, or local Ollama) for module summaries and the feature list. You see the token and cost estimate per phase before anything is sent.
+**A map of your Spring / Vue / RuoYi project, inside VS Code.** Open the repository, click *Analyze*, and within a minute you can follow any request from the Vue page through the gateway, filters, interceptors, aspects, controller, service and mapper down to the SQL statement. Every step links to the file and line it came from.
 
-Rules come first: every solid edge in a flow is derived from code and framework semantics. AI-inferred edges are dashed and labelled. When the analyzer cannot tell which method is called, it draws nothing and lists the call under "Unresolved calls". You can declare in-house HTTP helpers in `atlas.yaml`.
+![Request flow of GET /system/user/list in RuoYi-Cloud](docs/images/flow.png)
 
-## Quick start
+<sub>Real output for [RuoYi-Cloud](https://gitee.com/y_project/RuoYi-Cloud): `GET /system/user/list`, from the Vue page `listUser()`, through the gateway `AuthFilter` / `XssFilter` and route, `@PreAuthorize`, `SysUserController.list`, the `@DataScope` aspect and `SysUserServiceImpl`, down to the mapper XML `<select>`.</sub>
 
-1. Install **ProjectAtlas** from the VS Code Marketplace or Open VSX.
-2. Open your project and click **Atlas: Analyze** in the status bar. No key is needed.
-3. Optional: **Atlas: Configure AI Model**.
+## Why
 
-CLI: `npx project-atlas analyze . --no-ai --markdown ATLAS.md` · runtime: `npx project-atlas trace -- mvn spring-boot:run` · MCP for coding agents: `atlas-mcp --dir .atlas`.
+Joining a large Spring Cloud codebase usually means a week of reading code to answer simple questions: which filters run before this endpoint, which service does this page call, and what writes to this table? Generic code search doesn't know about Spring Security filter order, Ant patterns in `HandlerInterceptor`s, AspectJ pointcuts, gateway `StripPrefix`, Feign clients or MyBatis XML. ProjectAtlas does.
+
+- **Rules first, AI optional.** Every solid edge is derived from code and framework semantics. When the analyzer cannot tell which method runs (an interface with several beans, an overload the arguments don't decide, a dynamic topic), it draws nothing and lists the call under *Unresolved*. AI-inferred edges are dashed and labelled.
+- **Runtime confirms the static map.** Start a service with the OpenTelemetry javaagent and the map marks what actually ran, with call counts and p95 latency.
+- **Local by default.** Analysis runs on your machine. No telemetry. AI is off until you configure a key, and even then you see a cost estimate before anything is sent.
+
+## Features
+
+| | |
+|---|---|
+| **Request flows** | Frontend call → dev proxy → Spring Cloud Gateway (routes, `StripPrefix`/`RewritePath`, global filters) → servlet filters in Spring Security order → `HandlerInterceptor`s (Ant include/exclude) → `@PreAuthorize` → AspectJ advice → controller → service (DI with `@Primary`, `@Qualifier`, `@Resource`; several implementations shown as branches) → MyBatis mapper XML / MyBatis-Plus → SQL |
+| **Cross-service links** | Frontend → gateway → service, OpenFeign, RestTemplate / WebClient with `lb://`, and message queues: Kafka, RabbitMQ (direct / topic / fanout / default exchange, dead-letter TTL queues), RocketMQ tags, Redis Stream, Spring Cloud Stream |
+| **Runtime reconciliation** | Pinned OpenTelemetry javaagent 2.31.1 (sha256-checked). Steps, edges and links observed at runtime with count · p95 · errors; a Trace tab with a waterfall; calls seen only at runtime are listed, never drawn as guesses |
+| **Startup guide** | Prerequisites (JDK, MySQL, Redis, Nacos…), build and run commands, ports, each with the file and line it comes from |
+| **Modules & history** | Maven modules, Spring Boot apps (`spring.application.name`, Nacos configs exported as SQL), Vue apps; per-module git history |
+| **Optional AI** | Module summaries and a feature list from Anthropic, any OpenAI-compatible API (DeepSeek, Qwen…) or a local Ollama. Keys live in VS Code SecretStorage; `.env`/keys are never sent and secrets in files are masked |
+| **CLI & MCP** | `project-atlas analyze` / `show` / `trace` for terminals and CI; a read-only MCP server so coding agents query verified call chains instead of guessing them |
+
+![Runtime overlay: every step of GET /system/user/list observed, with latency](docs/images/flow-runtime.png)
+
+<sub>Runtime overlay from a real RuoYi-Vue run: each step and edge shows how often it ran and its p95.</sub>
+
+<table><tr>
+<td><img src="docs/images/overview.png" alt="Overview"></td>
+<td><img src="docs/images/startup.png" alt="Startup guide"></td>
+</tr><tr>
+<td align="center"><sub>Overview: services, modules, entrypoints, how to run</sub></td>
+<td align="center"><sub>Startup guide with sources</sub></td>
+</tr></table>
+
+## Install
+
+ProjectAtlas is not on the Marketplace yet.
+
+1. Download `project-atlas-<version>.vsix` from [Releases](https://github.com/a805034104/project-atlas/releases).
+2. In VS Code: *Extensions* ▸ `…` ▸ *Install from VSIX…* (or `code --install-extension project-atlas-0.2.1.vsix`).
+3. Open a Spring / Vue project and run **Atlas: Analyze** (status bar or command palette). No key is needed.
+
+Requires VS Code 1.95+. Runtime tracing also needs a JDK 8+ for your own application.
+
+### From source
+
+```bash
+git clone https://github.com/a805034104/project-atlas.git
+cd project-atlas
+npm ci && npm run build          # Node.js 20+
+npx vitest run                   # optional: the test suite
+node packages/cli/dist/bin.js analyze /path/to/your/project --no-ai
+```
+
+Press F5 in VS Code with `packages/vscode` open to run the extension in a development host.
+
+## Usage
+
+**In VS Code** — *Atlas: Analyze*, then browse the tabs: Overview, Topology, Modules, Features, Startup, Flow, History, Trace. CodeLens on controller methods opens the flow of that endpoint. *Export HTML* writes a single offline file you can share.
+
+**CLI**
+
+```bash
+project-atlas analyze . --no-ai --markdown ATLAS.md     # analyze, write a Markdown map
+project-atlas show "GET /system/user/list"              # print one flow in the terminal
+project-atlas trace -- mvn spring-boot:run              # run with the javaagent, print what was observed
+project-atlas trace --print-config                      # VM options to paste into IDEA
+```
+
+(From a source checkout, `project-atlas` is `node packages/cli/dist/bin.js`.)
+
+**MCP** — `atlas-mcp --dir .atlas` serves entrypoints, flows, service links and runtime aggregates (never span attribute values) to coding agents over stdio.
+
+**Runtime tracing** — paste the VM options from *Atlas: Copy VM Options for Tracing* into your IDE run configuration, restart, send a request. Spans go to a receiver on 127.0.0.1 only; SQL text, bodies and headers are never stored. See [docs/runtime-tracing.md](docs/runtime-tracing.md).
 
 ## Supported
 
 | Area | Supported |
 |---|---|
-| Java | Spring MVC / Boot: `@RestController`, mapping annotations (constants and `${}` resolved), servlet filters (Spring Security order, `FilterRegistrationBean` url patterns), `HandlerInterceptor` (Ant include/exclude), `@PreAuthorize`/`@Secured`, AspectJ (`execution`, `within`, `@annotation`, `bean`…), DI (`@Primary`, `@Qualifier`, `@Resource`, Lombok constructors, multiple implementations shown as branches), MyBatis mapper XML, MyBatis-Plus `BaseMapper`, `@Scheduled` |
-| Spring Cloud | Gateway routes (`Path`, `StripPrefix`, `RewritePath`, `PrefixPath`, global filters), Nacos config from SQL dumps (shared/extension configs, profiles), OpenFeign, RestTemplate/WebClient with `lb://` / service names |
-| Vue | Vue 2/3, `src/api` request helpers (`request({url, method})`, `axios.get`), pages, router tables, RuoYi `sys_menu` routes, Vite/Vue CLI dev proxy |
-| Message queues | Kafka (`topics`, `topicPattern`), RabbitMQ (`@RabbitListener` queues/bindings, `@Bean` Queue/Exchange/Binding, direct/topic/fanout/default exchange, dead-letter TTL queues, enum constants), RocketMQ (`topic:tag`, selector tags), Redis Stream (listener containers, `opsForStream().add`), Spring Cloud Stream bindings; unresolvable destinations are listed, never guessed |
-| Runtime (Java) | OpenTelemetry javaagent 2.31.1 (pinned, sha256): filters, interceptors, aspects, controllers, services, MyBatis mappers, SQL; HTTP/Feign, Kafka, RabbitMQ, RocketMQ, Redis Stream links confirmed at runtime; Trace tab with waterfall; CLI `trace`, `trace import`; MCP `list_traces` |
-| Coming next | v0.3 Go + gRPC · v0.4 Python + Dubbo · SkyWalking / Arthas trace import |
+| Java | Spring MVC / Boot 2–3: mapping annotations (constants and `${}` resolved), filters (`FilterRegistrationBean` url patterns), interceptors, `@PreAuthorize`/`@Secured`, AspectJ (`execution`, `within`, `@annotation`, `bean`…), DI incl. Lombok constructors, MyBatis XML, MyBatis-Plus `BaseMapper`, `@Scheduled` |
+| Spring Cloud | Gateway routes and filters, Nacos config from SQL dumps (shared/extension configs, profiles), OpenFeign, RestTemplate / WebClient |
+| Vue | Vue 2/3, `src/api` request helpers, pages, router tables, RuoYi `sys_menu` routes, Vite / Vue CLI dev proxy |
+| Message queues | Kafka, RabbitMQ, RocketMQ, Redis Stream, Spring Cloud Stream; unresolvable destinations are listed, never guessed |
+| Runtime (Java) | Filters, interceptors, aspects, controllers, services, MyBatis mappers, SQL; HTTP/Feign, Kafka, RabbitMQ, RocketMQ and Redis Stream links confirmed at runtime |
+| Tested on | RuoYi-Vue, RuoYi-Cloud (+ Vue 3), pig, JeecgBoot, mall-swarm |
+| Next | Go + gRPC, Python + Dubbo, SkyWalking / Arthas trace import |
 
-## Privacy
+## How it works
 
-Analysis runs locally. With an AI provider configured, Atlas sends only summaries of "hub" files (controllers, services, top files per module) after your confirmation. `.env*`, keys and keystores are never sent, and secrets inside files are masked. Code is wrapped as untrusted data, and the model cannot call tools. No telemetry.
+tree-sitter (WASM) parses Java, JS/TS and Vue into per-file facts (cached by content hash). Framework rules turn facts into a graph of steps and edges with stable IDs; per-entrypoint flows are projections over that graph. The runtime side is an OTLP receiver plus a reconciler that maps spans onto steps without changing the saved graph. Details: [docs/architecture.md](docs/architecture.md).
+
+## Contributing
+
+Bug reports with a minimal reproduction (or a link to a public repository) are the most useful thing you can send. Adding a framework rule is described in [CONTRIBUTING.md](CONTRIBUTING.md); every rule ships with a fixture and a test. Please report security issues privately, see [SECURITY.md](SECURITY.md).
 
 ## Docs
 
-[Errors](docs/errors.md) · [Runtime tracing](docs/runtime-tracing.md) · [Architecture](docs/architecture.md) · [Contributing a framework rule](CONTRIBUTING.md) · [Spec](docs/spec.md)
+[Runtime tracing](docs/runtime-tracing.md) · [Errors](docs/errors.md) · [Architecture](docs/architecture.md) · [Changelog](CHANGELOG.md) · [Spec](docs/spec.md) · [v0.2 spec](docs/spec-v0.2.md)
 
-MIT License.
+## License
+
+[MIT](LICENSE)

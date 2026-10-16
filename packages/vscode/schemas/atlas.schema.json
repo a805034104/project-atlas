@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/project-atlas/project-atlas/schemas/atlas.schema.json",
+  "$id": "https://github.com/a805034104/project-atlas/schemas/atlas.schema.json",
   "title": "ProjectAtlas configuration (atlas.yaml / .atlas/overrides.yaml)",
   "type": "object",
   "additionalProperties": false,
