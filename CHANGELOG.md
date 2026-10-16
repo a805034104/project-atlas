@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-10-16
+
+- Web app: a question left open in one project (AI cost estimate, clone confirmation) no longer holds up analyses
+  of other projects. Only parsing runs one project at a time; questions and AI calls happen outside that lock, and a
+  project waiting for the lock says so ("Waiting for another project's analysis…") and can be cancelled.
+
 ## 0.3.0 — 2026-10-16
 
 ProjectAtlas becomes a download-and-run web app; the flow diagram becomes a top-down pyramid.

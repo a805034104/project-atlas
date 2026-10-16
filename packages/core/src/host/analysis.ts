@@ -36,6 +36,12 @@ export interface AnalysisControllerOptions {
   roots: () => RootInput[];
   /** Where the map, caches, overrides and traces live (normally <root>/.atlas). */
   atlasDir: string;
+  /**
+   * Runs the heavy part (parsing with worker threads, rules) under a host-wide lock; hosts that
+   * analyze several projects pass one so only one parses at a time. Prompts (clone confirmation,
+   * AI cost) and AI calls run outside it, so a question left open never blocks other projects.
+   */
+  exclusive?: <T>(fn: () => Promise<T>) => Promise<T>;
 }
 
 export class AnalysisController {
@@ -51,6 +57,7 @@ export class AnalysisController {
   private readonly t: (zh: string, en: string) => string;
   readonly atlasDir: string;
   private readonly roots: () => RootInput[];
+  private readonly exclusive: <T>(fn: () => Promise<T>) => Promise<T>;
   state: AnalysisState = { status: "never", completedPhases: [], staleFiles: 0, ai: "none" };
 
   /** Fired when a new graph is available. */
@@ -62,6 +69,7 @@ export class AnalysisController {
     this.t = translator(options.env);
     this.atlasDir = options.atlasDir;
     this.roots = options.roots;
+    this.exclusive = options.exclusive ?? ((fn) => fn());
   }
 
   get graph(): AtlasGraph | undefined {
@@ -165,7 +173,13 @@ export class AnalysisController {
       await this.env.progress("Atlas", async (progress) => {
         progress.onCancel(() => cancel.abort());
         let last: AnalysisPhase | undefined;
-        const result = await analyzeWorkspace({
+        this.setState({ queued: true });
+        progress.report(this.t("等待其他项目的分析完成…", "Waiting for another project's analysis…"));
+        const result = await this.exclusive(async () => {
+          // Cancelled while waiting: never start parsing.
+          cancel.signal.throwIfAborted();
+          this.setState({ queued: false });
+          return analyzeWorkspace({
           roots,
           cacheDir: this.atlasDir,
           ...(this.env.assets.wasmDir ? { wasmDir: this.env.assets.wasmDir } : {}),
@@ -182,6 +196,7 @@ export class AnalysisController {
             this.setState({ currentPhase: phase, progress: value, completedPhases: completed });
             progress.report(`${this.phaseLabel(phase)} ${Math.round(value * 100)}%`);
           },
+          });
         });
         result.graph.diagnostics.push(...cloneDiagnostics);
         await saveGraph(this.atlasDir, result.graph);
@@ -195,13 +210,13 @@ export class AnalysisController {
     } catch (error) {
       if (cancel.signal.aborted) {
         const ai = this.state.ai === "running" || this.state.ai === "pending-confirmation" ? (this.graphValue?.llmUsage.length ? "partial" : "none") : this.state.ai;
-        this.setState({ status: this.graphValue ? "done" : "cancelled", currentPhase: undefined, progress: undefined, ai });
+        this.setState({ status: this.graphValue ? "done" : "cancelled", currentPhase: undefined, progress: undefined, ai, queued: false });
         this.env.log("Analysis cancelled");
         return;
       }
       const err = toUserFacing(error, this.t);
       this.env.log(`Analysis failed: ${err.code} ${err.problem} — ${err.cause}`);
-      this.setState({ status: "error", error: err });
+      this.setState({ status: "error", error: err, queued: false });
       const showLog = this.t("查看日志", "Show log");
       void this.env.notify("error", `${err.code} ${err.problem}`, this.env.showLog ? [showLog] : []).then((pick) => pick === showLog && this.env.showLog?.());
     }
