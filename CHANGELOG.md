@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.0 — 2026-10-16
+
+ProjectAtlas becomes a download-and-run web app; the flow diagram becomes a top-down pyramid.
+Plan and review record: docs/spec-v0.3-web.md.
+
+- **Single-file program** (Windows x64, macOS Apple silicon, Linux x64; Node SEA, no Node.js needed): double-click,
+  the browser opens, import a project by path, folder picker or public git URL, see the map. One instance per user (a
+  second launch opens the running one), exits 30 minutes after the last page closes, recent projects on the home page,
+  `--self-test` proves the packaged parser runs on worker threads.
+- **Local web server** (127.0.0.1 only): exact Host / Origin / Sec-Fetch-Site / content-type checks, one-time launch
+  codes in the URL fragment exchanged for an HttpOnly SameSite=Strict per-port cookie, strict CSP, no framing; the
+  source panel reads only inside imported roots (realpath on both sides, the ProjectAtlas home always refused); UNC
+  paths refused; git imports keep the v0.1 clone guards plus `core.symlinks=false`. Questions the analysis waits for
+  (AI cost, clone confirmation, service pick) become dialogs in the page.
+- **Pyramid flow**: entry on top, one row per call depth, callers centred over callees; aspects (also chains of
+  @Before/@AfterReturning/@Around at the entry) drawn beside the method they advise; more than 6 callees fold into
+  the first 5 plus "+N"; recursion loops on the right; service frames, a rail naming each row's layers, layer chips,
+  zoom. Replaces the staircase in the extension too. Verified on every flow of RuoYi-Vue, RuoYi-Cloud and mall-swarm
+  (every step drawn, nothing overlaps).
+- **Shared host**: the analysis and runtime lifecycles moved from the extension into `core/host` (HostEnv interface);
+  the extension and the web app use the same code. The receiver lock is created atomically.
+- **Settings in the web app**: language, AI provider / model / base URL, API key (write-only, stored in
+  `~/.project-atlas/credentials.json`), test connection; theme follows the OS with a manual switch.
+- **Verified**: `scripts/web-e2e.mjs` drives headless Chrome over CDP (import RuoYi-Vue → pyramid → source panel →
+  second launch) against the source build and the single-file build; CI builds and tests the executables on
+  Windows, Linux and macOS and attaches them to tagged releases.
+
 ## 0.2.1 — 2026-10-16
 
 Closes the items v0.2.0 shipped as partial.

@@ -6,11 +6,31 @@
 [![release](https://img.shields.io/github/v/release/a805034104/project-atlas)](https://github.com/a805034104/project-atlas/releases)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**在 VS Code 里看懂一个 Spring / Vue / 若依项目。** 打开仓库、点「分析」，一分钟内就能顺着任意一个请求，从 Vue 页面一路看下去：网关、过滤器、拦截器、切面、Controller、Service、Mapper，直到 SQL 语句。每一步都能点回源码的文件和行号。
+**在浏览器里看懂一个 Spring / Vue / 若依项目。** 下载一个文件，双击打开，粘贴仓库路径，一分钟内就能顺着任意一个请求从上往下看：Vue 页面、网关、过滤器、拦截器、Controller、Service、Mapper，直到 SQL 语句，整条链路画成一座金字塔。每一步都能点开对应的源码文件和行号。不用安装，不用注册账号，数据不出本机。
 
 ![若依 Cloud 中 GET /system/user/list 的请求流转](docs/images/flow.zh.png)
 
-<sub>[RuoYi-Cloud](https://gitee.com/y_project/RuoYi-Cloud) 的真实分析结果：`GET /system/user/list` 从前端 `listUser()` 出发，经过网关 `AuthFilter` / `XssFilter` 和路由、`@PreAuthorize`、`SysUserController.list`、`@DataScope` 切面、`SysUserServiceImpl`，直到 Mapper XML 里的 `<select>`。</sub>
+<sub>[RuoYi-Cloud](https://gitee.com/y_project/RuoYi-Cloud) 的真实分析结果：`GET /system/user/list` 从前端 `listUser()` 出发，经过网关 `AuthFilter` / `XssFilter` 和路由、`SysUserController.list`（旁边挂着它的 `@Around` 切面）、`SysUserServiceImpl`（挂着 `@DataScope`），直到 Mapper XML 里的 `<select>`。</sub>
+
+## 开始使用
+
+| 你的电脑 | 从 [Releases](https://github.com/a805034104/project-atlas/releases/latest) 下载 |
+|---|---|
+| Windows 10/11（x64） | `project-atlas-win-x64.exe` |
+| macOS（Apple 芯片） | `project-atlas-macos-arm64` |
+| Linux（x64） | `project-atlas-linux-x64` |
+
+1. 双击下载的文件（Linux / macOS 在终端里运行：`chmod +x project-atlas-* && ./project-atlas-*`）。会弹出一个小窗口显示运行地址，浏览器也会自动打开。
+2. 粘贴一个 Spring Boot / Spring Cloud / Vue 项目的文件夹路径（或公开的 git 地址），点「分析」，不需要任何 key。
+3. 打开「流转」，选一个接口。关闭那个小窗口即可退出。
+
+这些文件暂时还没有代码签名：
+- **Windows SmartScreen**：点「更多信息」▸「仍要运行」。
+- **macOS**：第一次右键 ▸「打开」，或者执行 `xattr -d com.apple.quarantine project-atlas-macos-arm64`。
+
+每个文件旁边都有对应的 `.sha256`，都由本仓库的公开 CI 构建。
+
+![导入项目](docs/images/home.zh.png)
 
 ## 为什么做这个
 
@@ -29,7 +49,7 @@
 | **运行时对账** | 固定版本的 OpenTelemetry javaagent 2.31.1（校验 sha256）。步骤、调用边和跨服务链路标注「次数 · p95 · 错误数」；Trace 标签页带瀑布图；只在运行时出现的调用会单独列出，不会被当成猜测画进图里 |
 | **启动指南** | 前置依赖（JDK、MySQL、Redis、Nacos…）、构建和启动命令、端口，每一条都标出来源文件和行号 |
 | **模块与修改记录** | Maven 模块、Spring Boot 应用（服务名取自 `spring.application.name`，支持以 SQL 导出的 Nacos 配置）、Vue 应用；按模块统计 git 历史 |
-| **可选 AI** | 模块摘要和功能清单，支持 Anthropic、任意 OpenAI 兼容接口（DeepSeek、通义千问…）或本地 Ollama。key 存在 VS Code SecretStorage 里；`.env` 和密钥文件从不发送，文件里的密钥会先打码 |
+| **可选 AI** | 模块摘要和功能清单，支持 Anthropic、任意 OpenAI 兼容接口（DeepSeek、通义千问…）或本地 Ollama。key 只存在本机（网页版存在 `~/.project-atlas/credentials.json`，插件存在 VS Code SecretStorage）；`.env` 和密钥文件从不发送，文件里的密钥会先打码 |
 | **CLI 与 MCP** | `project-atlas analyze` / `show` / `trace` 可在终端和 CI 里用；只读的 MCP 服务让 AI 编程助手直接查询经过验证的调用链，不用靠猜 |
 
 ![运行时叠加：GET /system/user/list 的每一步都被观测到，并标出耗时](docs/images/flow-runtime.zh.png)
@@ -44,15 +64,12 @@
 <td align="center"><sub>启动指南，每条都有出处</sub></td>
 </tr></table>
 
-## 安装
+## 其他运行方式
 
-目前还没有上架 VS Code 插件市场。
+- **VS Code 插件**：在编辑器里看同一张地图。从 [Releases](https://github.com/a805034104/project-atlas/releases) 下载 `.vsix`，在扩展面板 ▸ `…` ▸「从 VSIX 安装…」，然后执行 **Atlas: Analyze**。需要 VS Code 1.95 及以上。
+- **从源码运行**（需要 Node.js 20+）：`node packages/web/dist/main.js` 启动同样的网页版；CLI 和 MCP 用法见下文。
 
-1. 从 [Releases](https://github.com/a805034104/project-atlas/releases) 下载 `project-atlas-<版本>.vsix`。
-2. 在 VS Code 里：扩展 ▸ `…` ▸「从 VSIX 安装…」（或 `code --install-extension project-atlas-0.2.1.vsix`）。
-3. 打开一个 Spring / Vue 项目，执行 **Atlas: Analyze**（状态栏或命令面板），不需要任何 key。
-
-需要 VS Code 1.95 及以上。运行时追踪另外需要你的应用本身能用 JDK 8 及以上启动。
+运行时追踪另外需要你的应用本身能用 JDK 8 及以上启动。
 
 ### 从源码构建
 
@@ -64,11 +81,20 @@ npx vitest run                   # 可选：跑测试
 node packages/cli/dist/bin.js analyze /path/to/your/project --no-ai
 ```
 
-在 VS Code 里打开 `packages/vscode` 后按 F5，就能在开发宿主里运行插件。
+在源码目录里，`node packages/web/dist/main.js` 启动网页版，`node packages/web/build-sea.mjs` 为当前系统打出单文件程序。在 VS Code 里打开 `packages/vscode` 后按 F5，就能在开发宿主里运行插件。
 
 ## 使用
 
-**VS Code 里**：执行 *Atlas: Analyze*，然后浏览各个标签页：总览、拓扑、模块、功能、启动、流转、修改记录、Trace。Controller 方法上方的 CodeLens 可以直接打开该接口的流转图。「导出 HTML」会生成一个离线可看的单文件，方便分享。
+**浏览器里**：导入项目后浏览各个标签页：总览、拓扑、模块、功能、启动、流转、修改记录、Trace。「流转」页：
+- 入口在最上面，每调用一层就往下一行；
+- 切面挂在被增强方法的旁边；
+- 一个方法调用的下游太多时会折叠成「还有 N 个」，可以展开；
+- 点任意一步，右侧会显示源码，并附带「在 VS Code / IDEA 中打开」的链接；
+- 「导出 HTML」会生成一个离线可看的单文件，方便分享。
+
+首页会列出最近打开的项目。数据存在 `~/.project-atlas` 和各项目的 `.atlas` 目录里。
+
+**VS Code 里**：执行 *Atlas: Analyze*；Controller 方法上方的 CodeLens 可以直接打开该接口的流转图。
 
 **CLI**
 
@@ -83,7 +109,11 @@ project-atlas trace --print-config                      # 打印可粘贴到 IDE
 
 **MCP**：`atlas-mcp --dir .atlas` 通过 stdio 向 AI 编程助手提供入口、流转、跨服务链路和运行时聚合数据（从不返回 span 的属性值）。
 
-**运行时追踪**：执行 *Atlas: Copy VM Options for Tracing*，把 VM 参数粘贴到 IDE 的运行配置里，重启服务后发一个请求即可。span 只发到 127.0.0.1 上的接收器；SQL 文本、请求体和 header 一律不存。详见 [docs/runtime-tracing.md](docs/runtime-tracing.md)。
+**运行时追踪**：在「启动」页点「复制追踪用的 VM 参数」，粘贴到 IDE 的运行配置里，重启服务后发一个请求即可。
+- span 只发到 127.0.0.1 上的接收器；
+- SQL 文本、请求体和 header 一律不存。
+
+详见 [docs/runtime-tracing.md](docs/runtime-tracing.md)。
 
 ## 支持范围
 
