@@ -67,6 +67,12 @@ export interface ServiceLink {
   evidence: SourceRef[];
   /** How the link was derived (proxy/gateway rewrite, Feign client…). */
   rationale?: string;
+  /**
+   * MQ destinations as the OpenTelemetry agent reports them, when they differ from the channel
+   * (RabbitMQ: the producer span names the exchange; the consumer span names the exchange or the
+   * routing key, never only the queue). `strong`: consumer destinations specific to this queue.
+   */
+  runtime?: { producer: string[]; consumer: string[]; strong: string[] };
   observed?: RuntimeStats;
 }
 
@@ -140,6 +146,8 @@ export interface FlowStep {
   serviceId: string;
   layer: FlowLayer;
   symbol: SymbolRef;
+  /** Methods of this name declared in the class, when more than one (a method span cannot tell them apart). */
+  overloads?: number;
   /** Runtime overlay (v0.2): spans matched to this step. */
   observed?: RuntimeStats;
 }
@@ -182,7 +190,7 @@ export interface UnresolvedCall {
   fromStepId: string;
   /** Source text of the call expression, e.g. `HttpUtils.sendPost(url, body)`. */
   expression: string;
-  reason: "unknown-receiver" | "dynamic-dispatch" | "unresolved-config" | "unknown-wrapper";
+  reason: "unknown-receiver" | "dynamic-dispatch" | "unresolved-config" | "unknown-wrapper" | "ambiguous-overload";
   at: SourceRef;
 }
 

@@ -61,7 +61,7 @@ describe.skipIf(!haveFixtures(FIXTURES.ruoyiVue))("reconcile — real RuoYi-Vue 
     expect(names(g, runtime.map((e) => e.from)).every((n, i) => n?.split(".")[0] === names(g, [runtime[i]?.to ?? ""])[0]?.split(".")[0])).toBe(true);
     expect(runtime.some((e) => names(g, [e.to])[0] === "SysUserServiceImpl.selectUserByUserName")).toBe(false);
     expect(overlay.reachability.some((r) => names(g, [r.to])[0] === "SysUserServiceImpl.selectUserByUserName")).toBe(true);
-    expect(overlay.unmatched).toEqual([]);
+    expect(overlay.unmatched.map((u) => `${u.key} ${u.reason}`)).toEqual([]);
 
     // the agent configuration covers filters / interceptors / aspects / controllers / services, not data objects or mappers
     const methods = instrumentedMethods(graph);
@@ -207,5 +207,85 @@ describe.skipIf(!haveFixtures(FIXTURES.ruoyiVue))("AC#25 — merge throughput", 
     expect(agg.state.total).toBe(10_000);
     expect(Object.keys(overlay.entrypoints).length).toBeGreaterThan(3);
     expect(ms).toBeLessThan(2000);
+  });
+});
+
+describe("reconcile — overloads (the agent instruments by method name)", () => {
+  const sources = {
+    "Svc.java": "@Service public class Svc { public String find(Long id) { return \"\"; } public String find(String code) { return \"\"; } }",
+    "Ctl.java": '@RestController public class Ctl { @Autowired private Svc svc; @GetMapping("/byId") public void byId() { svc.find(1L); } @GetMapping("/item/{id}") public String item(@PathVariable Long id) { return ""; } public String item(String x, int y) { return x; } }',
+    "Other.java": "@Service public class Other { @Autowired private Svc svc; public void lookup() { svc.find(\"c\"); } }",
+    "OtherCtl.java": '@RestController public class OtherCtl { @Autowired private Other other; @GetMapping("/code") public void code() { other.lookup(); } }',
+  };
+  let id = 0;
+  const span = (t: string, s: string, a: SpanRecord["a"], p?: string, kind: SpanRecord["kind"] = "internal"): SpanRecord => ({
+    t: t.padEnd(32, "0"),
+    s: s.padEnd(16, "0"),
+    ...(p ? { p: p.padEnd(16, "0") } : {}),
+    svc: "app",
+    scope: "test",
+    name: "x",
+    kind,
+    start: 1000 + id++,
+    dur: 5,
+    err: false,
+    a,
+  });
+  const m = (cls: string, fn: string) => ({ cls: `app.${cls}`, fn });
+
+  it("records how many methods share the step's name", async () => {
+    const graph = await analyzeTree(springApp(sources));
+    const find = graph.steps.find((s) => s.symbol.fqn.startsWith("app.Svc#find("));
+    expect(find?.symbol.fqn).toBe("app.Svc#find(Long)");
+    expect(find?.overloads).toBe(2);
+    expect(graph.steps.find((s) => s.symbol.name === "Ctl.byId")?.overloads).toBeUndefined();
+  });
+
+  it("credits an overload only where a caller with a static edge to it pins it", async () => {
+    const graph = await analyzeTree(springApp(sources));
+    const byFqn = (fqn: string) => graph.steps.find((s) => s.symbol.fqn === fqn)!;
+    const [findLong, findString] = [byFqn("app.Svc#find(Long)"), byFqn("app.Svc#find(String)")];
+    // static: the argument types pick the overload (1L → Long, "c" → String)
+    const callers = (c: { id: string }) => graph.edges.filter((e) => e.to === c.id).map((e) => graph.steps.find((s) => s.id === e.from)?.symbol.name);
+    expect(callers(findLong)).toEqual(["Ctl.byId"]);
+    expect(callers(findString)).toEqual(["Other.lookup"]);
+    // a find span with no caller pins neither
+    const agg = new Aggregator();
+    agg.add([span("1", "1", m("Svc", "find"))]);
+    let overlay = reconcile(graph, agg.state);
+    expect(overlay.steps[findLong.id] ?? overlay.steps[findString.id]).toBeUndefined();
+    expect(overlay.unmatched).toEqual([{ key: "m:app:app.Svc#find", count: 1, reason: "ambiguous" }]);
+    // Other.lookup → find: only find(String)
+    agg.add([span("2", "1", m("OtherCtl", "code")), span("2", "2", m("Other", "lookup"), "1"), span("2", "3", m("Svc", "find"), "2")]);
+    overlay = reconcile(graph, agg.state);
+    expect(overlay.steps[findString.id]?.count).toBe(1);
+    expect(overlay.steps[findLong.id]).toBeUndefined();
+    expect(overlay.unmatched).toEqual([]);
+    // Ctl.byId → find twice: find(Long), counted with that edge's calls only
+    agg.add([span("3", "1", m("Ctl", "byId")), span("3", "2", m("Svc", "find"), "1"), span("4", "1", m("Ctl", "byId")), span("4", "2", m("Svc", "find"), "1")]);
+    overlay = reconcile(graph, agg.state);
+    expect(overlay.steps[findLong.id]?.count).toBe(2);
+    expect(overlay.steps[findString.id]?.count).toBe(1);
+    const edge = graph.edges.find((e) => e.to === findLong.id)!;
+    expect(overlay.edges[edge.id]?.count).toBe(2);
+  });
+
+  it("an overload the arguments cannot decide gets no guessed edge", async () => {
+    const graph = await analyzeTree(springApp({ ...sources, "Ctl.java": '@RestController public class Ctl { @Autowired private Svc svc; @GetMapping("/byId") public void byId() { svc.find(compute()); } private native Object compute(); }' }));
+    expect(graph.edges.some((e) => graph.steps.find((s) => s.id === e.from)?.symbol.name === "Ctl.byId")).toBe(false);
+    expect(graph.unresolvedCalls.map((u) => u.reason)).toContain("ambiguous-overload");
+  });
+
+  it("the route pins a controller overload", async () => {
+    const graph = await analyzeTree(springApp(sources));
+    const item = graph.steps.find((s) => s.symbol.fqn === "app.Ctl#item(Long)")!;
+    expect(item.overloads).toBe(2);
+    const agg = new Aggregator();
+    agg.add([span("4", "1", { method: "GET", route: "/item/{id}" }, undefined, "server"), span("4", "2", m("Ctl", "item"), "1")]);
+    expect(reconcile(graph, agg.state).steps[item.id]?.count).toBe(1);
+    // the same method span without a route parent stays in doubt
+    const alone = new Aggregator();
+    alone.add([span("5", "1", m("Ctl", "item"))]);
+    expect(reconcile(graph, alone.state).steps[item.id]).toBeUndefined();
   });
 });

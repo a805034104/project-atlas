@@ -1,5 +1,5 @@
 import { javaStringLiteralText } from "./java-literals.js";
-import type { JavaAnnotation, JavaFileFacts, JavaMethod, JavaType } from "../facts/types.js";
+import type { JavaAnnotation, JavaCall, JavaFileFacts, JavaMethod, JavaType } from "../facts/types.js";
 import { rawTypeName } from "../facts/java.js";
 import type { LoadedFile } from "../workspace/load.js";
 
@@ -169,6 +169,114 @@ export class JavaIndex {
     return [];
   }
 
+  /**
+   * The overload a call runs, among same-arity candidates (findMethods): the parameters must accept
+   * every statically evident argument type (literals, `new X(…)`, casts, locals, parameters, fields).
+   * Returns one method, or every remaining candidate when the arguments cannot decide.
+   */
+  selectOverload(candidates: readonly MethodRef[], call: JavaCall, caller?: MethodRef): MethodRef[] {
+    if (candidates.length <= 1) return [...candidates];
+    // Java tries fixed-arity methods before variable-arity ones (JLS 15.12.2).
+    const fixed = candidates.filter((c) => c.method.params.length === call.argCount && !c.method.params[call.argCount - 1]?.type.endsWith("..."));
+    if (fixed.length > 0 && fixed.length < candidates.length) return this.selectOverload(fixed, call, caller);
+    const argTypes = call.argTexts.map((text) => this.argumentType(text, caller));
+    const fits = candidates.filter((c) => argTypes.every((arg, i) => arg === undefined || this.accepts(paramTypeAt(c.method, i), arg, c.owner)));
+    if (fits.length <= 1) return fits.length === 1 ? fits : [...candidates];
+    // Most specific: the one whose parameters name every known argument type exactly.
+    const exact = fits.filter((c) => argTypes.every((arg, i) => arg === undefined || (BOXED[simpleRaw(paramTypeAt(c.method, i) ?? "")] ?? simpleRaw(paramTypeAt(c.method, i) ?? "")) === (BOXED[arg] ?? arg)));
+    return exact.length === 1 ? exact : fits;
+  }
+
+  /** Simple type name of an argument expression when it is evident without inference. */
+  private argumentType(text: string, caller?: MethodRef): string | undefined {
+    const t = text.trim();
+    if (/^"/.test(t) || /^"""/.test(t)) return "String";
+    if (/^'/.test(t)) return "char";
+    if (/^(true|false)$/.test(t)) return "boolean";
+    if (t === "null") return "null";
+    if (/^-?\d[\d_]*[lL]$/.test(t)) return "long";
+    if (/^-?(0x[\da-fA-F_]+|\d[\d_]*)$/.test(t)) return "int";
+    if (/^-?\d[\d_]*\.\d*([eE][+-]?\d+)?[dD]?$|^-?\d+[dD]$/.test(t)) return "double";
+    if (/^-?\d[\d_]*(\.\d*)?[fF]$/.test(t)) return "float";
+    const created = /^new\s+([\w.]+)\s*(?:<[^>]*>)?\s*[(\[]/.exec(t)?.[1];
+    if (created) return t.includes("[") && !t.includes("(") ? undefined : simpleRaw(created);
+    const cast = /^\(\s*([\w.]+)\s*(?:<[^>]*>)?\s*\)\s*[\w(]/.exec(t)?.[1];
+    if (cast) return simpleRaw(cast);
+    if (!caller) return undefined;
+    // "prefix" + x, KEY + id: a concatenation with any String part is a String.
+    const parts = splitTopLevelPlus(t);
+    if (parts.length > 1) return parts.some((p) => this.argumentType(p, caller) === "String") ? "String" : undefined;
+    if (/^[A-Za-z_$][\w$]*$/.test(t)) {
+      const declared = caller.method.locals[t] ?? caller.method.params.find((p) => p.name === t)?.type;
+      if (declared) return simpleRaw(declared);
+      return this.fieldType(caller.owner, t);
+    }
+    // this.field, Type.CONSTANT
+    const member = /^(this|[A-Z][\w$.]*)\.([A-Za-z_$][\w$]*)$/.exec(t);
+    if (member) {
+      const owner = member[1] === "this" ? caller.owner : this.resolveType(member[1] as string, caller.owner);
+      return owner ? this.fieldType(owner, member[2] as string) : undefined;
+    }
+    // helper(…) on the same class, or variable.method(…) on a project type: the declared return type
+    const call = /^(?:([A-Za-z_$][\w$]*)\.)?([a-z_$][\w$]*)\s*\(/.exec(t);
+    if (call && closingParen(t, call[0].length - 1) === t.length - 1) {
+      const recvName = call[1];
+      const recvType = recvName === undefined || recvName === "this" ? undefined : this.argumentType(recvName, caller);
+      const owner = recvName === undefined || recvName === "this" ? caller.owner : recvType ? this.resolveType(recvType, caller.owner) : undefined;
+      return owner ? this.returnType(owner, call[2] as string) : undefined;
+    }
+    return undefined;
+  }
+
+  /** Return type of `name(…)` on `ref` when every method of that name agrees; Lombok getters from fields. */
+  private returnType(ref: TypeRef, name: string): string | undefined {
+    for (const owner of [ref, ...this.ancestors(ref)]) {
+      const named = owner.type.methods.filter((m) => m.name === name && !m.isConstructor);
+      if (named.length === 0) continue;
+      const returns = new Set(named.map((m) => simpleRaw(m.returnType)));
+      const only = [...returns][0] as string;
+      return returns.size === 1 && !/^[A-Z]$/.test(only) && only !== "void" ? only : undefined;
+    }
+    const getter = /^(?:get|is)([A-Z]\w*)$/.exec(name)?.[1];
+    return getter ? this.fieldType(ref, getter.charAt(0).toLowerCase() + getter.slice(1)) : undefined;
+  }
+
+  private fieldType(ref: TypeRef, name: string): string | undefined {
+    for (const owner of [ref, ...this.ancestors(ref)]) {
+      const field = owner.type.fields.find((f) => f.name === name);
+      if (field) return simpleRaw(field.type);
+    }
+    return undefined;
+  }
+
+  /** Can a parameter declared as `param` take an argument of simple type `arg`? Unknown → yes. */
+  private accepts(param: string | undefined, arg: string, ctx: TypeRef): boolean {
+    if (param === undefined) return false;
+    const p = simpleRaw(param);
+    if (p === arg || p === "Object" || /^[A-Z]$/.test(p)) return true; // generic type variable T
+    if (arg === "null") return !PRIMITIVES.has(p);
+    const boxedArg = BOXED[arg] ?? arg;
+    const boxedParam = BOXED[p] ?? p;
+    if (boxedArg === boxedParam) return true;
+    const numeric = ["Byte", "Short", "Character", "Integer", "Long", "Float", "Double"];
+    if (PRIMITIVES.has(arg) || numeric.includes(boxedArg) || boxedArg === "Boolean" || boxedArg === "String") {
+      // String → CharSequence / Serializable / Comparable; int (or Integer) → long / double widening
+      if (boxedArg === "String") return ["CharSequence", "Serializable", "Comparable"].includes(p);
+      if (PRIMITIVES.has(p)) {
+        const from = numeric.indexOf(boxedArg);
+        return from >= 0 && numeric.indexOf(boxedParam) > from && p !== "char";
+      }
+      return ["Number", "Serializable", "Comparable"].includes(p) && boxedArg !== "Boolean";
+    }
+    if (PRIMITIVES.has(p) || ["String", "Integer", "Long", "Double", "Float", "Short", "Byte", "Boolean", "Character"].includes(p)) return false;
+    // Reference types: a known project type must be a subtype; anything else stays possible.
+    const argType = this.resolveType(arg, ctx);
+    if (!argType) return true;
+    // A project type fits its own type and its supertypes (project or library, by simple name).
+    const supers = new Set([argType.type.name, ...this.ancestors(argType).map((t) => t.type.name), ...this.supertypeNames(argType).map((n) => simpleRaw(n))]);
+    return supers.has(p);
+  }
+
   isBean(ref: TypeRef): boolean {
     return ref.type.annotations.some((a) => BEAN_ANNOTATIONS.has(a.name));
   }
@@ -215,6 +323,41 @@ export class JavaIndex {
     }
     return undefined;
   }
+}
+
+const PRIMITIVES = new Set(["byte", "short", "char", "int", "long", "float", "double", "boolean"]);
+const BOXED: Record<string, string> = { byte: "Byte", short: "Short", char: "Character", int: "Integer", long: "Long", float: "Float", double: "Double", boolean: "Boolean" };
+
+/** `java.util.List<String>` → `List`; `String...` / `String[]` → `String[]`. */
+function simpleRaw(type: string): string {
+  const noGenerics = type.replace(/<.*>/s, "").trim();
+  const array = /(\[\]|\.\.\.)$/.test(noGenerics);
+  const base = noGenerics.replace(/(\[\]|\.\.\.)+$/, "").trim();
+  return `${base.slice(base.lastIndexOf(".") + 1)}${array ? "[]" : ""}`;
+}
+
+/** Index of the `)` closing the `(` at `open` (string literals skipped), or -1. */
+function closingParen(text: string, open: number): number {
+  let depth = 0;
+  let quote: string | undefined;
+  for (let i = open; i < text.length; i++) {
+    const ch = text[i] as string;
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = undefined;
+    } else if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")" && --depth === 0) return i;
+  }
+  return -1;
+}
+
+/** Declared type of the i-th parameter (the varargs element type past the last one). */
+function paramTypeAt(method: JavaMethod, i: number): string | undefined {
+  const n = method.params.length;
+  const last = method.params[n - 1]?.type;
+  if (i < n - 1 || (i === n - 1 && !last?.endsWith("..."))) return method.params[i]?.type;
+  return last?.endsWith("...") ? last.slice(0, -3) : undefined;
 }
 
 function acceptsArgs(method: JavaMethod, argCount: number): boolean {

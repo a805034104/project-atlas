@@ -43,6 +43,8 @@ describe("bridge & persisted state", () => {
   it("accepts only known host message types", () => {
     expect(isHostMessage({ type: "init", locale: "en" })).toBe(true);
     expect(isHostMessage({ type: "evil" })).toBe(false);
+    // v0.2 runtime messages reach the webview (the waterfall and live updates depend on them)
+    for (const type of ["runtimeState", "runtimeUpdated", "traceDetail"]) expect(isHostMessage({ type })).toBe(true);
     expect(isHostMessage("init")).toBe(false);
     expect(isHostMessage(null)).toBe(false);
   });

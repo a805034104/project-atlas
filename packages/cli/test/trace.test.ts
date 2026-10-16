@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { JAVAAGENT_FILE } from "@project-atlas/core";
 import { parseCliArgs } from "../src/args.js";
-import { traceCommand } from "../src/commands/trace.js";
+import { runTraced, traceCommand } from "../src/commands/trace.js";
 import { CliError } from "../src/errors.js";
 import type { CliIo } from "../src/io.js";
 
@@ -168,5 +168,26 @@ describe.skipIf(!existsSync(REAL_AGENT))("trace -- <command>", () => {
     const error = await traceCommand(parseCliArgs(["trace", "--", "java", "-javaagent:/opt/sw/skywalking-agent.jar", "-jar", "a.jar"]) as never, t, { run: async () => 0 }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CliError);
     expect((error as CliError).error.code).toBe("ATLAS-E072");
+  });
+});
+
+describe.skipIf(process.platform !== "win32")("runTraced on Windows (AC-RT-WIN; full run: scripts/runtime-win.mjs)", () => {
+  it("ends the whole tree after the grace period when Ctrl-C does not stop it, and exits 130", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "atlas-run-"));
+    // A batch file whose child ignores the (synthetic) Ctrl-C, like cmd.exe waiting at "Terminate batch job (Y/N)?".
+    await writeFile(path.join(dir, "slow.cmd"), `@"${process.execPath}" -e "setTimeout(() => {}, 60000)"\r\n`);
+    const notices: string[] = [];
+    const started = Date.now();
+    const done = runTraced(path.join(dir, "slow.cmd"), {}, dir, { stdoutToStderr: true, graceMs: 300, notice: (l) => notices.push(l) });
+    await new Promise((r) => setTimeout(r, 1000));
+    process.emit("SIGINT");
+    expect(await done).toBe(130);
+    expect(Date.now() - started).toBeLessThan(15_000);
+    expect(notices[0]).toMatch(/Ctrl-C again/);
+  }, 30_000);
+
+  it("passes the exit code through when not interrupted", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "atlas-run-"));
+    expect(await runTraced("exit /b 7", {}, dir, { stdoutToStderr: true })).toBe(7);
   });
 });
