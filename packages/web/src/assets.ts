@@ -24,7 +24,7 @@ export interface Assets {
 }
 
 /** Names embedded in the single-file build (see build-sea.mjs). */
-export const EMBEDDED = ["webview.js", "webview.css", "web-theme.css", "favicon.svg", "worker.js", "web-tree-sitter.wasm", "tree-sitter-java.wasm", "tree-sitter-javascript.wasm", "tree-sitter-typescript.wasm", "tree-sitter-tsx.wasm"] as const;
+export const EMBEDDED = ["webview.js", "webview.css", "web-theme.css", "favicon.svg", "worker.cjs", "web-tree-sitter.wasm", "tree-sitter-java.wasm", "tree-sitter-javascript.wasm", "tree-sitter-typescript.wasm", "tree-sitter-tsx.wasm"] as const;
 
 interface SeaApi {
   isSea(): boolean;
@@ -80,5 +80,5 @@ async function unpack(sea: SeaApi, dir: string): Promise<Assets> {
     await writeFile(tmp, data);
     await rename(tmp, target);
   }
-  return { assetsDir: dir, wasmDir: path.join(dir, "wasm"), workerPath: path.join(dir, "worker.js"), mode: "sea" };
+  return { assetsDir: dir, wasmDir: path.join(dir, "wasm"), workerPath: path.join(dir, "worker.cjs"), mode: "sea" };
 }

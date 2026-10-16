@@ -35,8 +35,10 @@ export interface PyramidNode {
   depth: number;
   /** The model node (absent for a "+N more" node). */
   node?: LaneNode;
-  /** Aspect advising this node, drawn as a pill on its right. */
+  /** Outermost aspect advising this node, drawn as a pill on its right. */
   sidecar?: LaneNode;
+  /** Every aspect folded onto this node, outermost first (the pill shows "+N" for the rest). */
+  sidecars?: LaneNode[];
   /** "+N more" node standing for hidden children of `parent`. */
   more?: { parent: string; count: number };
 }
@@ -97,31 +99,39 @@ export function buildPyramid(model: SwimlaneModel, opts: { expandedFanout: Reado
     if (best) treeEdge.set(n.id, best);
   }
 
-  // Aspects with exactly one callee become that callee's side-car.
-  const sidecarOf = new Map<string, LaneNode>(); // callee id → aspect node
-  const absorbed = new Map<string, string>(); // aspect id → callee id
+  // Aspects become side-cars of the method they wrap. A chain of advice (@Before → @AfterReturning →
+  // @Around → method), each with one callee reached by its tree edge, all folds onto that method.
+  const target = (aspect: LaneNode): string | undefined => {
+    let id = aspect.id;
+    for (let hops = 0; hops < 16; hops++) {
+      const out = outgoing.get(id) ?? [];
+      const callee = out[0]?.to;
+      if (out.length !== 1 || callee === undefined || treeEdge.get(callee)?.from !== id) return undefined;
+      const next = byId.get(callee);
+      if (next?.layer !== "aspect") return callee;
+      id = callee;
+    }
+    return undefined;
+  };
+  const sidecarsOf = new Map<string, LaneNode[]>(); // method id → its advice, outermost first
+  const absorbed = new Map<string, string>(); // aspect id → method id
   for (const n of model.nodes) {
     if (n.layer !== "aspect") continue;
-    const out = outgoing.get(n.id) ?? [];
-    const callee = out[0]?.to;
-    if (out.length !== 1 || callee === undefined || sidecarOf.has(callee) || treeEdge.get(callee)?.from !== n.id || !treeEdge.has(n.id)) continue;
-    sidecarOf.set(callee, n);
-    absorbed.set(n.id, callee);
+    const method = target(n);
+    if (method === undefined) continue;
+    absorbed.set(n.id, method);
+    sidecarsOf.set(method, [...(sidecarsOf.get(method) ?? []), n].sort((a, b) => a.col - b.col));
   }
+  const sidecarOf = new Map([...sidecarsOf].map(([id, list]) => [id, list[0] as LaneNode]));
 
-  // Tree children (aspects skipped: the callee hangs from the aspect's caller).
+  // Tree children: a folded aspect is skipped, the method hangs from the chain's own caller
+  // (or becomes a root when the advice chain was the entry).
   const parentOf = new Map<string, { parent: string; edge: LaneEdge }>();
-  for (const [child, e] of treeEdge) {
-    if (absorbed.has(child)) continue;
-    let from = e.from;
-    let via = e;
-    if (absorbed.has(from)) {
-      const up = treeEdge.get(from);
-      if (!up) continue;
-      via = up;
-      from = up.from;
-    }
-    parentOf.set(child, { parent: from, edge: via });
+  for (const n of model.nodes) {
+    if (absorbed.has(n.id)) continue;
+    let via = treeEdge.get(n.id);
+    while (via && absorbed.has(via.from)) via = treeEdge.get(via.from);
+    if (via) parentOf.set(n.id, { parent: via.from, edge: via });
   }
   const children = new Map<string, string[]>();
   const visible = model.nodes.filter((n) => !absorbed.has(n.id));
@@ -176,6 +186,7 @@ export function buildPyramid(model: SwimlaneModel, opts: { expandedFanout: Reado
     const parent = id.startsWith("more:") ? id.slice(5) : undefined;
     const node = byId.get(id);
     const sidecar = sidecarOf.get(id);
+    const sidecars = sidecarsOf.get(id);
     placed.set(id, {
       id,
       x: centre - NODE_W / 2,
@@ -183,6 +194,7 @@ export function buildPyramid(model: SwimlaneModel, opts: { expandedFanout: Reado
       depth,
       ...(node ? { node } : {}),
       ...(sidecar ? { sidecar } : {}),
+      ...(sidecars ? { sidecars } : {}),
       ...(parent !== undefined ? { more: { parent, count: moreCount.get(parent) ?? 0 } } : {}),
     });
     let cursor = left + (w - kidsWidth) / 2;
@@ -241,6 +253,7 @@ export function buildPyramid(model: SwimlaneModel, opts: { expandedFanout: Reado
     const a = anchor(e.from);
     const b = anchor(e.to);
     if (!a || !b || hidden.has(a.id) || hidden.has(b.id)) continue;
+    if (a.id === b.id && !e.back && e.from !== e.to) continue; // inside one folded advice chain
     if (e.back || e.from === e.to) {
       // Recursion: out of the caller's right side, up and into the callee's right side.
       const x1 = a.x + NODE_W;

@@ -16,3 +16,4 @@ fixtures/runtime/**/*.log
 fixtures/runtime/**/agent-lines.txt
 fixtures/runtime/**/requests*.txt
 fixtures/runtime/**/requests.jsonl
+dist-release/

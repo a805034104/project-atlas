@@ -218,11 +218,12 @@ export function Pyramid({
         data-node-id={a.id}
         className={`pyr-sidecar layer-aspect${dimmed(a) ? " dim" : ""}${a.step?.observed && !traceSteps ? " observed" : ""}`}
         style={{ left, top: p.y + NODE_H / 2 - 14, width: SIDECAR_W }}
-        title={a.step ? `${a.step.symbol.fqn}\n${a.step.symbol.file}${a.step.symbol.line !== undefined ? `:${a.step.symbol.line}` : ""}` : a.label}
-        aria-label={t("flow.aspectOn", { aspect: a.label, target: p.node?.label ?? "" })}
+        title={(p.sidecars ?? [a]).map((x) => (x.step ? `${x.label}\n  ${x.step.symbol.file}${x.step.symbol.line !== undefined ? `:${x.step.symbol.line}` : ""}` : x.label)).join("\n")}
+        aria-label={t("flow.aspectOn", { aspect: (p.sidecars ?? [a]).map((x) => x.label).join(", "), target: p.node?.label ?? "" })}
         onClick={() => a.step && send({ type: "openSource", ref: a.step.symbol })}
       >
-        <span className="code">{middleTruncate(a.label, 18)}</span>
+        <span className="code">{middleTruncate(a.label, (p.sidecars?.length ?? 1) > 1 ? 14 : 18)}</span>
+        {(p.sidecars?.length ?? 1) > 1 ? <span className="badge">+{(p.sidecars?.length ?? 1) - 1}</span> : null}
         {badge(a)}
       </button>
     );
