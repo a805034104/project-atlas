@@ -61,8 +61,12 @@ export async function main(options: MainOptions): Promise<{ url: string; close()
   if (options.selfTest) {
     const assets = await resolveAssets(home, VERSION, here);
     const pool = await createParsePool({ ...(assets.wasmDir ? { wasmDir: assets.wasmDir } : {}), ...(assets.workerPath ? { workerPath: assets.workerPath } : {}) });
-    const facts = await pool.parse("java", "package a; @RestController public class C { @GetMapping(\"/x\") public void x() {} }", "C.java");
-    await pool.close();
+    let facts;
+    try {
+      facts = await pool.parse("java", "package a; @RestController public class C { @GetMapping(\"/x\") public void x() {} }", "C.java");
+    } finally {
+      await pool.close();
+    }
     const result = { version: VERSION, mode: assets.mode, poolSize: pool.size, parsed: Boolean(facts) };
     process.stdout.write(`${JSON.stringify(result)}\n`);
     process.exitCode = result.poolSize > 0 && result.parsed ? 0 : 1;
@@ -118,19 +122,30 @@ export async function main(options: MainOptions): Promise<{ url: string; close()
   return { url, close };
 }
 
-// Entry point when run directly (node dist/main.js, or the single-file build).
-const isEntry = typeof require !== "undefined" ? require.main === module : process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isEntry) {
-  main(parseArgs(process.argv.slice(2)))
-    .then((running) => {
-      if (!running) return;
-      const stop = () => void running.close().then(() => process.exit(0));
-      process.on("SIGINT", stop);
-      process.on("SIGTERM", stop);
-      process.on("SIGHUP", stop);
-    })
-    .catch((error: unknown) => {
-      process.stderr.write(`ProjectAtlas: ${(error as Error).message}\n`);
-      process.exitCode = 1;
-    });
+/** Start, wire signals, report startup errors (the single-file build and `node dist/main.js`). */
+export async function run(argv: readonly string[]): Promise<void> {
+  try {
+    const running = await main(parseArgs(argv));
+    if (!running) return;
+    const stop = () => void running.close().then(() => process.exit(0));
+    process.on("SIGINT", stop);
+    process.on("SIGTERM", stop);
+    process.on("SIGHUP", stop); // Windows: the console window was closed
+  } catch (error) {
+    process.stderr.write(`ProjectAtlas: ${(error as Error).message}\n`);
+    process.exitCode = 1;
+    // Started by double-click: keep the window open long enough to read the message.
+    if (process.env["ATLAS_SEA"] === "1" && process.stdin.isTTY) {
+      process.stderr.write("Press Enter to close.\n");
+      await new Promise<void>((resolve) => {
+        process.stdin.once("data", () => resolve());
+        setTimeout(resolve, 120_000).unref();
+      });
+      process.exit(1);
+    }
+  }
 }
+
+// Entry point when run directly with node (the single-file build calls run() from sea-entry.ts).
+const isEntry = process.env["ATLAS_SEA"] !== "1" && (typeof require !== "undefined" ? require.main === module : process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url));
+if (isEntry) void run(process.argv.slice(2));

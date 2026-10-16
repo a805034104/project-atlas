@@ -34,6 +34,19 @@ describe("pyramid layout", () => {
     expect(Math.abs(at(l, "ctl").x - at(l, "svc").x)).toBeLessThan(1); // straight trunk
   });
 
+  it("folds a chain of advice at the entry onto the method it wraps (mall-swarm @Before → @AfterReturning → @Around → controller)", () => {
+    const l = layoutOf(
+      detail(
+        [["before", "aspect"], ["after", "aspect"], ["around", "aspect"], ["ctl", "controller"], ["svc", "service"], ["m", "repository"]],
+        [["before", "after"], ["after", "around"], ["around", "ctl"], ["ctl", "svc"], ["svc", "m"]],
+      ),
+    );
+    expect(l.nodes.map((n) => n.id).sort()).toEqual(["ctl", "m", "svc"]);
+    expect(at(l, "ctl").depth).toBe(0);
+    expect(at(l, "ctl").sidecars?.map((s) => s.id)).toEqual(["before", "after", "around"]);
+    expect(l.links.filter((x) => x.kind !== "tree")).toEqual([]);
+  });
+
   it("never overlaps two nodes", () => {
     const l = layoutOf(userListDetail() as FlowDetailData);
     for (const a of l.nodes) for (const b of l.nodes) {
